@@ -1,33 +1,22 @@
 "use strict";
-var helpers = require("./helpers");
+const helpers = require("./helpers");
 
-var expect = require("chai").expect;
+const expect = require("chai").expect;
 
-var conn;
+let conn;
 
+describe("CLI", function() {
+  before(function() {
+    return helpers.startConnections().then(function(connections) {
+      conn = connections;
+    });
+  });
 
+  after(function() {
+    return helpers.stopConnections(conn.realPorts);
+  });
 
-describe("CLI", function()
-{
-	before( function()
-	{
-		return helpers.startConnections().then( function(connections)
-		{
-			conn = connections;
-		});
-	});
-	
-	
-	
-	after( function()
-	{
-		return helpers.stopConnections(conn.realPorts);
-	});
-	
-	
-	
-	it.skip("works", function(done)
-	{
-		done();
-	});
+  it.skip("works", function(done) {
+    done();
+  });
 });

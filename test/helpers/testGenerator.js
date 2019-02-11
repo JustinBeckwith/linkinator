@@ -1,54 +1,46 @@
 "use strict";
-var slashes = require("slashes");
+const slashes = require("slashes");
 
-var varStringPattern = /{{([^}]+)}}/;
+const varStringPattern = /{{([^}]+)}}/;
 
+function a_an(followingWord) {
+  const firstChar = followingWord[0].toLowerCase();
 
+  // Skip "y" because it's always special cased
+  if (
+    firstChar === "a" ||
+    firstChar === "e" ||
+    firstChar === "i" ||
+    firstChar === "o" ||
+    firstChar === "u"
+  ) {
+    return "an";
+  }
 
-function a_an(followingWord)
-{
-	var firstChar = followingWord[0].toLowerCase();
-	
-	// Skip "y" because it's always special cased
-	if (firstChar==="a" || firstChar==="e" || firstChar==="i" || firstChar==="o" || firstChar==="u")
-	{
-		return "an";
-	}
-	
-	return "a";
+  return "a";
 }
 
-
-
-function addSlashes(str)
-{
-	return slashes.add(str);
+function addSlashes(str) {
+  return slashes.add(str);
 }
 
+function format(input) {
+  if (typeof input === "string") {
+    const match = varStringPattern.exec(input);
 
+    // If {{text}}, which is intended to be outputted literally
+    if (match !== null) {
+      // Code/Variable
+      return match[1];
+    }
 
-function format(input)
-{
-	if (typeof input === "string")
-	{
-		var match = varStringPattern.exec(input);
-		
-		// If {{text}}, which is intended to be outputted literally
-		if (match !== null)
-		{
-			// Code/Variable
-			return match[1];
-		}
-		
-		// String
-		return '"'+input+'"';
-	}
-	
-	// Rely on JavaScript's internal stringification
-	return input;
+    // String
+    return '"' + input + '"';
+  }
+
+  // Rely on JavaScript's internal stringification
+  return input;
 }
-
-
 
 /*function italic(string)
 {
@@ -60,12 +52,9 @@ function format(input)
 	return string;
 }*/
 
-
-
-module.exports = 
-{
-	a_an: a_an,
-	addSlashes: addSlashes,
-	format: format/*,
+module.exports = {
+  a_an: a_an,
+  addSlashes: addSlashes,
+  format: format /*,
 	italic: italic*/
 };
