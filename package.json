@@ -1,10 +1,10 @@
 {
-  "name": "broken-link-checker",
+  "name": "@justinbeckwith/broken-link-checker",
   "description": "Find broken links, missing images, etc in your HTML.",
   "version": "0.7.8",
   "license": "MIT",
   "author": "Steven Vachon <contact@svachon.com> (https://www.svachon.com/)",
-  "repository": "stevenvachon/broken-link-checker",
+  "repository": "JustinBeckwith/broken-link-checker",
   "main": "lib",
   "bin": {
     "blc": "bin/blc",
@@ -36,26 +36,33 @@
     "urlobj": "0.0.11"
   },
   "devDependencies": {
+    "@commitlint/cli": "^7.5.2",
+    "@commitlint/config-conventional": "^7.5.0",
     "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
     "chai-like": "~0.2.10",
     "chai-things": "~0.2.0",
+    "codecov": "^3.1.0",
     "eslint": "^5.13.0",
     "eslint-config-prettier": "^4.0.0",
     "eslint-plugin-node": "^8.0.1",
     "eslint-plugin-prettier": "^3.0.1",
     "mocha": "^4.0.0",
+    "nyc": "^13.2.0",
     "prettier": "^1.16.4",
+    "semantic-release": "^15.13.3",
     "slashes": "^1.0.5",
     "st": "^1.2.0"
   },
   "engines": {
-    "node": ">=6"
+    "node": ">=8"
   },
   "scripts": {
-    "test": "mocha test/ --reporter spec --check-leaks --bail",
-    "test-watch": "mocha test/ --reporter spec --check-leaks --bail -w",
-    "fix": "eslint --fix '**/*.js'"
+    "test": "nyc mocha --check-leaks",
+    "fix": "eslint --fix '**/*.js'",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json",
+    "commitlint": "git log -1 --pretty=%B | commitlint",
+    "lint": "eslint '**/*.js'"
   },
   "files": [
     "bin",
