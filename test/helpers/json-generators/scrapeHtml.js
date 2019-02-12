@@ -35,8 +35,6 @@ function generate() {
 }
 
 function generateData() {
-  let base, htmlBase, url;
-
   let i;
   const output = {};
 
@@ -68,8 +66,7 @@ function generateString() {
 
 function saveFile(location) {
   fs.writeFileSync(location, generateString());
-
-  console.log("Written to: " + location);
+  // console.log("Written to: " + location);
 }
 
 generate();

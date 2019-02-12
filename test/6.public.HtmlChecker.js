@@ -11,9 +11,9 @@ function commonHtmlStream() {
   return helpers.fixture.stream("/normal/index.html");
 }
 
-describe("PUBLIC -- HtmlChecker", function() {
-  before(function() {
-    return helpers.startConnections().then(function(connections) {
+describe("PUBLIC -- HtmlChecker", () => {
+  before(() => {
+    return helpers.startConnections().then(connections => {
       conn = connections;
       allTagsString = helpers.tagsString(3, conn.absoluteUrls[0]);
       baseUrl = conn.absoluteUrls[0] + "/normal/index.html";
@@ -21,13 +21,13 @@ describe("PUBLIC -- HtmlChecker", function() {
     });
   });
 
-  after(function() {
+  after(() => {
     return helpers.stopConnections(conn.realPorts);
   });
 
-  describe("methods (#1)", function() {
-    describe("scan()", function() {
-      it("takes a string when ready", function() {
+  describe("methods (#1)", () => {
+    describe("scan()", () => {
+      it("takes a string when ready", () => {
         const scanning = new HtmlChecker(helpers.options()).scan(
           commonHtmlString,
           baseUrl
@@ -36,7 +36,7 @@ describe("PUBLIC -- HtmlChecker", function() {
         expect(scanning).to.be.true;
       });
 
-      it("takes a stream when ready", function() {
+      it("takes a stream when ready", () => {
         const scanning = new HtmlChecker(helpers.options()).scan(
           commonHtmlStream(),
           baseUrl
@@ -45,7 +45,7 @@ describe("PUBLIC -- HtmlChecker", function() {
         expect(scanning).to.be.true;
       });
 
-      it("reports if not ready", function() {
+      it("reports if not ready", () => {
         const instance = new HtmlChecker(helpers.options());
 
         instance.scan(commonHtmlString, baseUrl);
@@ -57,9 +57,8 @@ describe("PUBLIC -- HtmlChecker", function() {
     });
   });
 
-  // TODO :: find a way to test "junk" without requiring the use of an option
-  describe("handlers", function() {
-    it("html", function(done) {
+  describe("handlers", () => {
+    it("html", done => {
       new HtmlChecker(helpers.options(), {
         html: function(tree, robots) {
           expect(tree).to.be.an.instanceOf(Object);
@@ -69,7 +68,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(commonHtmlString, baseUrl);
     });
 
-    it("link", function(done) {
+    it("link", done => {
       let count = 0;
 
       new HtmlChecker(helpers.options(), {
@@ -85,7 +84,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(commonHtmlString, baseUrl);
     });
 
-    it("complete", function(done) {
+    it("complete", done => {
       new HtmlChecker(helpers.options(), {
         complete: function() {
           expect(arguments).to.have.length(0);
@@ -95,12 +94,12 @@ describe("PUBLIC -- HtmlChecker", function() {
     });
   });
 
-  describe("methods (#2)", function() {
-    describe("numActiveLinks()", function() {
-      it("works", function(done) {
+  describe("methods (#2)", () => {
+    describe("numActiveLinks()", () => {
+      it("works", done => {
         let checked = false;
 
-        var instance = new HtmlChecker(helpers.options(), {
+        const instance = new HtmlChecker(helpers.options(), {
           complete: function() {
             expect(instance.numActiveLinks()).to.equal(0);
             expect(checked).to.be.true;
@@ -111,15 +110,15 @@ describe("PUBLIC -- HtmlChecker", function() {
         instance.scan(commonHtmlString, baseUrl);
 
         // Give time for link checks to start
-        setImmediate(function() {
+        setImmediate(() => {
           expect(instance.numActiveLinks()).to.equal(2);
           checked = true;
         });
       });
     });
 
-    describe("pause() / resume()", function() {
-      it("works", function(done) {
+    describe("pause() / resume()", () => {
+      it("works", done => {
         let resumed = false;
 
         const instance = new HtmlChecker(helpers.options(), {
@@ -134,16 +133,16 @@ describe("PUBLIC -- HtmlChecker", function() {
         instance.scan(commonHtmlString, baseUrl);
 
         // Wait longer than scan should take
-        setTimeout(function() {
+        setTimeout(() => {
           resumed = true;
           instance.resume();
         }, 100);
       });
     });
 
-    describe("numQueuedLinks()", function() {
-      it("works", function(done) {
-        var instance = new HtmlChecker(helpers.options(), {
+    describe("numQueuedLinks()", () => {
+      it("works", done => {
+        const instance = new HtmlChecker(helpers.options(), {
           complete: function() {
             expect(instance.numQueuedLinks()).to.equal(0);
             done();
@@ -156,7 +155,7 @@ describe("PUBLIC -- HtmlChecker", function() {
         instance.scan(commonHtmlString, baseUrl);
 
         // Wait for HTML to be parsed
-        setImmediate(function() {
+        setImmediate(() => {
           expect(instance.numQueuedLinks()).to.equal(2);
 
           instance.resume();
@@ -165,8 +164,8 @@ describe("PUBLIC -- HtmlChecker", function() {
     });
   });
 
-  describe("edge cases", function() {
-    it("supports multiple links", function(done) {
+  describe("edge cases", () => {
+    it("supports multiple links", done => {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
@@ -182,7 +181,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(commonHtmlString, baseUrl);
     });
 
-    it("supports html with no links", function(done) {
+    it("supports html with no links", done => {
       let count = 0;
 
       new HtmlChecker(helpers.options(), {
@@ -197,15 +196,15 @@ describe("PUBLIC -- HtmlChecker", function() {
     });
   });
 
-  describe("options", function() {
-    it("excludedKeywords = []", function(done) {
+  describe("options", () => {
+    it("excludedKeywords = []", done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -222,7 +221,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludedKeywords = […]", function(done) {
+    it("excludedKeywords = […]", done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
@@ -259,7 +258,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       ).scan(htmlString, baseUrl);
     });
 
-    it("excludedSchemes = []", function(done) {
+    it("excludedSchemes = []", done => {
       let htmlString =
         '<a href="data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7">link1</a>';
       htmlString += '<a href="geo:0,0">link2</a>';
@@ -272,7 +271,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       const results = [];
 
       new HtmlChecker(helpers.options({ excludedSchemes: [] }), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -289,7 +288,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it('excludedSchemes = ["data","geo","javascript","mailto","sms","tel"]', function(done) {
+    it('excludedSchemes = ["data","geo","javascript","mailto","sms","tel"]', done => {
       let htmlString =
         '<a href="data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7">link1</a>';
       htmlString += '<a href="geo:0,0">link2</a>';
@@ -306,7 +305,7 @@ describe("PUBLIC -- HtmlChecker", function() {
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
-        link: function(result) {
+        link: () => {
           done(new Error("this should not have been called"));
         },
         complete: function() {
@@ -322,14 +321,14 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeExternalLinks = false", function(done) {
+    it("excludeExternalLinks = false", done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -354,7 +353,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeExternalLinks = true", function(done) {
+    it("excludeExternalLinks = true", done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
@@ -392,7 +391,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeInternalLinks = false", function(done) {
+    it("excludeInternalLinks = false", done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="#hash">link3</a>';
@@ -400,7 +399,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -419,7 +418,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeInternalLinks = true", function(done) {
+    it("excludeInternalLinks = true", done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="#hash">link3</a>';
@@ -430,7 +429,7 @@ describe("PUBLIC -- HtmlChecker", function() {
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
-        link: function(result) {
+        link: () => {
           done(new Error("this should not have been called"));
         },
         complete: function() {
@@ -446,7 +445,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeLinksToSamePage = false", function(done) {
+    it("excludeLinksToSamePage = false", done => {
       let htmlString = '<a href="' + baseUrl + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="?query">link3</a>';
@@ -455,7 +454,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -498,7 +497,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeLinksToSamePage = true", function(done) {
+    it("excludeLinksToSamePage = true", done => {
       let htmlString = '<a href="' + baseUrl + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="?query">link3</a>';
@@ -560,7 +559,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("filterLevel = 0", function(done) {
+    it("filterLevel = 0", done => {
       const junkResults = [];
       const results = [];
 
@@ -591,7 +590,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("filterLevel = 1", function(done) {
+    it("filterLevel = 1", done => {
       const junkResults = [];
       const results = [];
 
@@ -622,7 +621,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("filterLevel = 2", function(done) {
+    it("filterLevel = 2", done => {
       const junkResults = [];
       const results = [];
 
@@ -653,11 +652,11 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("filterLevel = 3", function(done) {
+    it("filterLevel = 3", done => {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -675,7 +674,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("honorRobotExclusions = false (rel)", function(done) {
+    it("honorRobotExclusions = false (rel)", done => {
       let htmlString =
         '<a href="' + conn.absoluteUrls[0] + '" rel="nofollow">link1</a>';
       htmlString +=
@@ -688,7 +687,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -706,7 +705,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("honorRobotExclusions = true (rel)", function(done) {
+    it("honorRobotExclusions = true (rel)", done => {
       let htmlString =
         '<a href="' + conn.absoluteUrls[0] + '" rel="nofollow">link1</a>';
       htmlString +=
@@ -737,7 +736,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("honorRobotExclusions = false (meta)", function(done) {
+    it("honorRobotExclusions = false (meta)", done => {
       let htmlString = '<meta name="robots" content="nofollow">';
       htmlString += '<a href="' + conn.absoluteUrls[0] + '">link</a>';
 
@@ -762,7 +761,7 @@ describe("PUBLIC -- HtmlChecker", function() {
       }).scan(htmlString, baseUrl);
     });
 
-    it("honorRobotExclusions = true (meta)", function(done) {
+    it("honorRobotExclusions = true (meta)", done => {
       let htmlString = '<meta name="robots" content="nofollow">';
       htmlString += '<a href="' + conn.absoluteUrls[0] + '">link</a>';
 

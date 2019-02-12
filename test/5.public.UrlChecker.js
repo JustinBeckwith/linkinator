@@ -7,22 +7,21 @@ const expect = require("chai").expect;
 
 let conn;
 
-describe("PUBLIC -- UrlChecker", function() {
-  before(function() {
-    return helpers.startConnection().then(function(connection) {
+describe("PUBLIC -- UrlChecker", () => {
+  before(() => {
+    return helpers.startConnection().then(connection => {
       conn = connection;
     });
   });
 
-  after(function() {
+  after(() => {
     return helpers.stopConnection(conn.realPort);
   });
 
-  describe("methods (#1)", function() {
-    describe("enqueue()", function() {
-      it("accepts a valid url", function() {
+  describe("methods (#1)", () => {
+    describe("enqueue()", () => {
+      it("accepts a valid url", () => {
         const instance = new UrlChecker(helpers.options());
-
         expect(instance.enqueue(conn.absoluteUrl)).to.not.be.an.instanceOf(
           Error
         );
@@ -31,16 +30,15 @@ describe("PUBLIC -- UrlChecker", function() {
         ).to.not.be.an.instanceOf(Error);
       });
 
-      it("rejects an invalid url", function() {
+      it("rejects an invalid url", () => {
         const id = new UrlChecker(helpers.options()).enqueue("/path/");
-
         expect(id).to.be.an.instanceOf(Error);
       });
     });
   });
 
-  describe("handlers", function() {
-    it("link", function(done) {
+  describe("handlers", () => {
+    it("link", done => {
       new UrlChecker(helpers.options(), {
         link: function(result, customData) {
           expect(arguments).to.have.length(2);
@@ -51,7 +49,7 @@ describe("PUBLIC -- UrlChecker", function() {
       }).enqueue(conn.absoluteUrl);
     });
 
-    it("end", function(done) {
+    it("end", done => {
       new UrlChecker(helpers.options(), {
         end: function() {
           expect(arguments).to.have.length(0);
@@ -61,10 +59,10 @@ describe("PUBLIC -- UrlChecker", function() {
     });
   });
 
-  describe("methods (#2)", function() {
-    describe("numActiveLinks()", function() {
-      it("works", function(done) {
-        var instance = new UrlChecker(helpers.options(), {
+  describe("methods (#2)", () => {
+    describe("numActiveLinks()", () => {
+      it("works", done => {
+        const instance = new UrlChecker(helpers.options(), {
           end: function() {
             expect(instance.numActiveLinks()).to.equal(0);
             done();
@@ -78,8 +76,8 @@ describe("PUBLIC -- UrlChecker", function() {
       });
     });
 
-    describe("pause() / resume()", function() {
-      it("works", function(done) {
+    describe("pause() / resume()", () => {
+      it("works", done => {
         let resumed = false;
 
         const instance = new UrlChecker(helpers.options(), {
@@ -94,17 +92,16 @@ describe("PUBLIC -- UrlChecker", function() {
         instance.enqueue(conn.absoluteUrl);
 
         // Wait longer than scan should take
-        setTimeout(function() {
+        setTimeout(() => {
           resumed = true;
           instance.resume();
         }, 100);
       });
     });
 
-    // TODO :: test what happens when the current queue item is dequeued
-    describe("dequeue() / numQueuedLinks()", function() {
-      it("accepts a valid id", function(done) {
-        var instance = new UrlChecker(helpers.options(), {
+    describe("dequeue() / numQueuedLinks()", () => {
+      it("accepts a valid id", done => {
+        const instance = new UrlChecker(helpers.options(), {
           end: function() {
             expect(instance.numQueuedLinks()).to.equal(0);
             done();
@@ -125,7 +122,7 @@ describe("PUBLIC -- UrlChecker", function() {
         instance.resume();
       });
 
-      it("rejects an invalid id", function() {
+      it("rejects an invalid id", () => {
         const instance = new UrlChecker(helpers.options());
 
         // Prevent first queued item from immediately starting (and thus being auto-dequeued)
@@ -139,8 +136,8 @@ describe("PUBLIC -- UrlChecker", function() {
     });
   });
 
-  describe("caching", function() {
-    it("requests a unique url only once", function(done) {
+  describe("caching", () => {
+    it("requests a unique url only once", done => {
       const options = helpers.options({ cacheResponses: true });
       const results = [];
       let success = false;
@@ -172,12 +169,12 @@ describe("PUBLIC -- UrlChecker", function() {
       });
     });
 
-    it("re-requests a non-unique url after clearing cache", function(done) {
+    it("re-requests a non-unique url after clearing cache", done => {
       let finalFired = false;
       const options = helpers.options({ cacheResponses: true });
       const results = [];
 
-      var instance = new UrlChecker(options, {
+      const instance = new UrlChecker(options, {
         link: function(result, customData) {
           if (result.http.response._cached === true) {
             done(new Error("this should not have been a cached result"));
@@ -208,7 +205,7 @@ describe("PUBLIC -- UrlChecker", function() {
       });
     });
 
-    it("re-requests a non-unique url after expiring in cache", function(done) {
+    it("re-requests a non-unique url after expiring in cache", done => {
       let finalFired = false;
       const options = helpers.options({
         cacheExpiryTime: 50,
@@ -216,7 +213,7 @@ describe("PUBLIC -- UrlChecker", function() {
       });
       const results = [];
 
-      var instance = new UrlChecker(options, {
+      const instance = new UrlChecker(options, {
         link: function(result, customData) {
           if (result.http.response._cached === true) {
             done(new Error("this should not have been a cached result"));
@@ -230,7 +227,7 @@ describe("PUBLIC -- UrlChecker", function() {
             expect(results).to.have.length(2);
             done();
           } else {
-            setTimeout(function() {
+            setTimeout(() => {
               instance.enqueue(
                 conn.absoluteUrl + "/normal/no-links.html",
                 null,
@@ -248,8 +245,8 @@ describe("PUBLIC -- UrlChecker", function() {
     });
   });
 
-  describe("edge cases", function() {
-    it("supports a relative url", function(done) {
+  describe("edge cases", () => {
+    it("supports a relative url", done => {
       new UrlChecker(helpers.options(), {
         link: function(result) {
           expect(result).to.be.like({
@@ -266,7 +263,7 @@ describe("PUBLIC -- UrlChecker", function() {
       }).enqueue("/normal/no-links.html", conn.absoluteUrl);
     });
 
-    it("supports custom data", function(done) {
+    it("supports custom data", done => {
       new UrlChecker(helpers.options(), {
         link: function(result, customData) {
           expect(customData).to.deep.equal({ test: "value" });
@@ -275,7 +272,7 @@ describe("PUBLIC -- UrlChecker", function() {
       }).enqueue(conn.absoluteUrl, null, { test: "value" });
     });
 
-    it("supports multiple queue items", function(done) {
+    it("supports multiple queue items", done => {
       const results = [];
 
       const instance = new UrlChecker(helpers.options(), {

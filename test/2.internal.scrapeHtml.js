@@ -8,27 +8,27 @@ const tagTests = require("./helpers/json/scrapeHtml.json");
 const expect = require("chai").expect;
 
 function wrapper(input, robots) {
-  return parseHtml(input).then(function(document) {
+  return parseHtml(input).then(document => {
     return scrapeHtml(document, robots);
   });
 }
 
-describe("INTERNAL -- parseHtml / scrapeHtml", function() {
-  it("supports a string", function() {
-    return wrapper("<html></html>").then(function(links) {
+describe("INTERNAL -- parseHtml / scrapeHtml", () => {
+  it("supports a string", () => {
+    return wrapper("<html></html>").then(links => {
       expect(links).to.be.an.instanceOf(Array);
     });
   });
 
-  it("supports a stream", function() {
+  it("supports a stream", () => {
     return wrapper(helpers.fixture.stream("/normal/no-links.html")).then(
-      function(links) {
+      links => {
         expect(links).to.be.an.instanceOf(Array);
       }
     );
   });
 
-  describe("link tags & attributes", function() {
+  describe("link tags & attributes", () => {
     for (const test in tagTests) {
       let code = "";
       const data = tagTests[test];
@@ -58,21 +58,21 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
     }
   });
 
-  describe("edge cases", function() {
-    it('ignores <meta content/> lacking http-equiv="refresh"', function() {
+  describe("edge cases", () => {
+    it('ignores <meta content/> lacking http-equiv="refresh"', () => {
       return wrapper('<meta http-equiv="other" content="5; url=fake.html"/>')
-        .then(function(links) {
+        .then(links => {
           expect(links).to.be.empty;
 
           return wrapper('<meta content="5; url=fake.html"/>');
         })
-        .then(function(links) {
+        .then(links => {
           expect(links).to.be.empty;
         });
     });
 
-    it("supports link attributes with values surrounded by spaces", function() {
-      return wrapper('<a href=" fake.html ">link</a>').then(function(links) {
+    it("supports link attributes with values surrounded by spaces", () => {
+      return wrapper('<a href=" fake.html ">link</a>').then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           url: { original: "fake.html" },
@@ -81,10 +81,8 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports link attributes preceded by non-link attributes", function() {
-      return wrapper('<a id="link" href="fake.html">link</a>').then(function(
-        links
-      ) {
+    it("supports link attributes preceded by non-link attributes", () => {
+      return wrapper('<a id="link" href="fake.html">link</a>').then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           url: { original: "fake.html" },
@@ -97,9 +95,9 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports consecutive link attributes", function() {
+    it("supports consecutive link attributes", () => {
       return wrapper('<img src="fake.png" longdesc="fake.html"/>').then(
-        function(links) {
+        links => {
           expect(links).to.have.length(2);
           expect(links).to.be.like([
             {
@@ -125,9 +123,9 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       );
     });
 
-    it("ignores redundant link attributes", function() {
+    it("ignores redundant link attributes", () => {
       return wrapper('<a href="fake.html" href="ignored.html">link</a>').then(
-        function(links) {
+        links => {
           expect(links.length).to.equal(1);
           expect(links[0]).to.be.like({
             url: { original: "fake.html" },
@@ -140,10 +138,10 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       );
     });
 
-    it("supports consecutive link elements", function() {
+    it("supports consecutive link elements", () => {
       return wrapper(
         '<a href="fake1.html">link1</a> <a href="fake2.html">link2</a>'
-      ).then(function(links) {
+      ).then(links => {
         expect(links).to.have.length(2);
         expect(links).to.be.like([
           {
@@ -166,12 +164,12 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports nonconsecutive link elements", function() {
+    it("supports nonconsecutive link elements", () => {
       let html = '<a href="fake1.html">link1</a>';
       html += "content <span>content</span> content";
       html += '<a href="fake2.html">link2</a>';
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(2);
         expect(links).to.be.like([
           {
@@ -194,10 +192,10 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports nested link elements", function() {
+    it("supports nested link elements", () => {
       return wrapper(
         '<a href="fake1.html"><q cite="fake2.html">quote</q></a>'
-      ).then(function(links) {
+      ).then(links => {
         expect(links).to.have.length(2);
         expect(links).to.be.like([
           {
@@ -224,26 +222,26 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports link elements with nested elements", function() {
-      return wrapper('<a href="fake.html"><span>text</span></a>').then(function(
-        links
-      ) {
-        expect(links).to.have.length(1);
-        expect(links[0]).to.be.like({
-          url: { original: "fake.html" },
-          html: {
-            selector: "html > body > a:nth-child(1)",
-            tagName: "a",
-            attrName: "href",
-            tag: '<a href="fake.html">',
-            text: "text"
-          }
-        });
-      });
+    it("supports link elements with nested elements", () => {
+      return wrapper('<a href="fake.html"><span>text</span></a>').then(
+        links => {
+          expect(links).to.have.length(1);
+          expect(links[0]).to.be.like({
+            url: { original: "fake.html" },
+            html: {
+              selector: "html > body > a:nth-child(1)",
+              tagName: "a",
+              attrName: "href",
+              tag: '<a href="fake.html">',
+              text: "text"
+            }
+          });
+        }
+      );
     });
 
-    it("supports void elements", function() {
-      return wrapper('<img src="fake.png"> content').then(function(links) {
+    it("supports void elements", () => {
+      return wrapper('<img src="fake.png"> content').then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           url: { original: "fake.png" },
@@ -258,7 +256,7 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports detailed selectors and omit nth-child from html and body", function() {
+    it("supports detailed selectors and omit nth-child from html and body", () => {
       let html = "<html><head><title>title</title></head><body>";
       html += '<div><a href="fake1.html">link1</a>';
       html += '<div><a href="fake2.html">link2</a></div>';
@@ -267,7 +265,7 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       html += '<a href="fake5.html">link5</a>';
       html += "</body></html>";
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(5);
         expect(links).to.be.like([
           {
@@ -316,10 +314,10 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports link attribute source code locations", function() {
+    it("supports link attribute source code locations", () => {
       const html = '\n\t<a href="fake.html">link</a>';
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           html: {
@@ -343,10 +341,10 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports <base/>", function() {
+    it("supports <base/>", () => {
       return wrapper(
         '<head><base href="/fake/"/></head> <a href="fake.html">link</a>'
-      ).then(function(links) {
+      ).then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           url: { original: "fake.html" },
@@ -355,11 +353,11 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports irregular uses of <base/>", function() {
+    it("supports irregular uses of <base/>", () => {
       let html = '<base href="/correct/"/>';
       html += '<a href="fake.html">link</a>';
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           url: { original: "fake.html" },
@@ -368,14 +366,14 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("ignores multiple uses of <base/>", function() {
+    it("ignores multiple uses of <base/>", () => {
       let html = '<base href="/first/"/>';
       html += '<head><base href="/ignored1/"/><base href="/ignored2/"/></head>';
       html += '<head><base href="/ignored3/"/></head>';
       html += '<base href="/ignored4/"/>';
       html += '<a href="fake.html">link</a>';
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(1);
         expect(links[0]).to.be.like({
           url: { original: "fake.html" },
@@ -384,7 +382,7 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports invalid html structure", function() {
+    it("supports invalid html structure", () => {
       let html = "<html><head><title>title</title></head><body>";
       html += "<table>";
       html += '<p><div><a href="fake1.html">link<b>1</div></a></b>';
@@ -392,7 +390,7 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       html += '<a href="fake2.html">link2</a>';
       html += "</wtf></body></html>";
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(2);
         expect(links).to.be.like([
           {
@@ -415,12 +413,12 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it("supports invalid html structure (#2)", function() {
+    it("supports invalid html structure (#2)", () => {
       let html = "<html><head><title>title</title></head><body>";
       html += '<a href="fake.html">1<p>2</a>';
       html += "</body></html>";
 
-      return wrapper(html).then(function(links) {
+      return wrapper(html).then(links => {
         expect(links).to.have.length(2);
         expect(links).to.be.like([
           {
@@ -443,8 +441,8 @@ describe("INTERNAL -- parseHtml / scrapeHtml", function() {
       });
     });
 
-    it('fires "complete" when no links found', function() {
-      return wrapper("no links here").then(function(links) {
+    it('fires "complete" when no links found', () => {
+      return wrapper("no links here").then(links => {
         expect(links).to.have.length(0);
       });
     });

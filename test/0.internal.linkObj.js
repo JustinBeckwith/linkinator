@@ -8,9 +8,9 @@ const expect = require("chai").expect;
 
 const options = helpers.options();
 
-describe("INTERNAL -- linkObj", function() {
-  describe("linkObj()", function() {
-    it("works", function() {
+describe("INTERNAL -- linkObj", () => {
+  describe("linkObj()", () => {
+    it("works", () => {
       const link = linkObj("http://fakeurl.com/");
 
       expect(link).to.be.like({
@@ -23,8 +23,8 @@ describe("INTERNAL -- linkObj", function() {
     });
   });
 
-  describe("linkObj.clean()", function() {
-    it("works", function() {
+  describe("linkObj.clean()", () => {
+    it("works", () => {
       const link = linkObj("http://fakeurl.com");
 
       linkObj.clean(link);
@@ -33,8 +33,8 @@ describe("INTERNAL -- linkObj", function() {
     });
   });
 
-  describe("linkObj.resolve()", function() {
-    it("works", function() {
+  describe("linkObj.resolve()", () => {
+    it("works", () => {
       const linkUrl = "http://fakeurl.com";
       const link = linkObj(linkUrl);
 
@@ -108,7 +108,7 @@ describe("INTERNAL -- linkObj", function() {
       eval(code);
     }
 
-    it("accepts a base with a scheme/protocol not specified as accepted", function() {
+    it("accepts a base with a scheme/protocol not specified as accepted", () => {
       const baseUrl = "smtp://fakeurl.com/";
       const linkUrl = "http://fakeurl.com/";
       const link = linkObj(linkUrl);
@@ -128,7 +128,7 @@ describe("INTERNAL -- linkObj", function() {
       });
     });
 
-    it("accepts an html base with a scheme/protocol not specified as accepted", function() {
+    it("accepts an html base with a scheme/protocol not specified as accepted", () => {
       const baseUrl = "http://fakeurl.com/";
       const htmlBaseUrl = "smtp://fakeurl.com/";
       const linkUrl = "http://fakeurl.com/";
@@ -151,7 +151,7 @@ describe("INTERNAL -- linkObj", function() {
       });
     });
 
-    it("rejects an absolute url with a scheme/protocol not specified as accepted", function() {
+    it("rejects an absolute url with a scheme/protocol not specified as accepted", () => {
       const baseUrl = "http://fakeurl.com/";
       const linkUrl = "smtp://fakeurl.com/";
       const link = linkObj(linkUrl);
@@ -168,7 +168,7 @@ describe("INTERNAL -- linkObj", function() {
       });
     });
 
-    it("rejects a relative url with a base containing a scheme/protocol not specified as accepted", function() {
+    it("rejects a relative url with a base containing a scheme/protocol not specified as accepted", () => {
       const baseUrl = "smtp://fakeurl.com/";
       const linkUrl = "path/resource.html?query#hash";
       const link = linkObj(linkUrl);

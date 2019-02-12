@@ -13,3 +13,4 @@ rules:
   no-warning-comments: warn
   no-var: error
   prefer-const: error
+  prefer-arrow-callback: error

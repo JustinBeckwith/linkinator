@@ -5,9 +5,8 @@ const path = require("path");
 const helpers = require("../");
 
 const urls = {
-  "remote absolute": "https://fakeurl2.com/path/link.html?query#hash", // TODO :: reflect specurl tests
-  "local absolute": "http://fakeurl.com/path/link.html?query#hash", // TODO :: reflect specurl tests
-  // TODO :: add remote+local scheme-relative urls
+  "remote absolute": "https://fakeurl2.com/path/link.html?query#hash",
+  "local absolute": "http://fakeurl.com/path/link.html?query#hash",
   "root-path-relative": "/path/link.html?query#hash",
   "path-relative": "path/link.html?query#hash",
   "resource-relative": "link.html?query#hash",
@@ -64,8 +63,7 @@ function generateString() {
 
 function saveFile(location) {
   fs.writeFileSync(location, generateString());
-
-  console.log("Written to: " + location);
+  //console.log("Written to: " + location);
 }
 
 generate();

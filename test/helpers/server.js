@@ -1,6 +1,5 @@
 "use strict";
 const fixture = require("./fixture");
-
 const http = require("http");
 const st = require("st");
 
@@ -9,12 +8,12 @@ const httpServers = {};
 const serveFile = st({ index: "index.html", path: fixture.path() });
 
 function getAvailablePort() {
-  return new Promise(function(resolve, reject) {
+  return new Promise(resolve => {
     let port;
     const server = http.createServer();
 
     // OS will return availabe port by point to port 0
-    server.listen(0, host, function() {
+    server.listen(0, host, () => {
       port = server.address().port;
       server.close();
       resolve(port);
@@ -31,14 +30,14 @@ function getUrl(port, schemeRelative) {
 }
 
 function startHttpServer(suitePorts) {
-  return new Promise(function(resolve, reject) {
+  return new Promise(resolve => {
     let port;
-    const server = http.createServer(function(request, response) {
+    const server = http.createServer((request, response) => {
       startHttpServer_callback(request, response, port, suitePorts);
     });
 
     // OS will return available port by pointing to port 0
-    server.listen(0, host, function() {
+    server.listen(0, host, () => {
       port = server.address().port;
       httpServers[port] = server;
       resolve(port);
@@ -126,7 +125,7 @@ function startHttpServer_callback(request, response, port, suitePorts) {
 }
 
 function startHttpServers(numServers) {
-  return new Promise(function(resolve, reject) {
+  return new Promise(resolve => {
     const result = {
       ports: [],
       absoluteUrls: [],
@@ -160,8 +159,8 @@ function startHttpServers(numServers) {
 }
 
 function stopHttpServer(port) {
-  return new Promise(function(resolve, reject) {
-    httpServers[port].close(function() {
+  return new Promise(resolve => {
+    httpServers[port].close(() => {
       delete httpServers[port];
 
       resolve();
@@ -170,7 +169,7 @@ function stopHttpServer(port) {
 }
 
 function stopHttpServers(ports) {
-  return new Promise(function(resolve, reject) {
+  return new Promise(resolve => {
     /*if (ports.length === 0)
 		{
 			resolve();
@@ -183,7 +182,7 @@ function stopHttpServers(ports) {
       }
     }
 
-    var count = 0;
+    let count = 0;
 
     for (let i = 0; i < ports.length; i++) {
       stopHttpServer(ports[i]).then(stopped);
@@ -197,14 +196,14 @@ function startConnection() {
   let absoluteUrls, ports, schemeRelativeUrls;
 
   return startHttpServers(1)
-    .then(function(data) {
+    .then(data => {
       absoluteUrls = data.absoluteUrls;
       ports = data.ports;
       schemeRelativeUrls = data.schemeRelativeUrls;
 
       return getAvailablePort();
     })
-    .then(function(port) {
+    .then(port => {
       return {
         realPort: ports[0],
         absoluteUrl: absoluteUrls[0],
@@ -221,14 +220,14 @@ function startConnections() {
   let absoluteUrls, ports, schemeRelativeUrls;
 
   return startHttpServers(2)
-    .then(function(data) {
+    .then(data => {
       absoluteUrls = data.absoluteUrls;
       ports = data.ports;
       schemeRelativeUrls = data.schemeRelativeUrls;
 
       return getAvailablePort();
     })
-    .then(function(port) {
+    .then(port => {
       return {
         realPorts: ports,
         absoluteUrls: absoluteUrls,

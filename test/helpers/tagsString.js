@@ -2,9 +2,9 @@
 const tags = require("../../lib/internal/tags");
 
 function tagsString(filterLevel, url) {
-  var attrName, html, tag, tagName;
+  let attrName, tag, tagName;
   const filteredTags = tags[filterLevel];
-  var html = "";
+  let html = "";
 
   for (tagName in filteredTags) {
     html += "<" + tagName;

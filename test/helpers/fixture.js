@@ -3,8 +3,7 @@ const fs = require("fs");
 const pathlib = require("path");
 
 function fixturePath(path) {
-  if (path == null) path = "";
-
+  path = path || "";
   return pathlib.resolve(__dirname + "/../fixtures/" + path);
 }
 

@@ -9,24 +9,24 @@ const UrlCache = require("urlcache");
 
 let conn;
 
-describe("INTERNAL -- checkUrl", function() {
-  before(function() {
-    return helpers.startConnections().then(function(connections) {
+describe("INTERNAL -- checkUrl", () => {
+  before(() => {
+    return helpers.startConnections().then(connections => {
       conn = connections;
     });
   });
 
-  after(function() {
+  after(() => {
     return helpers.stopConnections(conn.realPorts);
   });
 
-  it("resolves a promise", function() {
+  it("resolves a promise", () => {
     return checkUrl(
       conn.absoluteUrls[0] + "/normal/no-links.html",
       conn.absoluteUrls[0],
       new UrlCache(),
       helpers.options()
-    ).then(function(result) {
+    ).then(result => {
       expect(result).to.be.like({
         url: {},
         base: {},
@@ -36,14 +36,14 @@ describe("INTERNAL -- checkUrl", function() {
     });
   });
 
-  describe("shall not be broken with a REAL HOST and REAL PATH from", function() {
-    it("an absolute url", function() {
+  describe("shall not be broken with a REAL HOST and REAL PATH from", () => {
+    it("an absolute url", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/normal/no-links.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.absoluteUrls[0] + "/normal/no-links.html",
@@ -66,13 +66,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a scheme-relative url", function() {
+    it("a scheme-relative url", () => {
       return checkUrl(
         conn.relativeUrls[0] + "/normal/no-links.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.relativeUrls[0] + "/normal/no-links.html",
@@ -95,13 +95,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a root-path-relative url", function() {
+    it("a root-path-relative url", () => {
       return checkUrl(
         "/normal/no-links.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "/normal/no-links.html",
@@ -124,13 +124,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a path-relative url", function() {
+    it("a path-relative url", () => {
       return checkUrl(
         "normal/no-links.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "normal/no-links.html",
@@ -153,13 +153,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a query-relative url", function() {
+    it("a query-relative url", () => {
       return checkUrl(
         "?query",
         conn.absoluteUrls[0] + "/normal/no-links.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "?query",
@@ -182,13 +182,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a hash-relative url", function() {
+    it("a hash-relative url", () => {
       return checkUrl(
         "#hash",
         conn.absoluteUrls[0] + "/normal/no-links.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "#hash",
@@ -211,13 +211,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("an empty url", function() {
+    it("an empty url", () => {
       return checkUrl(
         "",
         conn.absoluteUrls[0] + "/normal/no-links.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "",
@@ -241,14 +241,14 @@ describe("INTERNAL -- checkUrl", function() {
     });
   });
 
-  describe("shall be broken with a REAL HOST and FAKE PATH from", function() {
-    it("an absolute url", function() {
+  describe("shall be broken with a REAL HOST and FAKE PATH from", () => {
+    it("an absolute url", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/normal/fake.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.absoluteUrls[0] + "/normal/fake.html",
@@ -271,13 +271,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a scheme-relative url", function() {
+    it("a scheme-relative url", () => {
       return checkUrl(
         conn.relativeUrls[0] + "/normal/fake.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.relativeUrls[0] + "/normal/fake.html",
@@ -300,13 +300,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a root-path-relative url", function() {
+    it("a root-path-relative url", () => {
       return checkUrl(
         "/normal/fake.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "/normal/fake.html",
@@ -329,13 +329,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a path-relative url", function() {
+    it("a path-relative url", () => {
       return checkUrl(
         "normal/fake.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "normal/fake.html",
@@ -358,13 +358,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a query-relative url", function() {
+    it("a query-relative url", () => {
       return checkUrl(
         "?query",
         conn.absoluteUrls[0] + "/normal/fake.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "?query",
@@ -387,13 +387,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a hash-relative url", function() {
+    it("a hash-relative url", () => {
       return checkUrl(
         "#hash",
         conn.absoluteUrls[0] + "/normal/fake.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "#hash",
@@ -416,13 +416,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("an empty url", function() {
+    it("an empty url", () => {
       return checkUrl(
         "",
         conn.absoluteUrls[0] + "/normal/fake.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "",
@@ -448,14 +448,14 @@ describe("INTERNAL -- checkUrl", function() {
 
   // Technically it's a real host with a fake port, but same goal
   // and faster than testing a remote http://asdf1234.asdf1234
-  describe("shall be broken and have error with a FAKE HOST from", function() {
-    it("an absolute url", function() {
+  describe("shall be broken and have error with a FAKE HOST from", () => {
+    it("an absolute url", () => {
       return checkUrl(
         conn.fakeAbsoluteUrl + "/path/to/resource.html",
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.fakeAbsoluteUrl + "/path/to/resource.html",
@@ -477,13 +477,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a scheme-relative url", function() {
+    it("a scheme-relative url", () => {
       return checkUrl(
         conn.fakeRelativeUrl + "/path/to/resource.html",
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.fakeRelativeUrl + "/path/to/resource.html",
@@ -505,13 +505,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a root-path-relative url", function() {
+    it("a root-path-relative url", () => {
       return checkUrl(
         "/path/to/resource.html",
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "/path/to/resource.html",
@@ -533,13 +533,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a path-relative url", function() {
+    it("a path-relative url", () => {
       return checkUrl(
         "path/to/resource.html",
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "path/to/resource.html",
@@ -561,13 +561,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a query-relative url", function() {
+    it("a query-relative url", () => {
       return checkUrl(
         "?query",
         conn.fakeAbsoluteUrl + "/path/to/resource.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "?query",
@@ -589,13 +589,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a hash-relative url", function() {
+    it("a hash-relative url", () => {
       return checkUrl(
         "#hash",
         conn.fakeAbsoluteUrl + "/path/to/resource.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "#hash",
@@ -617,13 +617,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("an empty url", function() {
+    it("an empty url", () => {
       return checkUrl(
         "",
         conn.fakeAbsoluteUrl + "/path/to/resource.html",
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "",
@@ -646,10 +646,10 @@ describe("INTERNAL -- checkUrl", function() {
     });
   });
 
-  describe("shall be broken and have error with NO HOST from", function() {
-    it("an absolute url", function() {
+  describe("shall be broken and have error with NO HOST from", () => {
+    it("an absolute url", () => {
       return checkUrl("http://", null, new UrlCache(), helpers.options()).then(
-        function(result) {
+        result => {
           expect(result).to.be.like({
             url: {
               original: "http://",
@@ -669,7 +669,7 @@ describe("INTERNAL -- checkUrl", function() {
             samePage: null
           });
 
-          expect(result.brokenReason).to.satisfy(function(value) {
+          expect(result.brokenReason).to.satisfy(value => {
             return (
               value === "ERRNO_ECONNRESET" || // OSX, Node <=5.5.x
               value === "ERRNO_ENOTFOUND" || // OSX, Node >=5.6.x
@@ -680,13 +680,13 @@ describe("INTERNAL -- checkUrl", function() {
       );
     });
 
-    it("a scheme-relative url", function() {
+    it("a scheme-relative url", () => {
       return checkUrl(
         conn.relativeUrls[0] + "/no-links.html",
         null,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.relativeUrls[0] + "/no-links.html",
@@ -708,13 +708,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a root-path-relative url", function() {
+    it("a root-path-relative url", () => {
       return checkUrl(
         "/normal/no-links.html",
         null,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "/normal/no-links.html",
@@ -736,13 +736,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a path-relative url", function() {
+    it("a path-relative url", () => {
       return checkUrl(
         "normal/no-links.html",
         null,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "normal/no-links.html",
@@ -764,9 +764,9 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a query-relative url", function() {
+    it("a query-relative url", () => {
       return checkUrl("?query", null, new UrlCache(), helpers.options()).then(
-        function(result) {
+        result => {
           expect(result).to.be.like({
             url: {
               original: "?query",
@@ -789,9 +789,9 @@ describe("INTERNAL -- checkUrl", function() {
       );
     });
 
-    it("a hash-relative url", function() {
+    it("a hash-relative url", () => {
       return checkUrl("#hash", null, new UrlCache(), helpers.options()).then(
-        function(result) {
+        result => {
           expect(result).to.be.like({
             url: {
               original: "#hash",
@@ -814,9 +814,9 @@ describe("INTERNAL -- checkUrl", function() {
       );
     });
 
-    it("an empty url", function() {
+    it("an empty url", () => {
       return checkUrl("", null, new UrlCache(), helpers.options()).then(
-        function(result) {
+        result => {
           expect(result).to.be.like({
             url: {
               original: "",
@@ -840,14 +840,14 @@ describe("INTERNAL -- checkUrl", function() {
     });
   });
 
-  describe("shall be broken and have error from", function() {
-    it("a data uri", function() {
+  describe("shall be broken and have error from", () => {
+    it("a data uri", () => {
       return checkUrl(
         "data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7",
         null,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original:
@@ -870,13 +870,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("a tel uri", function() {
+    it("a tel uri", () => {
       return checkUrl(
         "tel:+5-555-555-5555",
         null,
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: "tel:+5-555-555-5555",
@@ -899,14 +899,14 @@ describe("INTERNAL -- checkUrl", function() {
     });
   });
 
-  describe("shall not be broken with a REDIRECTED url", function() {
-    it("containing no query or hash", function() {
+  describe("shall not be broken with a REDIRECTED url", () => {
+    it("containing no query or hash", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/redirect/redirect.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.absoluteUrls[0] + "/redirect/redirect.html",
@@ -929,13 +929,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("containing a query", function() {
+    it("containing a query", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/redirect/redirect.html?query",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.absoluteUrls[0] + "/redirect/redirect.html?query",
@@ -958,13 +958,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("containing a hash", function() {
+    it("containing a hash", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/redirect/redirect.html#hash",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           url: {
             original: conn.absoluteUrls[0] + "/redirect/redirect.html#hash",
@@ -988,12 +988,12 @@ describe("INTERNAL -- checkUrl", function() {
     });
   });
 
-  describe("url object input", function() {
-    it.skip("works", function() {});
+  describe("url object input", () => {
+    it.skip("works", () => {});
   });
 
-  describe("caching", function() {
-    it("stores the response", function() {
+  describe("caching", () => {
+    it("stores the response", () => {
       const cache = new UrlCache();
 
       return checkUrl(
@@ -1002,15 +1002,15 @@ describe("INTERNAL -- checkUrl", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .then(function() {
+        .then(() => {
           return cache.get(conn.absoluteUrls[0] + "/normal/no-links.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
         });
     });
 
-    it("stores the response of a redirected url", function() {
+    it("stores the response of a redirected url", () => {
       const cache = new UrlCache();
 
       return checkUrl(
@@ -1019,22 +1019,22 @@ describe("INTERNAL -- checkUrl", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .then(function() {
+        .then(() => {
           return cache.get(conn.absoluteUrls[0] + "/redirect/redirect.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
         })
-        .then(function() {
+        .then(() => {
           return cache.get(conn.absoluteUrls[0] + "/redirect/redirected.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
         });
     });
 
     // NOTE :: not stored because we check first
-    it("does not store the error from an erroneous url", function() {
+    it("does not store the error from an erroneous url", () => {
       const cache = new UrlCache();
 
       return checkUrl(
@@ -1043,15 +1043,15 @@ describe("INTERNAL -- checkUrl", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .then(function() {
+        .then(() => {
           return cache.get("/normal/fake.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.undefined;
         });
     });
 
-    it("requests a unique url only once", function() {
+    it("requests a unique url only once", () => {
       const cache = new UrlCache();
 
       return checkUrl(
@@ -1060,13 +1060,13 @@ describe("INTERNAL -- checkUrl", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .then(function() {
+        .then(() => {
           return cache.get(conn.absoluteUrls[0] + "/normal/no-links.html");
         })
-        .then(function(response) {
+        .then(response => {
           response._cached = true;
         })
-        .then(function() {
+        .then(() => {
           // Check URL again
           return checkUrl(
             conn.absoluteUrls[0] + "/normal/no-links.html",
@@ -1075,25 +1075,25 @@ describe("INTERNAL -- checkUrl", function() {
             helpers.options({ cacheResponses: true })
           );
         })
-        .then(function() {
+        .then(() => {
           return cache.get(conn.absoluteUrls[0] + "/normal/no-links.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response._cached).to.be.true;
         });
     });
   });
 
-  describe("options", function() {
-    it.skip("acceptedSchemes = []", function() {});
+  describe("options", () => {
+    it.skip("acceptedSchemes = []", () => {});
 
-    it("retry405Head = false", function() {
+    it("retry405Head = false", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/method-not-allowed/head.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           broken: true,
           brokenReason: "HTTP_405",
@@ -1103,13 +1103,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("retry405Head = false (#2)", function() {
+    it("retry405Head = false (#2)", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/method-not-allowed/any.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options({ requestMethod: "get" })
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           broken: true,
           brokenReason: "HTTP_405",
@@ -1119,13 +1119,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("retry405Head = true", function() {
+    it("retry405Head = true", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/method-not-allowed/head.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options({ retry405Head: true })
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           broken: false,
           brokenReason: null,
@@ -1135,13 +1135,13 @@ describe("INTERNAL -- checkUrl", function() {
       });
     });
 
-    it("retry405Head = true (#2)", function() {
+    it("retry405Head = true (#2)", () => {
       return checkUrl(
         conn.absoluteUrls[0] + "/method-not-allowed/any.html",
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options({ retry405Head: true })
-      ).then(function(result) {
+      ).then(result => {
         expect(result).to.be.like({
           broken: true,
           brokenReason: "HTTP_405",

@@ -8,20 +8,20 @@ const expect = require("chai").expect;
 
 let conn;
 
-describe("PUBLIC -- HtmlUrlChecker", function() {
-  before(function() {
-    return helpers.startConnection().then(function(connection) {
+describe("PUBLIC -- HtmlUrlChecker", () => {
+  before(() => {
+    return helpers.startConnection().then(connection => {
       conn = connection;
     });
   });
 
-  after(function() {
+  after(() => {
     return helpers.stopConnection(conn.realPort);
   });
 
-  describe("methods (#1)", function() {
-    describe("enqueue()", function() {
-      it("accepts a valid url", function() {
+  describe("methods (#1)", () => {
+    describe("enqueue()", () => {
+      it("accepts a valid url", () => {
         const id = new HtmlUrlChecker(helpers.options()).enqueue(
           conn.absoluteUrl
         );
@@ -29,7 +29,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
         expect(id).to.not.be.an.instanceOf(Error);
       });
 
-      it("rejects an invalid url", function() {
+      it("rejects an invalid url", () => {
         const id = new HtmlUrlChecker(helpers.options()).enqueue("/path/");
 
         expect(id).to.be.an.instanceOf(Error);
@@ -37,9 +37,8 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
     });
   });
 
-  // TODO :: find a way to test "junk" without requiring the use of an option
-  describe("handlers", function() {
-    it("html", function(done) {
+  describe("handlers", () => {
+    it("html", done => {
       new HtmlUrlChecker(helpers.options(), {
         html: function(tree, robots, response, pageUrl, customData) {
           expect(tree).to.be.an.instanceOf(Object);
@@ -52,7 +51,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/normal/index.html", 123);
     });
 
-    it("link", function(done) {
+    it("link", done => {
       let count = 0;
 
       new HtmlUrlChecker(helpers.options(), {
@@ -69,7 +68,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/normal/index.html", 123);
     });
 
-    it("page", function(done) {
+    it("page", done => {
       new HtmlUrlChecker(helpers.options(), {
         page: function(error, pageUrl, customData) {
           expect(arguments).to.have.length(3);
@@ -81,7 +80,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/normal/index.html", 123);
     });
 
-    it("end", function(done) {
+    it("end", done => {
       new HtmlUrlChecker(helpers.options(), {
         end: function() {
           expect(arguments).to.have.length(0);
@@ -91,15 +90,14 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
     });
   });
 
-  describe("methods (#2)", function() {
-    describe("numActiveLinks()", function() {
-      it("works", function(done) {
+  describe("methods (#2)", () => {
+    describe("numActiveLinks()", () => {
+      it("works", done => {
         let htmlCalled = false;
-
-        var instance = new HtmlUrlChecker(helpers.options(), {
+        const instance = new HtmlUrlChecker(helpers.options(), {
           html: function() {
             // Give time for link checks to start
-            setImmediate(function() {
+            setImmediate(() => {
               expect(instance.numActiveLinks()).to.equal(2);
               htmlCalled = true;
             });
@@ -117,8 +115,8 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       });
     });
 
-    describe("pause() / resume()", function() {
-      it("works", function(done) {
+    describe("pause() / resume()", () => {
+      it("works", done => {
         let resumed = false;
 
         const instance = new HtmlUrlChecker(helpers.options(), {
@@ -133,17 +131,16 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
         instance.enqueue(conn.absoluteUrl);
 
         // Wait longer than scan should take
-        setTimeout(function() {
+        setTimeout(() => {
           resumed = true;
           instance.resume();
         }, 100);
       });
     });
 
-    // TODO :: test what happens when the current queue item is dequeued
-    describe("dequeue() / numPages() / numQueuedLinks()", function() {
-      it("accepts a valid id", function(done) {
-        var instance = new HtmlUrlChecker(helpers.options(), {
+    describe("dequeue() / numPages() / numQueuedLinks()", () => {
+      it("accepts a valid id", done => {
+        const instance = new HtmlUrlChecker(helpers.options(), {
           end: function() {
             expect(instance.numPages()).to.equal(0);
             expect(instance.numQueuedLinks()).to.equal(0);
@@ -167,13 +164,13 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
         instance.resume();
 
         // Wait for HTML to be downloaded and parsed
-        setImmediate(function() {
+        setImmediate(() => {
           expect(instance.numPages()).to.equal(1);
           expect(instance.numQueuedLinks()).to.equal(2);
         });
       });
 
-      it("rejects an invalid id", function() {
+      it("rejects an invalid id", () => {
         const instance = new HtmlUrlChecker(helpers.options());
 
         // Prevent first queued item from immediately starting (and thus being auto-dequeued)
@@ -187,8 +184,8 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
     });
   });
 
-  describe("edge cases", function() {
-    it("supports custom data", function(done) {
+  describe("edge cases", () => {
+    it("supports custom data", done => {
       let linkCalled = false;
       let pageCalled = false;
 
@@ -211,7 +208,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/normal/index.html", { test: "value" });
     });
 
-    it("supports multiple queue items", function(done) {
+    it("supports multiple queue items", done => {
       const results = [];
 
       const instance = new HtmlUrlChecker(helpers.options(), {
@@ -241,7 +238,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       instance.enqueue(conn.absoluteUrl + "/normal/index.html", { index: 1 });
     });
 
-    it("supports html with no links", function(done) {
+    it("supports html with no links", done => {
       let linkCount = 0;
       let pageCalled = false;
 
@@ -260,7 +257,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/normal/no-links.html");
     });
 
-    it("supports pages after html with no links", function(done) {
+    it("supports pages after html with no links", done => {
       let linkCount = 0;
       let pageCount = 0;
 
@@ -282,7 +279,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       instance.enqueue(conn.absoluteUrl + "/normal/index.html");
     });
 
-    it("reports an error when html cannot be retrieved", function(done) {
+    it("reports an error when html cannot be retrieved", done => {
       let pageCalled = false;
 
       new HtmlUrlChecker(helpers.options(), {
@@ -299,7 +296,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/normal/fake.html");
     });
 
-    it("supports pages after html could not be retrieved", function(done) {
+    it("supports pages after html could not be retrieved", done => {
       let pageCount = 0;
 
       const instance = new HtmlUrlChecker(helpers.options(), {
@@ -321,8 +318,8 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
     });
   });
 
-  describe("options", function() {
-    it("honorRobotExclusions = false (header)", function(done) {
+  describe("options", () => {
+    it("honorRobotExclusions = false (header)", done => {
       const results = [];
 
       new HtmlUrlChecker(helpers.options(), {
@@ -344,7 +341,7 @@ describe("PUBLIC -- HtmlUrlChecker", function() {
       }).enqueue(conn.absoluteUrl + "/disallowed/header.html");
     });
 
-    it("honorRobotExclusions = true (header)", function(done) {
+    it("honorRobotExclusions = true (header)", done => {
       const junkResults = [];
 
       new HtmlUrlChecker(helpers.options({ honorRobotExclusions: true }), {

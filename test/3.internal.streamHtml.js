@@ -10,23 +10,23 @@ const UrlCache = require("urlcache");
 
 let conn;
 
-describe("INTERNAL -- streamHtml", function() {
-  before(function() {
-    return helpers.startConnection().then(function(connection) {
+describe("INTERNAL -- streamHtml", () => {
+  before(() => {
+    return helpers.startConnection().then(connection => {
       conn = connection;
     });
   });
 
-  after(function() {
+  after(() => {
     return helpers.stopConnection(conn.realPort);
   });
 
-  it("works", function() {
+  it("works", () => {
     return streamHtml(
       conn.absoluteUrl + "/normal/no-links.html",
       null,
       helpers.options()
-    ).then(function(result) {
+    ).then(result => {
       expect(isStream(result.stream)).to.be.true;
       expect(result.response.url).to.equal(
         conn.absoluteUrl + "/normal/no-links.html"
@@ -34,12 +34,12 @@ describe("INTERNAL -- streamHtml", function() {
     });
   });
 
-  it("reports a redirect", function() {
+  it("reports a redirect", () => {
     return streamHtml(
       conn.absoluteUrl + "/redirect/redirect.html",
       null,
       helpers.options()
-    ).then(function(result) {
+    ).then(result => {
       expect(isStream(result.stream)).to.be.true;
       expect(result.response.url).to.equal(
         conn.absoluteUrl + "/redirect/redirected.html"
@@ -47,7 +47,7 @@ describe("INTERNAL -- streamHtml", function() {
     });
   });
 
-  it("rejects a non-html url (gif)", function() {
+  it("rejects a non-html url (gif)", () => {
     let accepted = false;
 
     return streamHtml(
@@ -55,21 +55,21 @@ describe("INTERNAL -- streamHtml", function() {
       null,
       helpers.options()
     )
-      .then(function(result) {
+      .then(() => {
         accepted = new Error("this should not have been called");
       })
-      .catch(function(error) {
+      .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
         expect(error.message).to.equal(
           messages.errors.EXPECTED_HTML("image/gif")
         );
       })
-      .then(function() {
+      .then(() => {
         if (accepted !== false) throw accepted;
       });
   });
 
-  it("rejects a non-html url (unknown)", function() {
+  it("rejects a non-html url (unknown)", () => {
     let accepted = false;
 
     return streamHtml(
@@ -77,21 +77,21 @@ describe("INTERNAL -- streamHtml", function() {
       null,
       helpers.options()
     )
-      .then(function(result) {
+      .then(() => {
         accepted = new Error("this should not have been called");
       })
-      .catch(function(error) {
+      .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
         expect(error.message).to.equal(
           messages.errors.EXPECTED_HTML(undefined)
         );
       })
-      .then(function() {
+      .then(() => {
         if (accepted !== false) throw accepted;
       });
   });
 
-  it("rejects a 404", function() {
+  it("rejects a 404", () => {
     let accepted = false;
 
     return streamHtml(
@@ -99,38 +99,38 @@ describe("INTERNAL -- streamHtml", function() {
       null,
       helpers.options()
     )
-      .then(function(result) {
+      .then(() => {
         accepted = new Error("this should not have been called");
       })
-      .catch(function(error) {
+      .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
         expect(error.message).to.equal(messages.errors.HTML_RETRIEVAL);
       })
-      .then(function() {
+      .then(() => {
         if (accepted !== false) throw accepted;
       });
   });
 
-  it("rejects an erroneous url", function() {
+  it("rejects an erroneous url", () => {
     let accepted = false;
 
     return streamHtml("/normal/fake.html", null, helpers.options())
-      .then(function(result) {
+      .then(() => {
         accepted = new Error("this should not have been called");
       })
-      .catch(function(error) {
+      .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
         //expect(error.message).to.equal("Invalid URL");  // TODO :: https://github.com/joepie91/node-bhttp/issues/4
       })
-      .then(function() {
+      .then(() => {
         if (accepted !== false) throw accepted;
       });
   });
 
   // NOTE :: cache is not stored for use in `streamHtml()`, but instead for any wrapping functions
   // As a result, the cached responses are not retrieved and checked to be non-unique
-  describe("caching", function() {
-    it("stores the response", function() {
+  describe("caching", () => {
+    it("stores the response", () => {
       const cache = new UrlCache();
 
       return streamHtml(
@@ -138,15 +138,15 @@ describe("INTERNAL -- streamHtml", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .then(function(result) {
+        .then(() => {
           return cache.get(conn.absoluteUrl + "/normal/no-links.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
         });
     });
 
-    it("stores the response of a redirected url", function() {
+    it("stores the response of a redirected url", () => {
       const cache = new UrlCache();
 
       return streamHtml(
@@ -154,20 +154,20 @@ describe("INTERNAL -- streamHtml", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .then(function(result) {
+        .then(() => {
           return cache.get(conn.absoluteUrl + "/redirect/redirect.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
 
           return cache.get(conn.absoluteUrl + "/redirect/redirected.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
         });
     });
 
-    it("stores the response of a non-html url", function() {
+    it("stores the response of a non-html url", () => {
       const cache = new UrlCache();
 
       return streamHtml(
@@ -175,19 +175,19 @@ describe("INTERNAL -- streamHtml", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .catch(function(error) {
+        .catch(() => {
           // "Unsupported type", etc, error
         })
-        .then(function(result) {
+        .then(() => {
           return cache.get(conn.absoluteUrl + "/non-html/image.gif");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
           expect(response).to.not.be.an.instanceOf(Error);
         });
     });
 
-    it("stores the response of a 404", function() {
+    it("stores the response of a 404", () => {
       const cache = new UrlCache();
 
       return streamHtml(
@@ -195,19 +195,19 @@ describe("INTERNAL -- streamHtml", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .catch(function(error) {
+        .catch(() => {
           // "HTML not retrieved", etc, error
         })
-        .then(function(result) {
+        .then(() => {
           return cache.get(conn.absoluteUrl + "/normal/fake.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an("object");
           expect(response).to.not.be.an.instanceOf(Error);
         });
     });
 
-    it("stores the error from an erroneous url", function() {
+    it("stores the error from an erroneous url", () => {
       const cache = new UrlCache();
 
       return streamHtml(
@@ -215,13 +215,13 @@ describe("INTERNAL -- streamHtml", function() {
         cache,
         helpers.options({ cacheResponses: true })
       )
-        .catch(function(error) {
+        .catch(() => {
           // "Invalid URL", etc, error
         })
-        .then(function(result) {
+        .then(() => {
           return cache.get("/normal/fake.html");
         })
-        .then(function(response) {
+        .then(response => {
           expect(response).to.be.an.instanceOf(Error);
           //expect(response.message).to.equal("Invalid URL");  // TODO :: https://github.com/joepie91/node-bhttp/issues/4
         });

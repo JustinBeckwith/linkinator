@@ -3,8 +3,8 @@ const matchUrl = require("../lib/internal/matchUrl");
 
 const expect = require("chai").expect;
 
-describe("matchUrl", function() {
-  it("works", function() {
+describe("matchUrl", () => {
+  it("works", () => {
     expect(matchUrl("http://keyword.com/", [])).to.be.false;
 
     expect(matchUrl("http://keyword.com/", ["keyword"])).to.be.true;
