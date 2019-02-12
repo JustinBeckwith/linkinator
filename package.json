@@ -3,8 +3,7 @@
   "description": "Find broken links, missing images, etc in your HTML.",
   "version": "0.7.8",
   "license": "MIT",
-  "author": "Steven Vachon <contact@svachon.com> (https://www.svachon.com/)",
-  "repository": "JustinBeckwith/broken-link-checker",
+  "repository": "JustinBeckwith/blc",
   "main": "lib",
   "bin": {
     "blc": "bin/blc",
