@@ -1,17 +1,17 @@
-"use strict";
-const linkObj = require("../lib/internal/linkObj");
+'use strict';
+const linkObj = require('../lib/internal/linkObj');
 
-const helpers = require("./helpers");
-const urlTests = require("./helpers/json/linkObj.json");
+const helpers = require('./helpers');
+const urlTests = require('./helpers/json/linkObj.json');
 
-const expect = require("chai").expect;
+const expect = require('chai').expect;
 
 const options = helpers.options();
 
-describe("INTERNAL -- linkObj", () => {
-  describe("linkObj()", () => {
-    it("works", () => {
-      const link = linkObj("http://fakeurl.com/");
+describe('INTERNAL -- linkObj', () => {
+  describe('linkObj()', () => {
+    it('works', () => {
+      const link = linkObj('http://fakeurl.com/');
 
       expect(link).to.be.like({
         base: {},
@@ -23,9 +23,9 @@ describe("INTERNAL -- linkObj", () => {
     });
   });
 
-  describe("linkObj.clean()", () => {
-    it("works", () => {
-      const link = linkObj("http://fakeurl.com");
+  describe('linkObj.clean()', () => {
+    it('works', () => {
+      const link = linkObj('http://fakeurl.com');
 
       linkObj.clean(link);
 
@@ -33,9 +33,9 @@ describe("INTERNAL -- linkObj", () => {
     });
   });
 
-  describe("linkObj.resolve()", () => {
-    it("works", () => {
-      const linkUrl = "http://fakeurl.com";
+  describe('linkObj.resolve()', () => {
+    it('works', () => {
+      const linkUrl = 'http://fakeurl.com';
       const link = linkObj(linkUrl);
 
       linkObj.resolve(link, linkUrl, options);
@@ -43,13 +43,13 @@ describe("INTERNAL -- linkObj", () => {
       expect(link).to.be.like({
         url: {
           original: linkUrl,
-          resolved: linkUrl + "/",
+          resolved: linkUrl + '/',
           redirected: null,
-          parsed: { protocol: "http:" }
+          parsed: { protocol: 'http:' }
         },
         base: {
           original: linkUrl,
-          resolved: linkUrl + "/",
+          resolved: linkUrl + '/',
           parsed: {}
         },
         html: { tag: null }, // No HTML has been parsed
@@ -65,55 +65,55 @@ describe("INTERNAL -- linkObj", () => {
     });
 
     for (const test in urlTests) {
-      let code = "";
+      let code = '';
       const data = urlTests[test];
       const skipOrOnly =
         data.skipOrOnly === null || data.skipOrOnly === undefined
-          ? ""
-          : "." + data.skipOrOnly;
+          ? ''
+          : '.' + data.skipOrOnly;
       const title =
-        (data.resolvedUrl !== null ? "accepts " : "rejects ") +
+        (data.resolvedUrl !== null ? 'accepts ' : 'rejects ') +
         helpers.a_an(test) +
-        " " +
+        ' ' +
         helpers.addSlashes(test);
 
-      code += "it" + skipOrOnly + '("' + title + '", function()\n';
-      code += "{\n";
-      code += "	var baseUrl     = " + helpers.format(data.baseUrl) + ";\n";
-      code += "	var htmlBaseUrl = " + helpers.format(data.htmlBaseUrl) + ";\n";
-      code += "	var linkUrl     = " + helpers.format(data.linkUrl) + ";\n";
-      code += "	\n";
-      code += "	var link = linkObj(linkUrl);\n";
+      code += 'it' + skipOrOnly + '("' + title + '", function()\n';
+      code += '{\n';
+      code += '	var baseUrl     = ' + helpers.format(data.baseUrl) + ';\n';
+      code += '	var htmlBaseUrl = ' + helpers.format(data.htmlBaseUrl) + ';\n';
+      code += '	var linkUrl     = ' + helpers.format(data.linkUrl) + ';\n';
+      code += '	\n';
+      code += '	var link = linkObj(linkUrl);\n';
       code +=
         '	if (typeof htmlBaseUrl==="string") link.html.base = htmlBaseUrl;\n';
-      code += "	\n";
-      code += "	linkObj.resolve(link, baseUrl, options);\n";
-      code += "	\n";
-      code += "	expect(link.url.original).to.equal(linkUrl);\n";
+      code += '	\n';
+      code += '	linkObj.resolve(link, baseUrl, options);\n';
+      code += '	\n';
+      code += '	expect(link.url.original).to.equal(linkUrl);\n';
       code +=
-        "	expect(link.url.resolved).to.equal(" +
+        '	expect(link.url.resolved).to.equal(' +
         helpers.format(data.resolvedLinkUrl) +
-        ");\n";
-      code += "	\n";
-      code += "	expect(link.base.original).to.equal(baseUrl);\n";
+        ');\n';
+      code += '	\n';
+      code += '	expect(link.base.original).to.equal(baseUrl);\n';
       code +=
-        "	expect(link.base.resolved).to.equal(" +
+        '	expect(link.base.resolved).to.equal(' +
         helpers.format(data.resolvedBaseUrl) +
-        ");\n";
-      code += "	\n";
+        ');\n';
+      code += '	\n';
       code +=
         '	if (typeof htmlBaseUrl==="string") expect(link.html.base).to.equal(htmlBaseUrl);\n';
-      code += "	\n";
-      code += "	expect(link.internal).to.be." + data.internal + ";\n";
-      code += "	expect(link.samePage).to.be." + data.samePage + ";\n";
-      code += "});\n";
+      code += '	\n';
+      code += '	expect(link.internal).to.be.' + data.internal + ';\n';
+      code += '	expect(link.samePage).to.be.' + data.samePage + ';\n';
+      code += '});\n';
 
       eval(code);
     }
 
-    it("accepts a base with a scheme/protocol not specified as accepted", () => {
-      const baseUrl = "smtp://fakeurl.com/";
-      const linkUrl = "http://fakeurl.com/";
+    it('accepts a base with a scheme/protocol not specified as accepted', () => {
+      const baseUrl = 'smtp://fakeurl.com/';
+      const linkUrl = 'http://fakeurl.com/';
       const link = linkObj(linkUrl);
 
       linkObj.resolve(link, baseUrl, options);
@@ -131,10 +131,10 @@ describe("INTERNAL -- linkObj", () => {
       });
     });
 
-    it("accepts an html base with a scheme/protocol not specified as accepted", () => {
-      const baseUrl = "http://fakeurl.com/";
-      const htmlBaseUrl = "smtp://fakeurl.com/";
-      const linkUrl = "http://fakeurl.com/";
+    it('accepts an html base with a scheme/protocol not specified as accepted', () => {
+      const baseUrl = 'http://fakeurl.com/';
+      const htmlBaseUrl = 'smtp://fakeurl.com/';
+      const linkUrl = 'http://fakeurl.com/';
 
       const link = linkObj(linkUrl);
       link.html.base = htmlBaseUrl;
@@ -154,9 +154,9 @@ describe("INTERNAL -- linkObj", () => {
       });
     });
 
-    it("rejects an absolute url with a scheme/protocol not specified as accepted", () => {
-      const baseUrl = "http://fakeurl.com/";
-      const linkUrl = "smtp://fakeurl.com/";
+    it('rejects an absolute url with a scheme/protocol not specified as accepted', () => {
+      const baseUrl = 'http://fakeurl.com/';
+      const linkUrl = 'smtp://fakeurl.com/';
       const link = linkObj(linkUrl);
 
       linkObj.resolve(link, baseUrl, options);
@@ -171,9 +171,9 @@ describe("INTERNAL -- linkObj", () => {
       });
     });
 
-    it("rejects a relative url with a base containing a scheme/protocol not specified as accepted", () => {
-      const baseUrl = "smtp://fakeurl.com/";
-      const linkUrl = "path/resource.html?query#hash";
+    it('rejects a relative url with a base containing a scheme/protocol not specified as accepted', () => {
+      const baseUrl = 'smtp://fakeurl.com/';
+      const linkUrl = 'path/resource.html?query#hash';
       const link = linkObj(linkUrl);
 
       linkObj.resolve(link, baseUrl, options);

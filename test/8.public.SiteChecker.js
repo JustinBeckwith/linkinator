@@ -1,10 +1,10 @@
-"use strict";
-const messages = require("../lib/internal/messages");
-const SiteChecker = require("../lib/public/SiteChecker");
+'use strict';
+const messages = require('../lib/internal/messages');
+const SiteChecker = require('../lib/public/SiteChecker');
 
-const helpers = require("./helpers");
+const helpers = require('./helpers');
 
-const expect = require("chai").expect;
+const expect = require('chai').expect;
 
 let conn;
 
@@ -22,7 +22,7 @@ function maybeAddContainers(results, pageIndex, siteIndex) {
   }
 }
 
-describe("PUBLIC -- SiteChecker", () => {
+describe('PUBLIC -- SiteChecker', () => {
   before(() => {
     return helpers.startConnections().then(connections => {
       conn = connections;
@@ -33,9 +33,9 @@ describe("PUBLIC -- SiteChecker", () => {
     return helpers.stopConnections(conn.realPorts);
   });
 
-  describe("methods (#1)", () => {
-    describe("enqueue()", () => {
-      it("accepts a valid url", () => {
+  describe('methods (#1)', () => {
+    describe('enqueue()', () => {
+      it('accepts a valid url', () => {
         const id = new SiteChecker(helpers.options()).enqueue(
           conn.absoluteUrls[0]
         );
@@ -43,16 +43,16 @@ describe("PUBLIC -- SiteChecker", () => {
         expect(id).to.not.be.an.instanceOf(Error);
       });
 
-      it("rejects an invalid url", () => {
-        const id = new SiteChecker(helpers.options()).enqueue("/path/");
+      it('rejects an invalid url', () => {
+        const id = new SiteChecker(helpers.options()).enqueue('/path/');
 
         expect(id).to.be.an.instanceOf(Error);
       });
     });
   });
 
-  describe("handlers", () => {
-    it("html", done => {
+  describe('handlers', () => {
+    it('html', done => {
       let count = 0;
 
       new SiteChecker(helpers.options(), {
@@ -63,14 +63,14 @@ describe("PUBLIC -- SiteChecker", () => {
 
           expect(tree).to.be.an.instanceOf(Object);
           expect(response).to.be.an.instanceOf(Object);
-          expect(pageUrl).to.be.a("string");
-          expect(customData).to.be.a("number");
+          expect(pageUrl).to.be.a('string');
+          expect(customData).to.be.a('number');
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/index.html", 123);
+      }).enqueue(conn.absoluteUrls[0] + '/normal/index.html', 123);
     });
 
-    it("link", done => {
+    it('link', done => {
       let count = 0;
 
       new SiteChecker(helpers.options(), {
@@ -81,13 +81,13 @@ describe("PUBLIC -- SiteChecker", () => {
 
           expect(arguments).to.have.length(2);
           expect(result).to.be.an.instanceOf(Object);
-          expect(customData).to.be.a("number");
+          expect(customData).to.be.a('number');
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/index.html", 123);
+      }).enqueue(conn.absoluteUrls[0] + '/normal/index.html', 123);
     });
 
-    it("page", done => {
+    it('page', done => {
       let count = 0;
 
       new SiteChecker(helpers.options(), {
@@ -98,38 +98,38 @@ describe("PUBLIC -- SiteChecker", () => {
 
           expect(arguments).to.have.length(3);
           expect(error).to.be.null;
-          expect(pageUrl).to.be.a("string");
-          expect(customData).to.be.a("number");
+          expect(pageUrl).to.be.a('string');
+          expect(customData).to.be.a('number');
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/index.html", 123);
+      }).enqueue(conn.absoluteUrls[0] + '/normal/index.html', 123);
     });
 
-    it("site", done => {
+    it('site', done => {
       new SiteChecker(helpers.options(), {
         site: function(error, siteUrl, customData) {
           expect(arguments).to.have.length(3);
           expect(error).to.be.null;
-          expect(siteUrl).to.be.a("string");
-          expect(customData).to.be.a("number");
+          expect(siteUrl).to.be.a('string');
+          expect(customData).to.be.a('number');
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/index.html", 123);
+      }).enqueue(conn.absoluteUrls[0] + '/normal/index.html', 123);
     });
 
-    it("end", done => {
+    it('end', done => {
       new SiteChecker(helpers.options(), {
         end: function() {
           expect(arguments).to.have.length(0);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/index.html");
+      }).enqueue(conn.absoluteUrls[0] + '/normal/index.html');
     });
   });
 
-  describe("methods (#2)", () => {
-    describe("numActiveLinks()", () => {
-      it("works", done => {
+  describe('methods (#2)', () => {
+    describe('numActiveLinks()', () => {
+      it('works', done => {
         let htmlCalled = false;
 
         const instance = new SiteChecker(helpers.options(), {
@@ -149,14 +149,14 @@ describe("PUBLIC -- SiteChecker", () => {
           }
         });
 
-        instance.enqueue(conn.absoluteUrls[0] + "/normal/index.html");
+        instance.enqueue(conn.absoluteUrls[0] + '/normal/index.html');
 
         expect(instance.numActiveLinks()).to.equal(0);
       });
     });
 
-    describe("pause() / resume()", () => {
-      it("works", done => {
+    describe('pause() / resume()', () => {
+      it('works', done => {
         let resumed = false;
 
         const instance = new SiteChecker(helpers.options(), {
@@ -178,8 +178,8 @@ describe("PUBLIC -- SiteChecker", () => {
       });
     });
 
-    describe("dequeue() / numSites() / numPages() / numQueuedLinks()", () => {
-      it("accepts a valid id", done => {
+    describe('dequeue() / numSites() / numPages() / numQueuedLinks()', () => {
+      it('accepts a valid id', done => {
         const instance = new SiteChecker(helpers.options(), {
           end: function() {
             expect(instance.numSites()).to.equal(0);
@@ -193,7 +193,7 @@ describe("PUBLIC -- SiteChecker", () => {
         instance.pause();
 
         const id = instance.enqueue(
-          conn.absoluteUrls[0] + "/normal/index.html"
+          conn.absoluteUrls[0] + '/normal/index.html'
         );
 
         expect(id).to.not.be.an.instanceOf(Error);
@@ -205,7 +205,7 @@ describe("PUBLIC -- SiteChecker", () => {
         expect(instance.numPages()).to.equal(0);
         expect(instance.numQueuedLinks()).to.equal(0);
 
-        instance.enqueue(conn.absoluteUrls[0] + "/normal/index.html");
+        instance.enqueue(conn.absoluteUrls[0] + '/normal/index.html');
         instance.resume();
 
         // Wait for HTML to be downloaded and parsed
@@ -216,7 +216,7 @@ describe("PUBLIC -- SiteChecker", () => {
         });
       });
 
-      it("rejects an invalid id", () => {
+      it('rejects an invalid id', () => {
         const instance = new SiteChecker(helpers.options());
 
         // Prevent first queued item from immediately starting (and thus being auto-dequeued)
@@ -230,8 +230,8 @@ describe("PUBLIC -- SiteChecker", () => {
     });
   });
 
-  describe("edge cases", () => {
-    it("supports custom data", done => {
+  describe('edge cases', () => {
+    it('supports custom data', done => {
       let linkCalled = false;
       let pageCalled = false;
       let siteCalled = false;
@@ -239,17 +239,17 @@ describe("PUBLIC -- SiteChecker", () => {
       new SiteChecker(helpers.options(), {
         link: function(result, customData) {
           expect(customData).to.be.an.instanceOf(Object);
-          expect(customData.test).to.equal("value");
+          expect(customData.test).to.equal('value');
           linkCalled = true;
         },
         page: function(error, pageUrl, customData) {
           expect(customData).to.be.an.instanceOf(Object);
-          expect(customData.test).to.equal("value");
+          expect(customData.test).to.equal('value');
           pageCalled = true;
         },
         site: function(error, siteUrl, customData) {
           expect(customData).to.be.an.instanceOf(Object);
-          expect(customData.test).to.equal("value");
+          expect(customData.test).to.equal('value');
           siteCalled = true;
         },
         end: function() {
@@ -258,12 +258,12 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(siteCalled).to.be.true;
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/index.html", {
-        test: "value"
+      }).enqueue(conn.absoluteUrls[0] + '/normal/index.html', {
+        test: 'value'
       });
     });
 
-    it("supports multiple queue items", done => {
+    it('supports multiple queue items', done => {
       let pageIndex = 0;
       const results = [];
 
@@ -312,15 +312,15 @@ describe("PUBLIC -- SiteChecker", () => {
         }
       });
 
-      instance.enqueue(conn.absoluteUrls[0] + "/normal/index.html", {
+      instance.enqueue(conn.absoluteUrls[0] + '/normal/index.html', {
         siteIndex: 0
       });
-      instance.enqueue(conn.absoluteUrls[0] + "/normal/index.html", {
+      instance.enqueue(conn.absoluteUrls[0] + '/normal/index.html', {
         siteIndex: 1
       });
     });
 
-    it("supports html with no links", done => {
+    it('supports html with no links', done => {
       let linkCount = 0;
       let pageCalled = false;
       let siteCalled = false;
@@ -341,10 +341,10 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(linkCount).to.equal(0);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/no-links.html");
+      }).enqueue(conn.absoluteUrls[0] + '/normal/no-links.html');
     });
 
-    it("supports pages after html with no links", done => {
+    it('supports pages after html with no links', done => {
       let linkCount = 0;
       let pageCount = 0;
       let siteCount = 0;
@@ -367,8 +367,8 @@ describe("PUBLIC -- SiteChecker", () => {
         }
       });
 
-      instance.enqueue(conn.absoluteUrls[0] + "/normal/no-links.html");
-      instance.enqueue(conn.absoluteUrls[0] + "/normal/index.html");
+      instance.enqueue(conn.absoluteUrls[0] + '/normal/no-links.html');
+      instance.enqueue(conn.absoluteUrls[0] + '/normal/index.html');
     });
 
     it("reports a page+site error when first page's html cannot be retrieved", done => {
@@ -379,13 +379,13 @@ describe("PUBLIC -- SiteChecker", () => {
         page: function(error, pageUrl) {
           expect(error).to.be.an.instanceOf(Error);
           expect(error.message).to.equal(messages.errors.HTML_RETRIEVAL);
-          expect(pageUrl).to.be.a("string");
+          expect(pageUrl).to.be.a('string');
           pageCalled = true;
         },
         site: function(error, siteUrl) {
           expect(error).to.be.an.instanceOf(Error);
           expect(error.message).to.equal(messages.errors.HTML_RETRIEVAL);
-          expect(siteUrl).to.be.a("string");
+          expect(siteUrl).to.be.a('string');
           siteCalled = true;
         },
         end: function() {
@@ -393,7 +393,7 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(siteCalled).to.be.true;
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/fake.html");
+      }).enqueue(conn.absoluteUrls[0] + '/normal/fake.html');
     });
 
     it("does not report site error when non-first page's html cannot be retrieved", done => {
@@ -413,7 +413,7 @@ describe("PUBLIC -- SiteChecker", () => {
         end: function() {
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/normal/with-links.html");
+      }).enqueue(conn.absoluteUrls[0] + '/normal/with-links.html');
     });
 
     it("supports sites after first page's html could not be retrieved", done => {
@@ -442,11 +442,11 @@ describe("PUBLIC -- SiteChecker", () => {
         }
       });
 
-      instance.enqueue(conn.absoluteUrls[0] + "/normal/fake.html");
-      instance.enqueue(conn.absoluteUrls[0] + "/normal/no-links.html");
+      instance.enqueue(conn.absoluteUrls[0] + '/normal/fake.html');
+      instance.enqueue(conn.absoluteUrls[0] + '/normal/no-links.html');
     });
 
-    it("does not check a page that has already been checked", done => {
+    it('does not check a page that has already been checked', done => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
@@ -457,10 +457,10 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(pageCount).to.equal(3);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/circular/index.html");
+      }).enqueue(conn.absoluteUrls[0] + '/circular/index.html');
     });
 
-    it("does not check a page that redirects to a page that has already been checked", done => {
+    it('does not check a page that redirects to a page that has already been checked', done => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
@@ -471,10 +471,10 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(pageCount).to.equal(2);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/redirect/index.html");
+      }).enqueue(conn.absoluteUrls[0] + '/redirect/index.html');
     });
 
-    it("does not check a page that redirects to a page that has already been checked (#2)", done => {
+    it('does not check a page that redirects to a page that has already been checked (#2)', done => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
@@ -485,10 +485,10 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(pageCount).to.equal(1);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/circular-redirect/redirect.html");
+      }).enqueue(conn.absoluteUrls[0] + '/circular-redirect/redirect.html');
     });
 
-    it("does not check a non-first page that redirects to another site", done => {
+    it('does not check a non-first page that redirects to another site', done => {
       let linkCount = 0;
       let pageCount = 0;
 
@@ -505,10 +505,10 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(pageCount).to.equal(1);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/external-redirect/index.html");
+      }).enqueue(conn.absoluteUrls[0] + '/external-redirect/index.html');
     });
 
-    it("checks a first page that redirects to another site", done => {
+    it('checks a first page that redirects to another site', done => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
@@ -520,20 +520,20 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(pageCount).to.equal(1);
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/external-redirect/redirect.html");
+      }).enqueue(conn.absoluteUrls[0] + '/external-redirect/redirect.html');
     });
   });
 
-  describe("options", () => {
-    it("honorRobotExclusions = false (robots.txt)", done => {
+  describe('options', () => {
+    it('honorRobotExclusions = false (robots.txt)', done => {
       const results = [];
 
       new SiteChecker(helpers.options(), {
         robots: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -547,24 +547,24 @@ describe("PUBLIC -- SiteChecker", () => {
           });
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/disallowed/robots-txt.html");
+      }).enqueue(conn.absoluteUrls[0] + '/disallowed/robots-txt.html');
     });
 
-    it("honorRobotExclusions = true (robots.txt)", done => {
+    it('honorRobotExclusions = true (robots.txt)', done => {
       const junkResults = [];
       let robotsCalled = true;
 
       new SiteChecker(helpers.options({ honorRobotExclusions: true }), {
         robots: function(robots, customData) {
           expect(robots).to.be.an.instanceOf(Object);
-          expect(customData).to.be.a("number");
+          expect(customData).to.be.a('number');
           robotsCalled = true;
         },
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
         link: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         end: function() {
           expect(robotsCalled).to.be.true;
@@ -572,23 +572,23 @@ describe("PUBLIC -- SiteChecker", () => {
           expect(junkResults[0]).to.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_ROBOTS"
+            excludedReason: 'BLC_ROBOTS'
           });
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/disallowed/robots-txt.html", 123);
+      }).enqueue(conn.absoluteUrls[0] + '/disallowed/robots-txt.html', 123);
     });
 
-    it("honorRobotExclusions = false (rel + meta + header + robots.txt)", done => {
+    it('honorRobotExclusions = false (rel + meta + header + robots.txt)', done => {
       let pageIndex = 0;
       const results = [];
 
       new SiteChecker(helpers.options(), {
         robots: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           maybeAddContainers(results, pageIndex);
@@ -613,10 +613,10 @@ describe("PUBLIC -- SiteChecker", () => {
           });
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/disallowed/index.html");
+      }).enqueue(conn.absoluteUrls[0] + '/disallowed/index.html');
     });
 
-    it("honorRobotExclusions = true (rel + meta + header + robots.txt)", done => {
+    it('honorRobotExclusions = true (rel + meta + header + robots.txt)', done => {
       let pageIndex = 0;
       const results = [];
 
@@ -653,13 +653,13 @@ describe("PUBLIC -- SiteChecker", () => {
             expect(results[i]).to.all.be.like({
               broken: null,
               excluded: true,
-              excludedReason: "BLC_ROBOTS"
+              excludedReason: 'BLC_ROBOTS'
             });
           }
 
           done();
         }
-      }).enqueue(conn.absoluteUrls[0] + "/disallowed/index.html");
+      }).enqueue(conn.absoluteUrls[0] + '/disallowed/index.html');
     });
   });
 });

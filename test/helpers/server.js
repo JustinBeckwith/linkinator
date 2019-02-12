@@ -1,11 +1,11 @@
-"use strict";
-const fixture = require("./fixture");
-const http = require("http");
-const st = require("st");
+'use strict';
+const fixture = require('./fixture');
+const http = require('http');
+const st = require('st');
 
-const host = "127.0.0.1";
+const host = '127.0.0.1';
 const httpServers = {};
-const serveFile = st({ index: "index.html", path: fixture.path() });
+const serveFile = st({ index: 'index.html', path: fixture.path() });
 
 function getAvailablePort() {
   return new Promise(resolve => {
@@ -23,9 +23,9 @@ function getAvailablePort() {
 
 function getUrl(port, schemeRelative) {
   if (schemeRelative !== true) {
-    return "http://" + host + ":" + port;
+    return 'http://' + host + ':' + port;
   } else {
-    return "//" + host + ":" + port;
+    return '//' + host + ':' + port;
   }
 }
 
@@ -47,29 +47,29 @@ function startHttpServer(suitePorts) {
 
 function startHttpServer_callback(request, response, port, suitePorts) {
   switch (request.url) {
-    case "/circular-redirect/redirect.html": {
+    case '/circular-redirect/redirect.html': {
       // Redirect
       response.writeHead(302, {
-        Location: "/circular-redirect/redirected.html"
+        Location: '/circular-redirect/redirected.html'
       });
       response.end();
       return;
     }
-    case "/disallowed/header.html": {
+    case '/disallowed/header.html': {
       // Add header
-      response.setHeader("X-Robots-Tag", "nofollow");
+      response.setHeader('X-Robots-Tag', 'nofollow');
       //response.setHeader("X-Robots-Tag: unavailable_after", "1-Jan-3000 00:00:00 EST");
       //response.setHeader("X-Robots-Tag", "unavailable_after: 1-Jan-3000 00:00:00 EST");
       break;
     }
-    case "/method-not-allowed/any.html": {
+    case '/method-not-allowed/any.html': {
       // Error
       response.writeHead(405);
       response.end();
       return;
     }
-    case "/method-not-allowed/head.html": {
-      if (request.method.toLowerCase() === "head") {
+    case '/method-not-allowed/head.html': {
+      if (request.method.toLowerCase() === 'head') {
         // Error
         response.writeHead(405);
         response.end();
@@ -79,7 +79,7 @@ function startHttpServer_callback(request, response, port, suitePorts) {
       // Serve file
       break;
     }
-    case "/external-redirect/redirect.html": {
+    case '/external-redirect/redirect.html': {
       // This fixture requires at least servers
       if (suitePorts.length < 2) {
         // Cannot redirect to another server -- make sure test fails
@@ -93,11 +93,11 @@ function startHttpServer_callback(request, response, port, suitePorts) {
           // Redirect first test suite port to next port in suite
           response.writeHead(302, {
             Location:
-              "http://" +
+              'http://' +
               host +
-              ":" +
+              ':' +
               suitePorts[i] +
-              "/external-redirect/redirected.html"
+              '/external-redirect/redirected.html'
           });
           response.end();
           return;
@@ -107,15 +107,15 @@ function startHttpServer_callback(request, response, port, suitePorts) {
       // Serve file
       break;
     }
-    case "/redirect/redirect.html": {
+    case '/redirect/redirect.html': {
       // Redirect
-      response.writeHead(302, { Location: "/redirect/redirect2.html" });
+      response.writeHead(302, { Location: '/redirect/redirect2.html' });
       response.end();
       return;
     }
-    case "/redirect/redirect2.html": {
+    case '/redirect/redirect2.html': {
       // Redirect
-      response.writeHead(301, { Location: "/redirect/redirected.html" });
+      response.writeHead(301, { Location: '/redirect/redirected.html' });
       response.end();
       return;
     }

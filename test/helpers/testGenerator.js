@@ -1,5 +1,5 @@
-"use strict";
-const slashes = require("slashes");
+'use strict';
+const slashes = require('slashes');
 
 const varStringPattern = /{{([^}]+)}}/;
 
@@ -8,16 +8,16 @@ function a_an(followingWord) {
 
   // Skip "y" because it's always special cased
   if (
-    firstChar === "a" ||
-    firstChar === "e" ||
-    firstChar === "i" ||
-    firstChar === "o" ||
-    firstChar === "u"
+    firstChar === 'a' ||
+    firstChar === 'e' ||
+    firstChar === 'i' ||
+    firstChar === 'o' ||
+    firstChar === 'u'
   ) {
-    return "an";
+    return 'an';
   }
 
-  return "a";
+  return 'a';
 }
 
 function addSlashes(str) {
@@ -25,7 +25,7 @@ function addSlashes(str) {
 }
 
 function format(input) {
-  if (typeof input === "string") {
+  if (typeof input === 'string') {
     const match = varStringPattern.exec(input);
 
     // If {{text}}, which is intended to be outputted literally

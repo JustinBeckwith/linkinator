@@ -1,9 +1,9 @@
-"use strict";
-const helpers = require("./helpers");
+'use strict';
+const helpers = require('./helpers');
 
 let conn;
 
-describe("CLI", () => {
+describe('CLI', () => {
   before(() => {
     return helpers.startConnections().then(connections => {
       conn = connections;
@@ -14,7 +14,7 @@ describe("CLI", () => {
     return helpers.stopConnections(conn.realPorts);
   });
 
-  it.skip("works", done => {
+  it.skip('works', done => {
     done();
   });
 });

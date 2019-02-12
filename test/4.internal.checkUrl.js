@@ -1,15 +1,15 @@
-"use strict";
-const checkUrl = require("../lib/internal/checkUrl");
+'use strict';
+const checkUrl = require('../lib/internal/checkUrl');
 
-const helpers = require("./helpers");
+const helpers = require('./helpers');
 
-const expect = require("chai").expect;
-const UrlCache = require("urlcache");
+const expect = require('chai').expect;
+const UrlCache = require('urlcache');
 //var urlobj = require("urlobj");
 
 let conn;
 
-describe("INTERNAL -- checkUrl", () => {
+describe('INTERNAL -- checkUrl', () => {
   before(() => {
     return helpers.startConnections().then(connections => {
       conn = connections;
@@ -20,9 +20,9 @@ describe("INTERNAL -- checkUrl", () => {
     return helpers.stopConnections(conn.realPorts);
   });
 
-  it("resolves a promise", () => {
+  it('resolves a promise', () => {
     return checkUrl(
-      conn.absoluteUrls[0] + "/normal/no-links.html",
+      conn.absoluteUrls[0] + '/normal/no-links.html',
       conn.absoluteUrls[0],
       new UrlCache(),
       helpers.options()
@@ -36,23 +36,23 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("shall not be broken with a REAL HOST and REAL PATH from", () => {
-    it("an absolute url", () => {
+  describe('shall not be broken with a REAL HOST and REAL PATH from', () => {
+    it('an absolute url', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/normal/no-links.html",
+        conn.absoluteUrls[0] + '/normal/no-links.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.absoluteUrls[0] + "/normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html",
+            original: conn.absoluteUrls[0] + '/normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -66,22 +66,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a scheme-relative url", () => {
+    it('a scheme-relative url', () => {
       return checkUrl(
-        conn.relativeUrls[0] + "/normal/no-links.html",
+        conn.relativeUrls[0] + '/normal/no-links.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.relativeUrls[0] + "/normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html",
+            original: conn.relativeUrls[0] + '/normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -95,22 +95,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a root-path-relative url", () => {
+    it('a root-path-relative url', () => {
       return checkUrl(
-        "/normal/no-links.html",
+        '/normal/no-links.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "/normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html",
+            original: '/normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -124,22 +124,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a path-relative url", () => {
+    it('a path-relative url', () => {
       return checkUrl(
-        "normal/no-links.html",
+        'normal/no-links.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html",
+            original: 'normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -153,22 +153,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a query-relative url", () => {
+    it('a query-relative url', () => {
       return checkUrl(
-        "?query",
-        conn.absoluteUrls[0] + "/normal/no-links.html",
+        '?query',
+        conn.absoluteUrls[0] + '/normal/no-links.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "?query",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html?query",
+            original: '?query',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html?query',
             redirected: null
           },
           base: {
-            original: conn.absoluteUrls[0] + "/normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html"
+            original: conn.absoluteUrls[0] + '/normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -182,22 +182,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a hash-relative url", () => {
+    it('a hash-relative url', () => {
       return checkUrl(
-        "#hash",
-        conn.absoluteUrls[0] + "/normal/no-links.html",
+        '#hash',
+        conn.absoluteUrls[0] + '/normal/no-links.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "#hash",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html#hash",
+            original: '#hash',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html#hash',
             redirected: null
           },
           base: {
-            original: conn.absoluteUrls[0] + "/normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html"
+            original: conn.absoluteUrls[0] + '/normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -211,22 +211,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("an empty url", () => {
+    it('an empty url', () => {
       return checkUrl(
-        "",
-        conn.absoluteUrls[0] + "/normal/no-links.html",
+        '',
+        conn.absoluteUrls[0] + '/normal/no-links.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html",
+            original: '',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html',
             redirected: null
           },
           base: {
-            original: conn.absoluteUrls[0] + "/normal/no-links.html",
-            resolved: conn.absoluteUrls[0] + "/normal/no-links.html"
+            original: conn.absoluteUrls[0] + '/normal/no-links.html',
+            resolved: conn.absoluteUrls[0] + '/normal/no-links.html'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -241,27 +241,27 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("shall be broken with a REAL HOST and FAKE PATH from", () => {
-    it("an absolute url", () => {
+  describe('shall be broken with a REAL HOST and FAKE PATH from', () => {
+    it('an absolute url', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/normal/fake.html",
+        conn.absoluteUrls[0] + '/normal/fake.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.absoluteUrls[0] + "/normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html",
+            original: conn.absoluteUrls[0] + '/normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -271,26 +271,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a scheme-relative url", () => {
+    it('a scheme-relative url', () => {
       return checkUrl(
-        conn.relativeUrls[0] + "/normal/fake.html",
+        conn.relativeUrls[0] + '/normal/fake.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.relativeUrls[0] + "/normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html",
+            original: conn.relativeUrls[0] + '/normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -300,26 +300,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a root-path-relative url", () => {
+    it('a root-path-relative url', () => {
       return checkUrl(
-        "/normal/fake.html",
+        '/normal/fake.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "/normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html",
+            original: '/normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -329,26 +329,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a path-relative url", () => {
+    it('a path-relative url', () => {
       return checkUrl(
-        "normal/fake.html",
+        'normal/fake.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html",
+            original: 'normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -358,26 +358,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a query-relative url", () => {
+    it('a query-relative url', () => {
       return checkUrl(
-        "?query",
-        conn.absoluteUrls[0] + "/normal/fake.html",
+        '?query',
+        conn.absoluteUrls[0] + '/normal/fake.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "?query",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html?query",
+            original: '?query',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html?query',
             redirected: null
           },
           base: {
-            original: conn.absoluteUrls[0] + "/normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html"
+            original: conn.absoluteUrls[0] + '/normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -387,26 +387,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a hash-relative url", () => {
+    it('a hash-relative url', () => {
       return checkUrl(
-        "#hash",
-        conn.absoluteUrls[0] + "/normal/fake.html",
+        '#hash',
+        conn.absoluteUrls[0] + '/normal/fake.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "#hash",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html#hash",
+            original: '#hash',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html#hash',
             redirected: null
           },
           base: {
-            original: conn.absoluteUrls[0] + "/normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html"
+            original: conn.absoluteUrls[0] + '/normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -416,26 +416,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("an empty url", () => {
+    it('an empty url', () => {
       return checkUrl(
-        "",
-        conn.absoluteUrls[0] + "/normal/fake.html",
+        '',
+        conn.absoluteUrls[0] + '/normal/fake.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html",
+            original: '',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html',
             redirected: null
           },
           base: {
-            original: conn.absoluteUrls[0] + "/normal/fake.html",
-            resolved: conn.absoluteUrls[0] + "/normal/fake.html"
+            original: conn.absoluteUrls[0] + '/normal/fake.html',
+            resolved: conn.absoluteUrls[0] + '/normal/fake.html'
           },
           http: { response: { redirects: [] } },
           broken: true,
-          brokenReason: "HTTP_404",
+          brokenReason: 'HTTP_404',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -448,27 +448,27 @@ describe("INTERNAL -- checkUrl", () => {
 
   // Technically it's a real host with a fake port, but same goal
   // and faster than testing a remote http://asdf1234.asdf1234
-  describe("shall be broken and have error with a FAKE HOST from", () => {
-    it("an absolute url", () => {
+  describe('shall be broken and have error with a FAKE HOST from', () => {
+    it('an absolute url', () => {
       return checkUrl(
-        conn.fakeAbsoluteUrl + "/path/to/resource.html",
+        conn.fakeAbsoluteUrl + '/path/to/resource.html',
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.fakeAbsoluteUrl + "/path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html",
+            original: conn.fakeAbsoluteUrl + '/path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html',
             redirected: null
           },
           base: {
             original: conn.fakeAbsoluteUrl,
-            resolved: conn.fakeAbsoluteUrl + "/"
+            resolved: conn.fakeAbsoluteUrl + '/'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -477,26 +477,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a scheme-relative url", () => {
+    it('a scheme-relative url', () => {
       return checkUrl(
-        conn.fakeRelativeUrl + "/path/to/resource.html",
+        conn.fakeRelativeUrl + '/path/to/resource.html',
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.fakeRelativeUrl + "/path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html",
+            original: conn.fakeRelativeUrl + '/path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html',
             redirected: null
           },
           base: {
             original: conn.fakeAbsoluteUrl,
-            resolved: conn.fakeAbsoluteUrl + "/"
+            resolved: conn.fakeAbsoluteUrl + '/'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -505,26 +505,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a root-path-relative url", () => {
+    it('a root-path-relative url', () => {
       return checkUrl(
-        "/path/to/resource.html",
+        '/path/to/resource.html',
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "/path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html",
+            original: '/path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html',
             redirected: null
           },
           base: {
             original: conn.fakeAbsoluteUrl,
-            resolved: conn.fakeAbsoluteUrl + "/"
+            resolved: conn.fakeAbsoluteUrl + '/'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -533,26 +533,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a path-relative url", () => {
+    it('a path-relative url', () => {
       return checkUrl(
-        "path/to/resource.html",
+        'path/to/resource.html',
         conn.fakeAbsoluteUrl,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html",
+            original: 'path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html',
             redirected: null
           },
           base: {
             original: conn.fakeAbsoluteUrl,
-            resolved: conn.fakeAbsoluteUrl + "/"
+            resolved: conn.fakeAbsoluteUrl + '/'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -561,26 +561,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a query-relative url", () => {
+    it('a query-relative url', () => {
       return checkUrl(
-        "?query",
-        conn.fakeAbsoluteUrl + "/path/to/resource.html",
+        '?query',
+        conn.fakeAbsoluteUrl + '/path/to/resource.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "?query",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html?query",
+            original: '?query',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html?query',
             redirected: null
           },
           base: {
-            original: conn.fakeAbsoluteUrl + "/path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html"
+            original: conn.fakeAbsoluteUrl + '/path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -589,26 +589,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a hash-relative url", () => {
+    it('a hash-relative url', () => {
       return checkUrl(
-        "#hash",
-        conn.fakeAbsoluteUrl + "/path/to/resource.html",
+        '#hash',
+        conn.fakeAbsoluteUrl + '/path/to/resource.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "#hash",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html#hash",
+            original: '#hash',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html#hash',
             redirected: null
           },
           base: {
-            original: conn.fakeAbsoluteUrl + "/path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html"
+            original: conn.fakeAbsoluteUrl + '/path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -617,26 +617,26 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("an empty url", () => {
+    it('an empty url', () => {
       return checkUrl(
-        "",
-        conn.fakeAbsoluteUrl + "/path/to/resource.html",
+        '',
+        conn.fakeAbsoluteUrl + '/path/to/resource.html',
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html",
+            original: '',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html',
             redirected: null
           },
           base: {
-            original: conn.fakeAbsoluteUrl + "/path/to/resource.html",
-            resolved: conn.fakeAbsoluteUrl + "/path/to/resource.html"
+            original: conn.fakeAbsoluteUrl + '/path/to/resource.html',
+            resolved: conn.fakeAbsoluteUrl + '/path/to/resource.html'
           },
           http: { response: null },
           broken: true,
-          brokenReason: "ERRNO_ECONNREFUSED",
+          brokenReason: 'ERRNO_ECONNREFUSED',
           excluded: null,
           excludedReason: null,
           internal: true,
@@ -646,14 +646,14 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("shall be broken and have error with NO HOST from", () => {
-    it("an absolute url", () => {
-      return checkUrl("http://", null, new UrlCache(), helpers.options()).then(
+  describe('shall be broken and have error with NO HOST from', () => {
+    it('an absolute url', () => {
+      return checkUrl('http://', null, new UrlCache(), helpers.options()).then(
         result => {
           expect(result).to.be.like({
             url: {
-              original: "http://",
-              resolved: "http:///",
+              original: 'http://',
+              resolved: 'http:///',
               redirected: null
             },
             base: {
@@ -671,25 +671,25 @@ describe("INTERNAL -- checkUrl", () => {
 
           expect(result.brokenReason).to.satisfy(value => {
             return (
-              value === "ERRNO_ECONNRESET" || // OSX, Node <=5.5.x
-              value === "ERRNO_ENOTFOUND" || // OSX, Node >=5.6.x
-              value === "ERRNO_ECONNREFUSED"
+              value === 'ERRNO_ECONNRESET' || // OSX, Node <=5.5.x
+              value === 'ERRNO_ENOTFOUND' || // OSX, Node >=5.6.x
+              value === 'ERRNO_ECONNREFUSED'
             ); // Linux
           });
         }
       );
     });
 
-    it("a scheme-relative url", () => {
+    it('a scheme-relative url', () => {
       return checkUrl(
-        conn.relativeUrls[0] + "/no-links.html",
+        conn.relativeUrls[0] + '/no-links.html',
         null,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.relativeUrls[0] + "/no-links.html",
+            original: conn.relativeUrls[0] + '/no-links.html',
             resolved: null,
             redirected: null
           },
@@ -699,7 +699,7 @@ describe("INTERNAL -- checkUrl", () => {
           },
           http: { response: null },
           broken: true,
-          brokenReason: "BLC_INVALID",
+          brokenReason: 'BLC_INVALID',
           excluded: null,
           excludedReason: null,
           internal: null,
@@ -708,16 +708,16 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a root-path-relative url", () => {
+    it('a root-path-relative url', () => {
       return checkUrl(
-        "/normal/no-links.html",
+        '/normal/no-links.html',
         null,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "/normal/no-links.html",
+            original: '/normal/no-links.html',
             resolved: null,
             redirected: null
           },
@@ -727,7 +727,7 @@ describe("INTERNAL -- checkUrl", () => {
           },
           http: { response: null },
           broken: true,
-          brokenReason: "BLC_INVALID",
+          brokenReason: 'BLC_INVALID',
           excluded: null,
           excludedReason: null,
           internal: null,
@@ -736,16 +736,16 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a path-relative url", () => {
+    it('a path-relative url', () => {
       return checkUrl(
-        "normal/no-links.html",
+        'normal/no-links.html',
         null,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "normal/no-links.html",
+            original: 'normal/no-links.html',
             resolved: null,
             redirected: null
           },
@@ -755,7 +755,7 @@ describe("INTERNAL -- checkUrl", () => {
           },
           http: { response: null },
           broken: true,
-          brokenReason: "BLC_INVALID",
+          brokenReason: 'BLC_INVALID',
           excluded: null,
           excludedReason: null,
           internal: null,
@@ -764,12 +764,12 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a query-relative url", () => {
-      return checkUrl("?query", null, new UrlCache(), helpers.options()).then(
+    it('a query-relative url', () => {
+      return checkUrl('?query', null, new UrlCache(), helpers.options()).then(
         result => {
           expect(result).to.be.like({
             url: {
-              original: "?query",
+              original: '?query',
               resolved: null,
               redirected: null
             },
@@ -779,7 +779,7 @@ describe("INTERNAL -- checkUrl", () => {
             },
             http: { response: null },
             broken: true,
-            brokenReason: "BLC_INVALID",
+            brokenReason: 'BLC_INVALID',
             excluded: null,
             excludedReason: null,
             internal: null,
@@ -789,12 +789,12 @@ describe("INTERNAL -- checkUrl", () => {
       );
     });
 
-    it("a hash-relative url", () => {
-      return checkUrl("#hash", null, new UrlCache(), helpers.options()).then(
+    it('a hash-relative url', () => {
+      return checkUrl('#hash', null, new UrlCache(), helpers.options()).then(
         result => {
           expect(result).to.be.like({
             url: {
-              original: "#hash",
+              original: '#hash',
               resolved: null,
               redirected: null
             },
@@ -804,7 +804,7 @@ describe("INTERNAL -- checkUrl", () => {
             },
             http: { response: null },
             broken: true,
-            brokenReason: "BLC_INVALID",
+            brokenReason: 'BLC_INVALID',
             excluded: null,
             excludedReason: null,
             internal: null,
@@ -814,12 +814,12 @@ describe("INTERNAL -- checkUrl", () => {
       );
     });
 
-    it("an empty url", () => {
-      return checkUrl("", null, new UrlCache(), helpers.options()).then(
+    it('an empty url', () => {
+      return checkUrl('', null, new UrlCache(), helpers.options()).then(
         result => {
           expect(result).to.be.like({
             url: {
-              original: "",
+              original: '',
               resolved: null,
               redirected: null
             },
@@ -829,7 +829,7 @@ describe("INTERNAL -- checkUrl", () => {
             },
             http: { response: null },
             broken: true,
-            brokenReason: "BLC_INVALID",
+            brokenReason: 'BLC_INVALID',
             excluded: null,
             excludedReason: null,
             internal: null,
@@ -840,10 +840,10 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("shall be broken and have error from", () => {
-    it("a data uri", () => {
+  describe('shall be broken and have error from', () => {
+    it('a data uri', () => {
       return checkUrl(
-        "data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7",
+        'data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7',
         null,
         new UrlCache(),
         helpers.options()
@@ -851,7 +851,7 @@ describe("INTERNAL -- checkUrl", () => {
         expect(result).to.be.like({
           url: {
             original:
-              "data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7",
+              'data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7',
             resolved: null,
             redirected: null
           },
@@ -861,7 +861,7 @@ describe("INTERNAL -- checkUrl", () => {
           },
           http: { response: null },
           broken: true,
-          brokenReason: "BLC_INVALID",
+          brokenReason: 'BLC_INVALID',
           excluded: null,
           excludedReason: null,
           internal: null,
@@ -870,16 +870,16 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("a tel uri", () => {
+    it('a tel uri', () => {
       return checkUrl(
-        "tel:+5-555-555-5555",
+        'tel:+5-555-555-5555',
         null,
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: "tel:+5-555-555-5555",
+            original: 'tel:+5-555-555-5555',
             resolved: null,
             redirected: null
           },
@@ -889,7 +889,7 @@ describe("INTERNAL -- checkUrl", () => {
           },
           http: { response: null },
           broken: true,
-          brokenReason: "BLC_INVALID",
+          brokenReason: 'BLC_INVALID',
           excluded: null,
           excludedReason: null,
           internal: null,
@@ -899,23 +899,23 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("shall not be broken with a REDIRECTED url", () => {
-    it("containing no query or hash", () => {
+  describe('shall not be broken with a REDIRECTED url', () => {
+    it('containing no query or hash', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/redirect/redirect.html",
+        conn.absoluteUrls[0] + '/redirect/redirect.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.absoluteUrls[0] + "/redirect/redirect.html",
-            resolved: conn.absoluteUrls[0] + "/redirect/redirect.html",
-            redirected: conn.absoluteUrls[0] + "/redirect/redirected.html"
+            original: conn.absoluteUrls[0] + '/redirect/redirect.html',
+            resolved: conn.absoluteUrls[0] + '/redirect/redirect.html',
+            redirected: conn.absoluteUrls[0] + '/redirect/redirected.html'
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -929,22 +929,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("containing a query", () => {
+    it('containing a query', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/redirect/redirect.html?query",
+        conn.absoluteUrls[0] + '/redirect/redirect.html?query',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.absoluteUrls[0] + "/redirect/redirect.html?query",
-            resolved: conn.absoluteUrls[0] + "/redirect/redirect.html?query",
+            original: conn.absoluteUrls[0] + '/redirect/redirect.html?query',
+            resolved: conn.absoluteUrls[0] + '/redirect/redirect.html?query',
             redirected: null
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -958,22 +958,22 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("containing a hash", () => {
+    it('containing a hash', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/redirect/redirect.html#hash",
+        conn.absoluteUrls[0] + '/redirect/redirect.html#hash',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           url: {
-            original: conn.absoluteUrls[0] + "/redirect/redirect.html#hash",
-            resolved: conn.absoluteUrls[0] + "/redirect/redirect.html#hash",
-            redirected: conn.absoluteUrls[0] + "/redirect/redirected.html"
+            original: conn.absoluteUrls[0] + '/redirect/redirect.html#hash',
+            resolved: conn.absoluteUrls[0] + '/redirect/redirect.html#hash',
+            redirected: conn.absoluteUrls[0] + '/redirect/redirected.html'
           },
           base: {
             original: conn.absoluteUrls[0],
-            resolved: conn.absoluteUrls[0] + "/"
+            resolved: conn.absoluteUrls[0] + '/'
           },
           http: { response: { redirects: [] } },
           broken: false,
@@ -988,80 +988,80 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("url object input", () => {
-    it.skip("works", () => {});
+  describe('url object input', () => {
+    it.skip('works', () => {});
   });
 
-  describe("caching", () => {
-    it("stores the response", () => {
+  describe('caching', () => {
+    it('stores the response', () => {
       const cache = new UrlCache();
 
       return checkUrl(
-        conn.absoluteUrls[0] + "/normal/no-links.html",
+        conn.absoluteUrls[0] + '/normal/no-links.html',
         conn.absoluteUrls[0],
         cache,
         helpers.options({ cacheResponses: true })
       )
         .then(() => {
-          return cache.get(conn.absoluteUrls[0] + "/normal/no-links.html");
+          return cache.get(conn.absoluteUrls[0] + '/normal/no-links.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
         });
     });
 
-    it("stores the response of a redirected url", () => {
+    it('stores the response of a redirected url', () => {
       const cache = new UrlCache();
 
       return checkUrl(
-        conn.absoluteUrls[0] + "/redirect/redirect.html",
+        conn.absoluteUrls[0] + '/redirect/redirect.html',
         conn.absoluteUrls[0],
         cache,
         helpers.options({ cacheResponses: true })
       )
         .then(() => {
-          return cache.get(conn.absoluteUrls[0] + "/redirect/redirect.html");
+          return cache.get(conn.absoluteUrls[0] + '/redirect/redirect.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
         })
         .then(() => {
-          return cache.get(conn.absoluteUrls[0] + "/redirect/redirected.html");
+          return cache.get(conn.absoluteUrls[0] + '/redirect/redirected.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
         });
     });
 
     // NOTE :: not stored because we check first
-    it("does not store the error from an erroneous url", () => {
+    it('does not store the error from an erroneous url', () => {
       const cache = new UrlCache();
 
       return checkUrl(
-        "/normal/fake.html",
+        '/normal/fake.html',
         null,
         cache,
         helpers.options({ cacheResponses: true })
       )
         .then(() => {
-          return cache.get("/normal/fake.html");
+          return cache.get('/normal/fake.html');
         })
         .then(response => {
           expect(response).to.be.undefined;
         });
     });
 
-    it("requests a unique url only once", () => {
+    it('requests a unique url only once', () => {
       const cache = new UrlCache();
 
       return checkUrl(
-        conn.absoluteUrls[0] + "/normal/no-links.html",
+        conn.absoluteUrls[0] + '/normal/no-links.html',
         conn.absoluteUrls[0],
         cache,
         helpers.options({ cacheResponses: true })
       )
         .then(() => {
-          return cache.get(conn.absoluteUrls[0] + "/normal/no-links.html");
+          return cache.get(conn.absoluteUrls[0] + '/normal/no-links.html');
         })
         .then(response => {
           response._cached = true;
@@ -1069,14 +1069,14 @@ describe("INTERNAL -- checkUrl", () => {
         .then(() => {
           // Check URL again
           return checkUrl(
-            conn.absoluteUrls[0] + "/normal/no-links.html",
+            conn.absoluteUrls[0] + '/normal/no-links.html',
             conn.absoluteUrls[0],
             cache,
             helpers.options({ cacheResponses: true })
           );
         })
         .then(() => {
-          return cache.get(conn.absoluteUrls[0] + "/normal/no-links.html");
+          return cache.get(conn.absoluteUrls[0] + '/normal/no-links.html');
         })
         .then(response => {
           expect(response._cached).to.be.true;
@@ -1084,44 +1084,44 @@ describe("INTERNAL -- checkUrl", () => {
     });
   });
 
-  describe("options", () => {
-    it.skip("acceptedSchemes = []", () => {});
+  describe('options', () => {
+    it.skip('acceptedSchemes = []', () => {});
 
-    it("retry405Head = false", () => {
+    it('retry405Head = false', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/method-not-allowed/head.html",
+        conn.absoluteUrls[0] + '/method-not-allowed/head.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options()
       ).then(result => {
         expect(result).to.be.like({
           broken: true,
-          brokenReason: "HTTP_405",
+          brokenReason: 'HTTP_405',
           excluded: null,
           excludedReason: null
         });
       });
     });
 
-    it("retry405Head = false (#2)", () => {
+    it('retry405Head = false (#2)', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/method-not-allowed/any.html",
+        conn.absoluteUrls[0] + '/method-not-allowed/any.html',
         conn.absoluteUrls[0],
         new UrlCache(),
-        helpers.options({ requestMethod: "get" })
+        helpers.options({ requestMethod: 'get' })
       ).then(result => {
         expect(result).to.be.like({
           broken: true,
-          brokenReason: "HTTP_405",
+          brokenReason: 'HTTP_405',
           excluded: null,
           excludedReason: null
         });
       });
     });
 
-    it("retry405Head = true", () => {
+    it('retry405Head = true', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/method-not-allowed/head.html",
+        conn.absoluteUrls[0] + '/method-not-allowed/head.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options({ retry405Head: true })
@@ -1135,16 +1135,16 @@ describe("INTERNAL -- checkUrl", () => {
       });
     });
 
-    it("retry405Head = true (#2)", () => {
+    it('retry405Head = true (#2)', () => {
       return checkUrl(
-        conn.absoluteUrls[0] + "/method-not-allowed/any.html",
+        conn.absoluteUrls[0] + '/method-not-allowed/any.html',
         conn.absoluteUrls[0],
         new UrlCache(),
         helpers.options({ retry405Head: true })
       ).then(result => {
         expect(result).to.be.like({
           broken: true,
-          brokenReason: "HTTP_405",
+          brokenReason: 'HTTP_405',
           excluded: null,
           excludedReason: null
         });

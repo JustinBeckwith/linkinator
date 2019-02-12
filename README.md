@@ -1,11 +1,11 @@
-# broken-link-checker
+# linkinator
 
 [![npm version](https://img.shields.io/npm/v/linkinator.svg)](https://www.npmjs.org/package/linkinator)
 [![Build Status](https://api.cirrus-ci.com/github/JustinBeckwith/blc.svg)](https://cirrus-ci.com/github/JustinBeckwith/blc)
 [![codecov](https://codecov.io/gh/JustinBeckwith/blc/branch/master/graph/badge.svg)](https://codecov.io/gh/JustinBeckwith/blc)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
-> Find broken links, missing images, etc in your HTML.
+> Find broken links, missing images, etc in your HTML.  A fancy fork of https://github.com/stevenvachon/broken-link-checker.
 
 Features:
 * Stream-parses local and remote HTML pages
@@ -17,34 +17,19 @@ Features:
 * URL keyword filtering with wildcards
 * Pause/Resume at any time
 
-
 ## Installation
 
-[Node.js](http://nodejs.org/) `>= 0.10` is required; `< 4.0` will need `Promise` and `Object.assign` polyfills.
+To use as an API:
 
-There're two ways to use it:
-
-### Command Line Usage
-To install, type this at the command line:
-```shell
-npm install broken-link-checker -g
-```
-After that, check out the help for available options:
-```shell
-blc --help
-```
-A typical site-wide check might look like:
-```shell
-blc http://yoursite.com -ro
+```sh
+npm install linkinator
 ```
 
-### Programmatic API
-To install, type this at the command line:
-```shell
-npm install broken-link-checker
-```
-The rest of this document will assist you with how to use the API.
+To use as a CLI:
 
+```sh
+npx linkinator http://www.google.com -r
+```
 
 ## Classes
 
