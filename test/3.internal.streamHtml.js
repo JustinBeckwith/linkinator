@@ -1,11 +1,10 @@
 'use strict';
+
 const messages = require('../lib/internal/messages');
 const streamHtml = require('../lib/internal/streamHtml');
-
 const helpers = require('./helpers');
-
 const expect = require('chai').expect;
-const isStream = require('is-stream');
+const is = require('@sindresorhus/is');
 const UrlCache = require('urlcache');
 
 let conn;
@@ -27,7 +26,7 @@ describe('INTERNAL -- streamHtml', () => {
       null,
       helpers.options()
     ).then(result => {
-      expect(isStream(result.stream)).to.be.true;
+      expect(is.nodeStream(result.stream)).to.be.true;
       expect(result.response.url).to.equal(
         conn.absoluteUrl + '/normal/no-links.html'
       );
@@ -40,7 +39,7 @@ describe('INTERNAL -- streamHtml', () => {
       null,
       helpers.options()
     ).then(result => {
-      expect(isStream(result.stream)).to.be.true;
+      expect(is.nodeStream(result.stream)).to.be.true;
       expect(result.response.url).to.equal(
         conn.absoluteUrl + '/redirect/redirected.html'
       );

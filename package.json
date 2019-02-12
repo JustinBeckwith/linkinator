@@ -10,6 +10,7 @@
     "linkinator": "bin/blc"
   },
   "dependencies": {
+    "@sindresorhus/is": "^0.15.0",
     "bhttp": "^1.2.4",
     "calmcard": "^0.1.1",
     "chalk": "^2.4.2",
@@ -17,12 +18,9 @@
     "condense-whitespace": "^1.0.0",
     "default-user-agent": "^1.0.0",
     "errno": "^0.1.7",
-    "extend": "^3.0.2",
     "gaxios": "^1.5.1",
     "http-equiv-refresh": "^1.0.0",
     "humanize-duration": "^3.17.0",
-    "is-stream": "^1.0.1",
-    "is-string": "^1.0.4",
     "limited-request-queue": "^2.0.0",
     "link-types": "^1.1.0",
     "maybe-callback": "^2.1.0",
