@@ -35,7 +35,7 @@
   "devDependencies": {
     "@commitlint/cli": "^7.5.2",
     "@commitlint/config-conventional": "^7.5.0",
-    "chai": "^3.5.0",
+    "chai": "^4.0.0",
     "chai-as-promised": "^7.0.0",
     "chai-like": "^0.2.10",
     "chai-things": "^0.2.0",
