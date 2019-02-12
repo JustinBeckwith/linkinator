@@ -21,7 +21,7 @@
     "gaxios": "^1.5.1",
     "http-equiv-refresh": "^1.0.0",
     "humanize-duration": "^3.17.0",
-    "limited-request-queue": "^2.0.0",
+    "limited-request-queue": "^3.0.0",
     "link-types": "^1.1.0",
     "maybe-callback": "^2.1.0",
     "nopter": "^0.3.0",
