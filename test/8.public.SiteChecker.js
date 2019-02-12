@@ -1,6 +1,6 @@
 'use strict';
-const messages = require('../lib/internal/messages');
-const SiteChecker = require('../lib/public/SiteChecker');
+const messages = require('../src/internal/messages');
+const SiteChecker = require('../src/public/SiteChecker');
 
 const helpers = require('./helpers');
 

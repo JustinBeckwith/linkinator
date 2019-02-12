@@ -1,5 +1,5 @@
 'use strict';
-const UrlChecker = require('../lib/public/UrlChecker');
+const UrlChecker = require('../src/public/UrlChecker');
 
 const helpers = require('./helpers');
 

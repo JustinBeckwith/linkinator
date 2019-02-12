@@ -1,5 +1,5 @@
 'use strict';
-const linkObj = require('../lib/internal/linkObj');
+const linkObj = require('../src/internal/linkObj');
 
 const helpers = require('./helpers');
 const urlTests = require('./helpers/json/linkObj.json');

@@ -1,5 +1,5 @@
 'use strict';
-const matchUrl = require('../lib/internal/matchUrl');
+const matchUrl = require('../src/internal/matchUrl');
 
 const expect = require('chai').expect;
 

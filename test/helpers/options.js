@@ -1,6 +1,6 @@
 'use strict';
-const appDefaultOptions = require('../../lib/internal/defaultOptions');
-const parseOptions = require('../../lib/internal/parseOptions');
+const appDefaultOptions = require('../../src/internal/defaultOptions');
+const parseOptions = require('../../src/internal/parseOptions');
 
 const testDefaultOptions = {
   // All other options will use default values

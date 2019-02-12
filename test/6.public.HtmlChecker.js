@@ -1,5 +1,5 @@
 'use strict';
-const HtmlChecker = require('../lib/public/HtmlChecker');
+const HtmlChecker = require('../src/public/HtmlChecker');
 
 const helpers = require('./helpers');
 

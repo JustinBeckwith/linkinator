@@ -1,5 +1,5 @@
 'use strict';
-const tags = require('../../lib/internal/tags');
+const tags = require('../../src/internal/tags');
 
 function tagsString(filterLevel, url) {
   let attrName, tag, tagName;

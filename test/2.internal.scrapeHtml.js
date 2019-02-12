@@ -1,6 +1,6 @@
 'use strict';
-const parseHtml = require('../lib/internal/parseHtml');
-const scrapeHtml = require('../lib/internal/scrapeHtml');
+const parseHtml = require('../src/internal/parseHtml');
+const scrapeHtml = require('../src/internal/scrapeHtml');
 
 const helpers = require('./helpers');
 const tagTests = require('./helpers/json/scrapeHtml.json');

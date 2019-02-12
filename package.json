@@ -4,10 +4,10 @@
   "version": "0.7.8",
   "license": "MIT",
   "repository": "JustinBeckwith/blc",
-  "main": "lib",
+  "main": "src/index.js",
   "bin": {
-    "blc": "bin/blc",
-    "linkinator": "bin/blc"
+    "blc": "src/blc.js",
+    "linkinator": "src/blc.js"
   },
   "dependencies": {
     "@sindresorhus/is": "^0.15.0",
@@ -62,9 +62,7 @@
     "lint": "eslint '**/*.js'"
   },
   "files": [
-    "bin",
-    "lib",
-    "license"
+    "src"
   ],
   "keywords": [
     "404",

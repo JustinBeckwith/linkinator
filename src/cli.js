@@ -1,4 +1,5 @@
 'use strict';
+
 const blc = require('./');
 const defaultOptions = require('./internal/defaultOptions');
 const pkg = require('../package.json');

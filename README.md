@@ -222,7 +222,7 @@ The tags and attributes that are considered links for checking, split into the f
 * `2`: clickable links, media, iframes, meta refreshes, stylesheets, scripts, forms
 * `3`: clickable links, media, iframes, meta refreshes, stylesheets, scripts, forms, metadata
 
-Recursive links have a slightly different filter subset. To see the exact breakdown of both, check out the [tag map](https://github.com/stevenvachon/broken-link-checker/blob/master/lib/internal/tags.js). `<base>` is not listed because it is not a link, though it is always parsed.
+Recursive links have a slightly different filter subset. To see the exact breakdown of both, check out the [tag map](https://github.com/stevenvachon/broken-link-checker/blob/master/src/internal/tags.js). `<base>` is not listed because it is not a link, though it is always parsed.
 
 This option does *not* apply to `UrlChecker`.
 
@@ -306,7 +306,7 @@ if (result.broken) {
 ```
 
 ## HTML and HTTP information
-Detailed information for each link result is provided. Check out the [schema](https://github.com/stevenvachon/broken-link-checker/blob/master/lib/internal/linkObj.js#L16-L64) or:
+Detailed information for each link result is provided. Check out the [schema](https://github.com/stevenvachon/broken-link-checker/blob/master/src/internal/linkObj.js#L16-L64) or:
 ```js
 console.log(result);
 ```

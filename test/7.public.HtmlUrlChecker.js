@@ -1,6 +1,6 @@
 'use strict';
-const HtmlUrlChecker = require('../lib/public/HtmlUrlChecker');
-const messages = require('../lib/internal/messages');
+const HtmlUrlChecker = require('../src/public/HtmlUrlChecker');
+const messages = require('../src/internal/messages');
 
 const helpers = require('./helpers');
 

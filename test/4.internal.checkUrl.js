@@ -1,5 +1,5 @@
 'use strict';
-const checkUrl = require('../lib/internal/checkUrl');
+const checkUrl = require('../src/internal/checkUrl');
 
 const helpers = require('./helpers');
 

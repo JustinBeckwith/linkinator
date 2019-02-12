@@ -1,7 +1,7 @@
 'use strict';
 
-const messages = require('../lib/internal/messages');
-const streamHtml = require('../lib/internal/streamHtml');
+const messages = require('../src/internal/messages');
+const streamHtml = require('../src/internal/streamHtml');
 const helpers = require('./helpers');
 const expect = require('chai').expect;
 const is = require('@sindresorhus/is');
