@@ -9,7 +9,7 @@ const expect = require("chai").expect;
 let conn;
 
 function maybeAddContainers(results, pageIndex, siteIndex) {
-  if (siteIndex != null) {
+  if (siteIndex !== undefined) {
     if (results[siteIndex] === undefined) {
       results[siteIndex] = [];
     }
@@ -51,7 +51,6 @@ describe("PUBLIC -- SiteChecker", () => {
     });
   });
 
-  // TODO :: find a way to test "robots" without requiring the use of an option
   describe("handlers", () => {
     it("html", done => {
       let count = 0;
@@ -133,7 +132,7 @@ describe("PUBLIC -- SiteChecker", () => {
       it("works", done => {
         let htmlCalled = false;
 
-        var instance = new SiteChecker(helpers.options(), {
+        const instance = new SiteChecker(helpers.options(), {
           html: function() {
             if (htmlCalled === true) return; // skip recursive checks
 
@@ -179,10 +178,9 @@ describe("PUBLIC -- SiteChecker", () => {
       });
     });
 
-    // TODO :: test what happens when the current queue item is dequeued
     describe("dequeue() / numSites() / numPages() / numQueuedLinks()", () => {
       it("accepts a valid id", done => {
-        var instance = new SiteChecker(helpers.options(), {
+        const instance = new SiteChecker(helpers.options(), {
           end: function() {
             expect(instance.numSites()).to.equal(0);
             expect(instance.numPages()).to.equal(0);
@@ -284,7 +282,7 @@ describe("PUBLIC -- SiteChecker", () => {
 
           pageIndex++;
         },
-        site: function(error, siteUrl, customData) {
+        site: function(error) {
           expect(error).to.be.null;
 
           pageIndex = 0;
@@ -378,13 +376,13 @@ describe("PUBLIC -- SiteChecker", () => {
       let siteCalled = false;
 
       new SiteChecker(helpers.options(), {
-        page: function(error, pageUrl, customData) {
+        page: function(error, pageUrl) {
           expect(error).to.be.an.instanceOf(Error);
           expect(error.message).to.equal(messages.errors.HTML_RETRIEVAL);
           expect(pageUrl).to.be.a("string");
           pageCalled = true;
         },
-        site: function(error, siteUrl, customData) {
+        site: function(error, siteUrl) {
           expect(error).to.be.an.instanceOf(Error);
           expect(error.message).to.equal(messages.errors.HTML_RETRIEVAL);
           expect(siteUrl).to.be.a("string");
@@ -402,14 +400,14 @@ describe("PUBLIC -- SiteChecker", () => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
-        page: function(error, pageUrl, customData) {
+        page: function(error) {
           if (++pageCount < 3) {
             expect(error).to.not.be.an.instanceOf(Error);
           } else {
             expect(error).to.be.an.instanceOf(Error);
           }
         },
-        site: function(error, siteUrl, customData) {
+        site: function(error) {
           expect(error).to.not.be.an.instanceOf(Error);
         },
         end: function() {
@@ -423,14 +421,14 @@ describe("PUBLIC -- SiteChecker", () => {
       let siteCount = 0;
 
       const instance = new SiteChecker(helpers.options(), {
-        page: function(error, pageUrl, customData) {
+        page: function(error) {
           if (++pageCount === 1) {
             expect(error).to.be.an.instanceOf(Error);
           } else {
             expect(error).to.not.be.an.instanceOf(Error);
           }
         },
-        site: function(error, siteUrl, customData) {
+        site: function(error) {
           if (++siteCount === 1) {
             expect(error).to.be.an.instanceOf(Error);
           } else {
@@ -495,7 +493,7 @@ describe("PUBLIC -- SiteChecker", () => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
-        link: function(result, customData) {
+        link: function(result) {
           expect(result.broken).to.be.false;
           linkCount++;
         },
@@ -514,7 +512,7 @@ describe("PUBLIC -- SiteChecker", () => {
       let pageCount = 0;
 
       new SiteChecker(helpers.options(), {
-        page: function(error, pageUrl, customData) {
+        page: function(error) {
           expect(error).to.not.be.an.instanceOf(Error);
           pageCount++;
         },
@@ -524,8 +522,6 @@ describe("PUBLIC -- SiteChecker", () => {
         }
       }).enqueue(conn.absoluteUrls[0] + "/external-redirect/redirect.html");
     });
-
-    // TODO :: does not check a non-first page that redirects to another site when options.excludeInternalLinks=true
   });
 
   describe("options", () => {
@@ -533,10 +529,10 @@ describe("PUBLIC -- SiteChecker", () => {
       const results = [];
 
       new SiteChecker(helpers.options(), {
-        robots: function(robots) {
+        robots: () => {
           done(new Error("this should not have been called"));
         },
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -567,7 +563,7 @@ describe("PUBLIC -- SiteChecker", () => {
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
-        link: function(result) {
+        link: () => {
           done(new Error("this should not have been called"));
         },
         end: function() {
@@ -588,10 +584,10 @@ describe("PUBLIC -- SiteChecker", () => {
       const results = [];
 
       new SiteChecker(helpers.options(), {
-        robots: function(robots) {
+        robots: () => {
           done(new Error("this should not have been called"));
         },
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -610,14 +606,11 @@ describe("PUBLIC -- SiteChecker", () => {
         },
         end: function() {
           expect(results).to.have.length(9);
-          expect(results).to.all.all.be.like(
-            // TODO :: https://github.com/chaijs/chai-things/issues/29
-            {
-              broken: false,
-              excluded: false,
-              excludedReason: null
-            }
-          );
+          expect(results).to.all.all.be.like({
+            broken: false,
+            excluded: false,
+            excludedReason: null
+          });
           done();
         }
       }).enqueue(conn.absoluteUrls[0] + "/disallowed/index.html");
@@ -656,7 +649,6 @@ describe("PUBLIC -- SiteChecker", () => {
             excludedReason: null
           });
 
-          // TODO :: https://github.com/chaijs/chai-things/issues/29
           for (let i = 1; i < 5; i++) {
             expect(results[i]).to.all.be.like({
               broken: null,
@@ -669,7 +661,5 @@ describe("PUBLIC -- SiteChecker", () => {
         }
       }).enqueue(conn.absoluteUrls[0] + "/disallowed/index.html");
     });
-
-    // TODO :: honorRobotExcluses=true (rel + meta + header + robots.txt) + userAgent=Googlebot/2.1
   });
 });

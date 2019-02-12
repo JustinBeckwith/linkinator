@@ -721,7 +721,7 @@ describe("PUBLIC -- HtmlChecker", () => {
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
-        link: function(result) {
+        link: () => {
           done(new Error("this should not have been called"));
         },
         complete: function() {
@@ -743,7 +743,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -771,7 +771,7 @@ describe("PUBLIC -- HtmlChecker", () => {
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
-        link: function(result) {
+        link: () => {
           done(new Error("this should not have been called"));
         },
         complete: function() {
@@ -785,7 +785,5 @@ describe("PUBLIC -- HtmlChecker", () => {
         }
       }).scan(htmlString, baseUrl);
     });
-
-    // TODO :: honorRobotExcluses=true (meta) + userAgent=Googlebot/2.1
   });
 });

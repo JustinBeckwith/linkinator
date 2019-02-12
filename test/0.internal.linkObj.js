@@ -67,7 +67,10 @@ describe("INTERNAL -- linkObj", () => {
     for (const test in urlTests) {
       let code = "";
       const data = urlTests[test];
-      const skipOrOnly = data.skipOrOnly == null ? "" : "." + data.skipOrOnly;
+      const skipOrOnly =
+        data.skipOrOnly === null || data.skipOrOnly === undefined
+          ? ""
+          : "." + data.skipOrOnly;
       const title =
         (data.resolvedUrl !== null ? "accepts " : "rejects ") +
         helpers.a_an(test) +

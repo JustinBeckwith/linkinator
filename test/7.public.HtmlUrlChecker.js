@@ -283,7 +283,7 @@ describe("PUBLIC -- HtmlUrlChecker", () => {
       let pageCalled = false;
 
       new HtmlUrlChecker(helpers.options(), {
-        page: function(error, pageUrl, customData) {
+        page: function(error, pageUrl) {
           expect(error).to.be.an.instanceOf(Error);
           expect(error.message).to.equal(messages.errors.HTML_RETRIEVAL);
           expect(pageUrl).to.be.a("string");
@@ -300,7 +300,7 @@ describe("PUBLIC -- HtmlUrlChecker", () => {
       let pageCount = 0;
 
       const instance = new HtmlUrlChecker(helpers.options(), {
-        page: function(error, pageUrl, customData) {
+        page: function(error) {
           if (++pageCount === 1) {
             expect(error).to.be.an.instanceOf(Error);
           } else {
@@ -323,7 +323,7 @@ describe("PUBLIC -- HtmlUrlChecker", () => {
       const results = [];
 
       new HtmlUrlChecker(helpers.options(), {
-        junk: function(result) {
+        junk: () => {
           done(new Error("this should not have been called"));
         },
         link: function(result) {
@@ -348,7 +348,7 @@ describe("PUBLIC -- HtmlUrlChecker", () => {
         junk: function(result) {
           junkResults[result.html.offsetIndex] = result;
         },
-        link: function(result) {
+        link: () => {
           done(new Error("this should not have been called"));
         },
         end: function() {
@@ -362,7 +362,5 @@ describe("PUBLIC -- HtmlUrlChecker", () => {
         }
       }).enqueue(conn.absoluteUrl + "/disallowed/header.html");
     });
-
-    // TODO :: honorRobotExcluses=true (header) + userAgent=Googlebot/2.1
   });
 });

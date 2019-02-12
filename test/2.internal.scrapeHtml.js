@@ -32,7 +32,10 @@ describe("INTERNAL -- parseHtml / scrapeHtml", () => {
     for (const test in tagTests) {
       let code = "";
       const data = tagTests[test];
-      const skipOrOnly = data.skipOrOnly == null ? "" : "." + data.skipOrOnly;
+      const skipOrOnly =
+        data.skipOrOnly === null || data.skipOrOnly === undefined
+          ? ""
+          : "." + data.skipOrOnly;
 
       code +=
         "it" +
