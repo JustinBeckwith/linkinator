@@ -37,7 +37,7 @@
     "@commitlint/config-conventional": "^7.5.0",
     "chai": "^4.0.0",
     "chai-as-promised": "^7.0.0",
-    "chai-like": "^0.2.10",
+    "chai-like": "^1.0.0",
     "chai-things": "^0.2.0",
     "codecov": "^3.1.0",
     "eslint": "^5.13.0",
