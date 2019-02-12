@@ -1,16 +1,16 @@
-"use strict";
-const messages = require("../lib/internal/messages");
-const streamHtml = require("../lib/internal/streamHtml");
+'use strict';
+const messages = require('../lib/internal/messages');
+const streamHtml = require('../lib/internal/streamHtml');
 
-const helpers = require("./helpers");
+const helpers = require('./helpers');
 
-const expect = require("chai").expect;
-const isStream = require("is-stream");
-const UrlCache = require("urlcache");
+const expect = require('chai').expect;
+const isStream = require('is-stream');
+const UrlCache = require('urlcache');
 
 let conn;
 
-describe("INTERNAL -- streamHtml", () => {
+describe('INTERNAL -- streamHtml', () => {
   before(() => {
     return helpers.startConnection().then(connection => {
       conn = connection;
@@ -21,47 +21,47 @@ describe("INTERNAL -- streamHtml", () => {
     return helpers.stopConnection(conn.realPort);
   });
 
-  it("works", () => {
+  it('works', () => {
     return streamHtml(
-      conn.absoluteUrl + "/normal/no-links.html",
+      conn.absoluteUrl + '/normal/no-links.html',
       null,
       helpers.options()
     ).then(result => {
       expect(isStream(result.stream)).to.be.true;
       expect(result.response.url).to.equal(
-        conn.absoluteUrl + "/normal/no-links.html"
+        conn.absoluteUrl + '/normal/no-links.html'
       );
     });
   });
 
-  it("reports a redirect", () => {
+  it('reports a redirect', () => {
     return streamHtml(
-      conn.absoluteUrl + "/redirect/redirect.html",
+      conn.absoluteUrl + '/redirect/redirect.html',
       null,
       helpers.options()
     ).then(result => {
       expect(isStream(result.stream)).to.be.true;
       expect(result.response.url).to.equal(
-        conn.absoluteUrl + "/redirect/redirected.html"
+        conn.absoluteUrl + '/redirect/redirected.html'
       );
     });
   });
 
-  it("rejects a non-html url (gif)", () => {
+  it('rejects a non-html url (gif)', () => {
     let accepted = false;
 
     return streamHtml(
-      conn.absoluteUrl + "/non-html/image.gif",
+      conn.absoluteUrl + '/non-html/image.gif',
       null,
       helpers.options()
     )
       .then(() => {
-        accepted = new Error("this should not have been called");
+        accepted = new Error('this should not have been called');
       })
       .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
         expect(error.message).to.equal(
-          messages.errors.EXPECTED_HTML("image/gif")
+          messages.errors.EXPECTED_HTML('image/gif')
         );
       })
       .then(() => {
@@ -69,16 +69,16 @@ describe("INTERNAL -- streamHtml", () => {
       });
   });
 
-  it("rejects a non-html url (unknown)", () => {
+  it('rejects a non-html url (unknown)', () => {
     let accepted = false;
 
     return streamHtml(
-      conn.absoluteUrl + "/non-html/empty",
+      conn.absoluteUrl + '/non-html/empty',
       null,
       helpers.options()
     )
       .then(() => {
-        accepted = new Error("this should not have been called");
+        accepted = new Error('this should not have been called');
       })
       .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
@@ -91,16 +91,16 @@ describe("INTERNAL -- streamHtml", () => {
       });
   });
 
-  it("rejects a 404", () => {
+  it('rejects a 404', () => {
     let accepted = false;
 
     return streamHtml(
-      conn.absoluteUrl + "/normal/fake.html",
+      conn.absoluteUrl + '/normal/fake.html',
       null,
       helpers.options()
     )
       .then(() => {
-        accepted = new Error("this should not have been called");
+        accepted = new Error('this should not have been called');
       })
       .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
@@ -111,12 +111,12 @@ describe("INTERNAL -- streamHtml", () => {
       });
   });
 
-  it("rejects an erroneous url", () => {
+  it('rejects an erroneous url', () => {
     let accepted = false;
 
-    return streamHtml("/normal/fake.html", null, helpers.options())
+    return streamHtml('/normal/fake.html', null, helpers.options())
       .then(() => {
-        accepted = new Error("this should not have been called");
+        accepted = new Error('this should not have been called');
       })
       .catch(error => {
         expect(error).to.be.an.instanceOf(Error);
@@ -129,49 +129,49 @@ describe("INTERNAL -- streamHtml", () => {
 
   // NOTE :: cache is not stored for use in `streamHtml()`, but instead for any wrapping functions
   // As a result, the cached responses are not retrieved and checked to be non-unique
-  describe("caching", () => {
-    it("stores the response", () => {
+  describe('caching', () => {
+    it('stores the response', () => {
       const cache = new UrlCache();
 
       return streamHtml(
-        conn.absoluteUrl + "/normal/no-links.html",
+        conn.absoluteUrl + '/normal/no-links.html',
         cache,
         helpers.options({ cacheResponses: true })
       )
         .then(() => {
-          return cache.get(conn.absoluteUrl + "/normal/no-links.html");
+          return cache.get(conn.absoluteUrl + '/normal/no-links.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
         });
     });
 
-    it("stores the response of a redirected url", () => {
+    it('stores the response of a redirected url', () => {
       const cache = new UrlCache();
 
       return streamHtml(
-        conn.absoluteUrl + "/redirect/redirect.html",
+        conn.absoluteUrl + '/redirect/redirect.html',
         cache,
         helpers.options({ cacheResponses: true })
       )
         .then(() => {
-          return cache.get(conn.absoluteUrl + "/redirect/redirect.html");
+          return cache.get(conn.absoluteUrl + '/redirect/redirect.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
 
-          return cache.get(conn.absoluteUrl + "/redirect/redirected.html");
+          return cache.get(conn.absoluteUrl + '/redirect/redirected.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
         });
     });
 
-    it("stores the response of a non-html url", () => {
+    it('stores the response of a non-html url', () => {
       const cache = new UrlCache();
 
       return streamHtml(
-        conn.absoluteUrl + "/non-html/image.gif",
+        conn.absoluteUrl + '/non-html/image.gif',
         cache,
         helpers.options({ cacheResponses: true })
       )
@@ -179,19 +179,19 @@ describe("INTERNAL -- streamHtml", () => {
           // "Unsupported type", etc, error
         })
         .then(() => {
-          return cache.get(conn.absoluteUrl + "/non-html/image.gif");
+          return cache.get(conn.absoluteUrl + '/non-html/image.gif');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
           expect(response).to.not.be.an.instanceOf(Error);
         });
     });
 
-    it("stores the response of a 404", () => {
+    it('stores the response of a 404', () => {
       const cache = new UrlCache();
 
       return streamHtml(
-        conn.absoluteUrl + "/normal/fake.html",
+        conn.absoluteUrl + '/normal/fake.html',
         cache,
         helpers.options({ cacheResponses: true })
       )
@@ -199,19 +199,19 @@ describe("INTERNAL -- streamHtml", () => {
           // "HTML not retrieved", etc, error
         })
         .then(() => {
-          return cache.get(conn.absoluteUrl + "/normal/fake.html");
+          return cache.get(conn.absoluteUrl + '/normal/fake.html');
         })
         .then(response => {
-          expect(response).to.be.an("object");
+          expect(response).to.be.an('object');
           expect(response).to.not.be.an.instanceOf(Error);
         });
     });
 
-    it("stores the error from an erroneous url", () => {
+    it('stores the error from an erroneous url', () => {
       const cache = new UrlCache();
 
       return streamHtml(
-        "/normal/fake.html",
+        '/normal/fake.html',
         cache,
         helpers.options({ cacheResponses: true })
       )
@@ -219,7 +219,7 @@ describe("INTERNAL -- streamHtml", () => {
           // "Invalid URL", etc, error
         })
         .then(() => {
-          return cache.get("/normal/fake.html");
+          return cache.get('/normal/fake.html');
         })
         .then(response => {
           expect(response).to.be.an.instanceOf(Error);

@@ -1,23 +1,23 @@
-"use strict";
-const fs = require("fs");
-const path = require("path");
+'use strict';
+const fs = require('fs');
+const path = require('path');
 
-const helpers = require("../");
+const helpers = require('../');
 
 const urls = {
-  "remote absolute": "https://fakeurl2.com/path/link.html?query#hash",
-  "local absolute": "http://fakeurl.com/path/link.html?query#hash",
-  "root-path-relative": "/path/link.html?query#hash",
-  "path-relative": "path/link.html?query#hash",
-  "resource-relative": "link.html?query#hash",
-  "query-relative": "?query#hash",
-  "hash-relative": "#hash",
-  empty: "",
+  'remote absolute': 'https://fakeurl2.com/path/link.html?query#hash',
+  'local absolute': 'http://fakeurl.com/path/link.html?query#hash',
+  'root-path-relative': '/path/link.html?query#hash',
+  'path-relative': 'path/link.html?query#hash',
+  'resource-relative': 'link.html?query#hash',
+  'query-relative': '?query#hash',
+  'hash-relative': '#hash',
+  empty: '',
   undefined: null
 };
 
 function generate() {
-  saveFile(path.normalize(__dirname + "/../json/linkObj.json"));
+  saveFile(path.normalize(__dirname + '/../json/linkObj.json'));
 }
 
 function generateData() {
@@ -29,23 +29,23 @@ function generateData() {
       for (htmlBase in urls) {
         output[
           url.toUpperCase() +
-            " url" +
-            " with " +
+            ' url' +
+            ' with ' +
             helpers.a_an(base) +
-            " " +
+            ' ' +
             base.toUpperCase() +
-            " base" +
-            " and " +
+            ' base' +
+            ' and ' +
             htmlBase.toUpperCase() +
-            " html base"
+            ' html base'
         ] = {
           linkUrl: urls[url],
           baseUrl: urls[base],
           htmlBaseUrl: urls[htmlBase],
 
-          skipOrOnly: "skip",
-          resolvedLinkUrl: "",
-          resolvedBaseUrl: "",
+          skipOrOnly: 'skip',
+          resolvedLinkUrl: '',
+          resolvedBaseUrl: '',
           internal: null,
           samePage: null
         };
@@ -58,7 +58,7 @@ function generateData() {
 
 function generateString() {
   // Extra line break for unix/git
-  return JSON.stringify(generateData(), null, "\t") + "\n";
+  return JSON.stringify(generateData(), null, '\t') + '\n';
 }
 
 function saveFile(location) {

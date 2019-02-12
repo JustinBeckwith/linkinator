@@ -1,23 +1,23 @@
-"use strict";
-const HtmlChecker = require("../lib/public/HtmlChecker");
+'use strict';
+const HtmlChecker = require('../lib/public/HtmlChecker');
 
-const helpers = require("./helpers");
+const helpers = require('./helpers');
 
-const expect = require("chai").expect;
+const expect = require('chai').expect;
 
 let allTagsString, baseUrl, commonHtmlString, conn;
 
 function commonHtmlStream() {
-  return helpers.fixture.stream("/normal/index.html");
+  return helpers.fixture.stream('/normal/index.html');
 }
 
-describe("PUBLIC -- HtmlChecker", () => {
+describe('PUBLIC -- HtmlChecker', () => {
   before(() => {
     return helpers.startConnections().then(connections => {
       conn = connections;
       allTagsString = helpers.tagsString(3, conn.absoluteUrls[0]);
-      baseUrl = conn.absoluteUrls[0] + "/normal/index.html";
-      commonHtmlString = helpers.fixture.string("/normal/index.html");
+      baseUrl = conn.absoluteUrls[0] + '/normal/index.html';
+      commonHtmlString = helpers.fixture.string('/normal/index.html');
     });
   });
 
@@ -25,9 +25,9 @@ describe("PUBLIC -- HtmlChecker", () => {
     return helpers.stopConnections(conn.realPorts);
   });
 
-  describe("methods (#1)", () => {
-    describe("scan()", () => {
-      it("takes a string when ready", () => {
+  describe('methods (#1)', () => {
+    describe('scan()', () => {
+      it('takes a string when ready', () => {
         const scanning = new HtmlChecker(helpers.options()).scan(
           commonHtmlString,
           baseUrl
@@ -36,7 +36,7 @@ describe("PUBLIC -- HtmlChecker", () => {
         expect(scanning).to.be.true;
       });
 
-      it("takes a stream when ready", () => {
+      it('takes a stream when ready', () => {
         const scanning = new HtmlChecker(helpers.options()).scan(
           commonHtmlStream(),
           baseUrl
@@ -45,7 +45,7 @@ describe("PUBLIC -- HtmlChecker", () => {
         expect(scanning).to.be.true;
       });
 
-      it("reports if not ready", () => {
+      it('reports if not ready', () => {
         const instance = new HtmlChecker(helpers.options());
 
         instance.scan(commonHtmlString, baseUrl);
@@ -57,8 +57,8 @@ describe("PUBLIC -- HtmlChecker", () => {
     });
   });
 
-  describe("handlers", () => {
-    it("html", done => {
+  describe('handlers', () => {
+    it('html', done => {
       new HtmlChecker(helpers.options(), {
         html: function(tree, robots) {
           expect(tree).to.be.an.instanceOf(Object);
@@ -68,7 +68,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(commonHtmlString, baseUrl);
     });
 
-    it("link", done => {
+    it('link', done => {
       let count = 0;
 
       new HtmlChecker(helpers.options(), {
@@ -84,7 +84,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(commonHtmlString, baseUrl);
     });
 
-    it("complete", done => {
+    it('complete', done => {
       new HtmlChecker(helpers.options(), {
         complete: function() {
           expect(arguments).to.have.length(0);
@@ -94,9 +94,9 @@ describe("PUBLIC -- HtmlChecker", () => {
     });
   });
 
-  describe("methods (#2)", () => {
-    describe("numActiveLinks()", () => {
-      it("works", done => {
+  describe('methods (#2)', () => {
+    describe('numActiveLinks()', () => {
+      it('works', done => {
         let checked = false;
 
         const instance = new HtmlChecker(helpers.options(), {
@@ -117,8 +117,8 @@ describe("PUBLIC -- HtmlChecker", () => {
       });
     });
 
-    describe("pause() / resume()", () => {
-      it("works", done => {
+    describe('pause() / resume()', () => {
+      it('works', done => {
         let resumed = false;
 
         const instance = new HtmlChecker(helpers.options(), {
@@ -140,8 +140,8 @@ describe("PUBLIC -- HtmlChecker", () => {
       });
     });
 
-    describe("numQueuedLinks()", () => {
-      it("works", done => {
+    describe('numQueuedLinks()', () => {
+      it('works', done => {
         const instance = new HtmlChecker(helpers.options(), {
           complete: function() {
             expect(instance.numQueuedLinks()).to.equal(0);
@@ -164,8 +164,8 @@ describe("PUBLIC -- HtmlChecker", () => {
     });
   });
 
-  describe("edge cases", () => {
-    it("supports multiple links", done => {
+  describe('edge cases', () => {
+    it('supports multiple links', done => {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
@@ -181,7 +181,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(commonHtmlString, baseUrl);
     });
 
-    it("supports html with no links", done => {
+    it('supports html with no links', done => {
       let count = 0;
 
       new HtmlChecker(helpers.options(), {
@@ -192,12 +192,12 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(count).to.equal(0);
           done();
         }
-      }).scan(helpers.fixture.string("/normal/no-links.html"), baseUrl);
+      }).scan(helpers.fixture.string('/normal/no-links.html'), baseUrl);
     });
   });
 
-  describe("options", () => {
-    it("excludedKeywords = []", done => {
+  describe('options', () => {
+    it('excludedKeywords = []', done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
@@ -205,7 +205,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -221,7 +221,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludedKeywords = […]", done => {
+    it('excludedKeywords = […]', done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
@@ -242,7 +242,7 @@ describe("PUBLIC -- HtmlChecker", () => {
             expect(junkResults[0]).to.be.like({
               broken: null,
               excluded: true,
-              excludedReason: "BLC_KEYWORD"
+              excludedReason: 'BLC_KEYWORD'
             });
 
             expect(results).to.have.length(1);
@@ -258,7 +258,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       ).scan(htmlString, baseUrl);
     });
 
-    it("excludedSchemes = []", done => {
+    it('excludedSchemes = []', done => {
       let htmlString =
         '<a href="data:image/gif;base64,R0lGODdhAQABAPAAAP///wAAACH/C1hNUCBEYXRhWE1QAz94cAAsAAAAAAEAAQAAAgJEAQA7">link1</a>';
       htmlString += '<a href="geo:0,0">link2</a>';
@@ -272,7 +272,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options({ excludedSchemes: [] }), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -281,7 +281,7 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(results).to.have.length(6);
           expect(results).to.all.be.like({
             broken: true,
-            brokenReason: "BLC_INVALID"
+            brokenReason: 'BLC_INVALID'
           });
           done();
         }
@@ -306,7 +306,7 @@ describe("PUBLIC -- HtmlChecker", () => {
           junkResults[result.html.offsetIndex] = result;
         },
         link: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         complete: function() {
           expect(junkResults).to.have.length(6);
@@ -314,14 +314,14 @@ describe("PUBLIC -- HtmlChecker", () => {
             broken: null,
             brokenReason: null,
             excluded: true,
-            excludedReason: "BLC_SCHEME"
+            excludedReason: 'BLC_SCHEME'
           });
           done();
         }
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeExternalLinks = false", done => {
+    it('excludeExternalLinks = false', done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
@@ -329,7 +329,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -353,7 +353,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeExternalLinks = true", done => {
+    it('excludeExternalLinks = true', done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="' + conn.absoluteUrls[1] + '">link2</a>';
 
@@ -370,16 +370,16 @@ describe("PUBLIC -- HtmlChecker", () => {
         complete: function() {
           expect(junkResults).to.have.length(1);
           expect(junkResults[0]).to.be.like({
-            html: { text: "link2" },
+            html: { text: 'link2' },
             broken: null,
             excluded: true,
-            excludedReason: "BLC_EXTERNAL",
+            excludedReason: 'BLC_EXTERNAL',
             internal: false
           });
 
           expect(results).to.have.length(1);
           expect(results[0]).to.be.like({
-            html: { text: "link1" },
+            html: { text: 'link1' },
             broken: false,
             excluded: false,
             excludedReason: null,
@@ -391,7 +391,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeInternalLinks = false", done => {
+    it('excludeInternalLinks = false', done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="#hash">link3</a>';
@@ -400,7 +400,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -418,7 +418,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeInternalLinks = true", done => {
+    it('excludeInternalLinks = true', done => {
       let htmlString = '<a href="' + conn.absoluteUrls[0] + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="#hash">link3</a>';
@@ -430,14 +430,14 @@ describe("PUBLIC -- HtmlChecker", () => {
           junkResults[result.html.offsetIndex] = result;
         },
         link: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         complete: function() {
           expect(junkResults).to.have.length(3);
           expect(junkResults).to.all.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_INTERNAL",
+            excludedReason: 'BLC_INTERNAL',
             internal: true
           });
           done();
@@ -445,7 +445,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeLinksToSamePage = false", done => {
+    it('excludeLinksToSamePage = false', done => {
       let htmlString = '<a href="' + baseUrl + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="?query">link3</a>';
@@ -455,7 +455,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -497,7 +497,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("excludeLinksToSamePage = true", done => {
+    it('excludeLinksToSamePage = true', done => {
       let htmlString = '<a href="' + baseUrl + '">link1</a>';
       htmlString += '<a href="/">link2</a>';
       htmlString += '<a href="?query">link3</a>';
@@ -517,18 +517,18 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(junkResults).to.have.length(2);
           expect(junkResults).to.be.like([
             {
-              html: { text: "link1" },
+              html: { text: 'link1' },
               broken: null,
               excluded: true,
-              excludedReason: "BLC_SAMEPAGE",
+              excludedReason: 'BLC_SAMEPAGE',
               internal: true,
               samePage: true
             },
             {
-              html: { text: "link4" },
+              html: { text: 'link4' },
               broken: null,
               excluded: true,
-              excludedReason: "BLC_SAMEPAGE",
+              excludedReason: 'BLC_SAMEPAGE',
               internal: true,
               samePage: true
             }
@@ -537,7 +537,7 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(results).to.have.length(2);
           expect(results).to.be.like([
             {
-              html: { text: "link2" },
+              html: { text: 'link2' },
               broken: false,
               excluded: false,
               excludedReason: null,
@@ -545,7 +545,7 @@ describe("PUBLIC -- HtmlChecker", () => {
               samePage: false
             },
             {
-              html: { text: "link3" },
+              html: { text: 'link3' },
               broken: false,
               excluded: false,
               excludedReason: null,
@@ -559,7 +559,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("filterLevel = 0", done => {
+    it('filterLevel = 0', done => {
       const junkResults = [];
       const results = [];
 
@@ -575,7 +575,7 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(junkResults).to.all.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_HTML"
+            excludedReason: 'BLC_HTML'
           });
 
           expect(results).to.have.length(2);
@@ -590,7 +590,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("filterLevel = 1", done => {
+    it('filterLevel = 1', done => {
       const junkResults = [];
       const results = [];
 
@@ -606,7 +606,7 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(junkResults).to.all.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_HTML"
+            excludedReason: 'BLC_HTML'
           });
 
           expect(results).to.have.length(14);
@@ -621,7 +621,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("filterLevel = 2", done => {
+    it('filterLevel = 2', done => {
       const junkResults = [];
       const results = [];
 
@@ -637,7 +637,7 @@ describe("PUBLIC -- HtmlChecker", () => {
           expect(junkResults).to.all.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_HTML"
+            excludedReason: 'BLC_HTML'
           });
 
           expect(results).to.have.length(17);
@@ -652,12 +652,12 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("filterLevel = 3", done => {
+    it('filterLevel = 3', done => {
       const results = [];
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -674,7 +674,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(allTagsString, baseUrl);
     });
 
-    it("honorRobotExclusions = false (rel)", done => {
+    it('honorRobotExclusions = false (rel)', done => {
       let htmlString =
         '<a href="' + conn.absoluteUrls[0] + '" rel="nofollow">link1</a>';
       htmlString +=
@@ -688,7 +688,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -705,7 +705,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("honorRobotExclusions = true (rel)", done => {
+    it('honorRobotExclusions = true (rel)', done => {
       let htmlString =
         '<a href="' + conn.absoluteUrls[0] + '" rel="nofollow">link1</a>';
       htmlString +=
@@ -722,21 +722,21 @@ describe("PUBLIC -- HtmlChecker", () => {
           junkResults[result.html.offsetIndex] = result;
         },
         link: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         complete: function() {
           expect(junkResults).to.have.length(3);
           expect(junkResults).to.all.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_ROBOTS"
+            excludedReason: 'BLC_ROBOTS'
           });
           done();
         }
       }).scan(htmlString, baseUrl);
     });
 
-    it("honorRobotExclusions = false (meta)", done => {
+    it('honorRobotExclusions = false (meta)', done => {
       let htmlString = '<meta name="robots" content="nofollow">';
       htmlString += '<a href="' + conn.absoluteUrls[0] + '">link</a>';
 
@@ -744,7 +744,7 @@ describe("PUBLIC -- HtmlChecker", () => {
 
       new HtmlChecker(helpers.options(), {
         junk: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         link: function(result) {
           results[result.html.offsetIndex] = result;
@@ -761,7 +761,7 @@ describe("PUBLIC -- HtmlChecker", () => {
       }).scan(htmlString, baseUrl);
     });
 
-    it("honorRobotExclusions = true (meta)", done => {
+    it('honorRobotExclusions = true (meta)', done => {
       let htmlString = '<meta name="robots" content="nofollow">';
       htmlString += '<a href="' + conn.absoluteUrls[0] + '">link</a>';
 
@@ -772,14 +772,14 @@ describe("PUBLIC -- HtmlChecker", () => {
           junkResults[result.html.offsetIndex] = result;
         },
         link: () => {
-          done(new Error("this should not have been called"));
+          done(new Error('this should not have been called'));
         },
         complete: function() {
           expect(junkResults).to.have.length(1);
           expect(junkResults[0]).to.be.like({
             broken: null,
             excluded: true,
-            excludedReason: "BLC_ROBOTS"
+            excludedReason: 'BLC_ROBOTS'
           });
           done();
         }

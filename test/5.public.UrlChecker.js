@@ -1,13 +1,13 @@
-"use strict";
-const UrlChecker = require("../lib/public/UrlChecker");
+'use strict';
+const UrlChecker = require('../lib/public/UrlChecker');
 
-const helpers = require("./helpers");
+const helpers = require('./helpers');
 
-const expect = require("chai").expect;
+const expect = require('chai').expect;
 
 let conn;
 
-describe("PUBLIC -- UrlChecker", () => {
+describe('PUBLIC -- UrlChecker', () => {
   before(() => {
     return helpers.startConnection().then(connection => {
       conn = connection;
@@ -18,27 +18,27 @@ describe("PUBLIC -- UrlChecker", () => {
     return helpers.stopConnection(conn.realPort);
   });
 
-  describe("methods (#1)", () => {
-    describe("enqueue()", () => {
-      it("accepts a valid url", () => {
+  describe('methods (#1)', () => {
+    describe('enqueue()', () => {
+      it('accepts a valid url', () => {
         const instance = new UrlChecker(helpers.options());
         expect(instance.enqueue(conn.absoluteUrl)).to.not.be.an.instanceOf(
           Error
         );
         expect(
-          instance.enqueue("/normal/no-links.html", conn.absoluteUrl)
+          instance.enqueue('/normal/no-links.html', conn.absoluteUrl)
         ).to.not.be.an.instanceOf(Error);
       });
 
-      it("rejects an invalid url", () => {
-        const id = new UrlChecker(helpers.options()).enqueue("/path/");
+      it('rejects an invalid url', () => {
+        const id = new UrlChecker(helpers.options()).enqueue('/path/');
         expect(id).to.be.an.instanceOf(Error);
       });
     });
   });
 
-  describe("handlers", () => {
-    it("link", done => {
+  describe('handlers', () => {
+    it('link', done => {
       new UrlChecker(helpers.options(), {
         link: function(result, customData) {
           expect(arguments).to.have.length(2);
@@ -49,7 +49,7 @@ describe("PUBLIC -- UrlChecker", () => {
       }).enqueue(conn.absoluteUrl);
     });
 
-    it("end", done => {
+    it('end', done => {
       new UrlChecker(helpers.options(), {
         end: function() {
           expect(arguments).to.have.length(0);
@@ -59,9 +59,9 @@ describe("PUBLIC -- UrlChecker", () => {
     });
   });
 
-  describe("methods (#2)", () => {
-    describe("numActiveLinks()", () => {
-      it("works", done => {
+  describe('methods (#2)', () => {
+    describe('numActiveLinks()', () => {
+      it('works', done => {
         const instance = new UrlChecker(helpers.options(), {
           end: function() {
             expect(instance.numActiveLinks()).to.equal(0);
@@ -70,14 +70,14 @@ describe("PUBLIC -- UrlChecker", () => {
         });
 
         instance.enqueue(conn.absoluteUrl);
-        instance.enqueue("/normal/no-links.html", conn.absoluteUrl);
+        instance.enqueue('/normal/no-links.html', conn.absoluteUrl);
 
         expect(instance.numActiveLinks()).to.equal(2);
       });
     });
 
-    describe("pause() / resume()", () => {
-      it("works", done => {
+    describe('pause() / resume()', () => {
+      it('works', done => {
         let resumed = false;
 
         const instance = new UrlChecker(helpers.options(), {
@@ -99,8 +99,8 @@ describe("PUBLIC -- UrlChecker", () => {
       });
     });
 
-    describe("dequeue() / numQueuedLinks()", () => {
-      it("accepts a valid id", done => {
+    describe('dequeue() / numQueuedLinks()', () => {
+      it('accepts a valid id', done => {
         const instance = new UrlChecker(helpers.options(), {
           end: function() {
             expect(instance.numQueuedLinks()).to.equal(0);
@@ -122,7 +122,7 @@ describe("PUBLIC -- UrlChecker", () => {
         instance.resume();
       });
 
-      it("rejects an invalid id", () => {
+      it('rejects an invalid id', () => {
         const instance = new UrlChecker(helpers.options());
 
         // Prevent first queued item from immediately starting (and thus being auto-dequeued)
@@ -136,8 +136,8 @@ describe("PUBLIC -- UrlChecker", () => {
     });
   });
 
-  describe("caching", () => {
-    it("requests a unique url only once", done => {
+  describe('caching', () => {
+    it('requests a unique url only once', done => {
       const options = helpers.options({ cacheResponses: true });
       const results = [];
       let success = false;
@@ -158,18 +158,18 @@ describe("PUBLIC -- UrlChecker", () => {
         }
       });
 
-      instance.enqueue(conn.absoluteUrl + "/normal/index.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/index.html', null, {
         index: 0
       });
-      instance.enqueue(conn.absoluteUrl + "/normal/index.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/index.html', null, {
         index: 1
       });
-      instance.enqueue(conn.absoluteUrl + "/normal/no-links.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/no-links.html', null, {
         index: 2
       });
     });
 
-    it("re-requests a non-unique url after clearing cache", done => {
+    it('re-requests a non-unique url after clearing cache', done => {
       let finalFired = false;
       const options = helpers.options({ cacheResponses: true });
       const results = [];
@@ -177,7 +177,7 @@ describe("PUBLIC -- UrlChecker", () => {
       const instance = new UrlChecker(options, {
         link: function(result, customData) {
           if (result.http.response._cached === true) {
-            done(new Error("this should not have been a cached result"));
+            done(new Error('this should not have been a cached result'));
           }
 
           result.http.response._cached = true;
@@ -189,7 +189,7 @@ describe("PUBLIC -- UrlChecker", () => {
             done();
           } else {
             instance.clearCache();
-            instance.enqueue(conn.absoluteUrl + "/normal/no-links.html", null, {
+            instance.enqueue(conn.absoluteUrl + '/normal/no-links.html', null, {
               index: 2
             });
             finalFired = true;
@@ -197,15 +197,15 @@ describe("PUBLIC -- UrlChecker", () => {
         }
       });
 
-      instance.enqueue(conn.absoluteUrl + "/normal/index.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/index.html', null, {
         index: 0
       });
-      instance.enqueue(conn.absoluteUrl + "/normal/no-links.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/no-links.html', null, {
         index: 1
       });
     });
 
-    it("re-requests a non-unique url after expiring in cache", done => {
+    it('re-requests a non-unique url after expiring in cache', done => {
       let finalFired = false;
       const options = helpers.options({
         cacheExpiryTime: 50,
@@ -216,7 +216,7 @@ describe("PUBLIC -- UrlChecker", () => {
       const instance = new UrlChecker(options, {
         link: function(result, customData) {
           if (result.http.response._cached === true) {
-            done(new Error("this should not have been a cached result"));
+            done(new Error('this should not have been a cached result'));
           }
 
           result.http.response._cached = true;
@@ -229,7 +229,7 @@ describe("PUBLIC -- UrlChecker", () => {
           } else {
             setTimeout(() => {
               instance.enqueue(
-                conn.absoluteUrl + "/normal/no-links.html",
+                conn.absoluteUrl + '/normal/no-links.html',
                 null,
                 { index: 1 }
               );
@@ -239,20 +239,20 @@ describe("PUBLIC -- UrlChecker", () => {
         }
       });
 
-      instance.enqueue(conn.absoluteUrl + "/normal/no-links.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/no-links.html', null, {
         index: 0
       });
     });
   });
 
-  describe("edge cases", () => {
-    it("supports a relative url", done => {
+  describe('edge cases', () => {
+    it('supports a relative url', done => {
       new UrlChecker(helpers.options(), {
         link: function(result) {
           expect(result).to.be.like({
             url: {
-              original: "/normal/no-links.html",
-              resolved: conn.absoluteUrl + "/normal/no-links.html"
+              original: '/normal/no-links.html',
+              resolved: conn.absoluteUrl + '/normal/no-links.html'
             },
             base: {
               original: conn.absoluteUrl
@@ -260,19 +260,19 @@ describe("PUBLIC -- UrlChecker", () => {
           });
           done();
         }
-      }).enqueue("/normal/no-links.html", conn.absoluteUrl);
+      }).enqueue('/normal/no-links.html', conn.absoluteUrl);
     });
 
-    it("supports custom data", done => {
+    it('supports custom data', done => {
       new UrlChecker(helpers.options(), {
         link: function(result, customData) {
-          expect(customData).to.deep.equal({ test: "value" });
+          expect(customData).to.deep.equal({ test: 'value' });
           done();
         }
-      }).enqueue(conn.absoluteUrl, null, { test: "value" });
+      }).enqueue(conn.absoluteUrl, null, { test: 'value' });
     });
 
-    it("supports multiple queue items", done => {
+    it('supports multiple queue items', done => {
       const results = [];
 
       const instance = new UrlChecker(helpers.options(), {
@@ -282,21 +282,21 @@ describe("PUBLIC -- UrlChecker", () => {
         end: function() {
           expect(results).to.have.length(3);
           expect(results).to.be.like([
-            { url: { original: conn.absoluteUrl + "/normal/index.html" } },
-            { url: { original: conn.absoluteUrl + "/normal/no-links.html" } },
-            { url: { original: conn.absoluteUrl + "/normal/fake.html" } }
+            { url: { original: conn.absoluteUrl + '/normal/index.html' } },
+            { url: { original: conn.absoluteUrl + '/normal/no-links.html' } },
+            { url: { original: conn.absoluteUrl + '/normal/fake.html' } }
           ]);
           done();
         }
       });
 
-      instance.enqueue(conn.absoluteUrl + "/normal/index.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/index.html', null, {
         index: 0
       });
-      instance.enqueue(conn.absoluteUrl + "/normal/no-links.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/no-links.html', null, {
         index: 1
       });
-      instance.enqueue(conn.absoluteUrl + "/normal/fake.html", null, {
+      instance.enqueue(conn.absoluteUrl + '/normal/fake.html', null, {
         index: 2
       });
     });
