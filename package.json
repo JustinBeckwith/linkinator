@@ -1,5 +1,5 @@
 {
-  "name": "@justinbeckwith/broken-link-checker",
+  "name": "linkinator",
   "description": "Find broken links, missing images, etc in your HTML.",
   "version": "0.7.8",
   "license": "MIT",
@@ -7,7 +7,7 @@
   "main": "lib",
   "bin": {
     "blc": "bin/blc",
-    "broken-link-checker": "bin/blc"
+    "linkinator": "bin/blc"
   },
   "dependencies": {
     "bhttp": "^1.2.4",

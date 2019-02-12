@@ -1,6 +1,6 @@
 # broken-link-checker
 
-[![npm version](https://img.shields.io/npm/v/@justinbeckwith/broken-link-checker.svg)](https://www.npmjs.org/package/@justinbeckwith/broken-link-checker)
+[![npm version](https://img.shields.io/npm/v/linkinator.svg)](https://www.npmjs.org/package/linkinator)
 [![Build Status](https://api.cirrus-ci.com/github/JustinBeckwith/blc.svg)](https://cirrus-ci.com/github/JustinBeckwith/blc)
 [![codecov](https://codecov.io/gh/JustinBeckwith/blc/branch/master/graph/badge.svg)](https://codecov.io/gh/JustinBeckwith/blc)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
