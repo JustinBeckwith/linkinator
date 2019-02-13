@@ -34,8 +34,8 @@ export interface CrawlResult {
 interface CrawlOptions {
   url: string;
   crawl: boolean;
-  results?: LinkResult[];
-  cache?: Set<string>;
+  results: LinkResult[];
+  cache: Set<string>;
   checkOptions: CheckOptions;
 }
 
@@ -59,8 +59,13 @@ export class LinkChecker extends EventEmitter {
       enableDestroy(server);
       options.path = `http://localhost:${port}`;
     }
-    const results = await this.crawl(
-        {url: options.path, crawl: true, checkOptions: options});
+    const results = await this.crawl({
+      url: options.path,
+      crawl: true,
+      checkOptions: options,
+      results: [],
+      cache: new Set()
+    });
     const result = {
       links: results,
       passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
@@ -92,9 +97,6 @@ export class LinkChecker extends EventEmitter {
    * @returns A list of crawl results consisting of urls and status codes
    */
   private async crawl(opts: CrawlOptions): Promise<LinkResult[]> {
-    opts.results = opts.results || [];
-    opts.cache = opts.cache || new Set();
-
     // Check to see if we've already scanned this url
     if (opts.cache.has(opts.url)) {
       return opts.results;
@@ -119,12 +121,24 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     try {
-      const res = await gaxios.request<string>({
-        method: 'GET',
+      let res = await gaxios.request<string>({
+        method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url,
         responseType: opts.crawl ? 'text' : 'stream',
         validateStatus: () => true
       });
+
+      // If we got an HTTP 405, the server may not like HEAD. GET instead!
+      if (res.status === 405) {
+        res = await gaxios.request<string>({
+          method: 'GET',
+          url: opts.url,
+          responseType: 'stream',
+          validateStatus: () => true
+        });
+      }
+
+      // Assume any 2xx status is 👌
       status = res.status;
       if (res.status >= 200 && res.status < 300) {
         state = LinkState.OK;
