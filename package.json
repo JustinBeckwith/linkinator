@@ -1,0 +1,59 @@
+{
+  "name": "linkinator",
+  "description": "Find broken links, missing images, etc in your HTML.",
+  "version": "0.0.0",
+  "license": "MIT",
+  "repository": "JustinBeckwith/blc",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "bin": {
+    "linkinator": "build/src/cli.js"
+  },
+  "scripts": {
+    "pretest": "npm run compile",
+    "prepare": "npm run compile",
+    "compile": "tsc -p .",
+    "test": "nyc mocha build/test",
+    "fix": "gts fix",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json",
+    "commitlint": "git log -1 --pretty=%B | commitlint",
+    "lint": "gts check"
+  },
+  "dependencies": {
+    "chalk": "^2.4.2",
+    "ecstatic": "^3.3.1",
+    "gaxios": "^1.6.0",
+    "get-urls": "^8.0.0",
+    "meow": "^5.0.0",
+    "update-notifier": "^2.5.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^7.5.2",
+    "@commitlint/config-conventional": "^7.5.0",
+    "@types/get-urls": "^8.0.0",
+    "@types/meow": "^5.0.0",
+    "@types/mocha": "^5.2.5",
+    "@types/update-notifier": "^2.5.0",
+    "codecov": "^3.1.0",
+    "gts": "^0.9.0",
+    "mocha": "^5.0.0",
+    "nyc": "^13.2.0",
+    "semantic-release": "^15.13.3",
+    "source-map-support": "^0.5.10",
+    "typescript": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "files": [
+    "build/src"
+  ],
+  "keywords": [
+    "404",
+    "html",
+    "hyperlink",
+    "links",
+    "seo",
+    "url"
+  ]
+}

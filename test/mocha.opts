@@ -1,0 +1,4 @@
+--check-leaks
+--timeout 10000
+--throw-deprecation
+--require source-map-support/register
