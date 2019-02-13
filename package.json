@@ -3,7 +3,7 @@
   "description": "Find broken links, missing images, etc in your HTML.",
   "version": "0.0.0",
   "license": "MIT",
-  "repository": "JustinBeckwith/blc",
+  "repository": "JustinBeckwith/linkinator",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "bin": {

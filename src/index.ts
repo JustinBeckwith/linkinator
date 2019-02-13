@@ -32,6 +32,7 @@ interface CrawlOptions {
   url: string;
   crawl: boolean;
   results?: LinkResult[];
+  cache?: string[];
   linksToSkip: string[];
 }
 
@@ -62,7 +63,6 @@ export class LinkChecker extends EventEmitter {
         passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
       };
     } catch (e) {
-      console.error(e);
       throw e;
     } finally {
       if (server) {
@@ -80,7 +80,6 @@ export class LinkChecker extends EventEmitter {
    * @returns Promise that resolves with the instance of the HTTP server
    */
   private startWebServer(root: string, port: number): Promise<http.Server> {
-    console.log(`starting web server on ${port}`);
     return new Promise((resolve, reject) => {
       const server =
           http.createServer(ecstatic({root})).listen(port, (err: Error) => {
@@ -101,6 +100,13 @@ export class LinkChecker extends EventEmitter {
    */
   private async crawl(opts: CrawlOptions): Promise<LinkResult[]> {
     opts.results = opts.results || [];
+    opts.cache = opts.cache || [];
+
+    // Check to see if we've already scanned this url
+    if (opts.cache.includes(opts.url)) {
+      return opts.results;
+    }
+    opts.cache.push(opts.url);
 
     // Check for links that should be skipped
     const skips = opts.linksToSkip

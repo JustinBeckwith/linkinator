@@ -47,7 +47,7 @@ async function main() {
     return;
   }
   const start = Date.now();
-  console.log(`Crawling ${cli.input} ...`);
+  console.log(`🏊‍♂️ crawling ${cli.input}`);
   const checker = new LinkChecker();
   checker.on('link', (link: LinkResult) => {
     let state = '';
@@ -64,7 +64,7 @@ async function main() {
       default:
         throw new Error('Invalid state.');
     }
-    console.log(`${state} ${link.url}`);
+    console.log(` ${state} ${link.url}`);
   });
   const opts: CheckOptions = {path: cli.input[0], recurse: cli.flags.recurse};
   if (cli.flags.skip) {
