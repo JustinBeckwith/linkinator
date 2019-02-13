@@ -21,16 +21,18 @@
   },
   "dependencies": {
     "chalk": "^2.4.2",
+    "cheerio": "^1.0.0-rc.2",
     "ecstatic": "^3.3.1",
     "gaxios": "^1.6.0",
-    "get-urls": "^8.0.0",
+    "is-absolute-url": "^2.1.0",
     "meow": "^5.0.0",
     "update-notifier": "^2.5.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^7.5.2",
     "@commitlint/config-conventional": "^7.5.0",
-    "@types/get-urls": "^8.0.0",
+    "@types/cheerio": "^0.22.10",
+    "@types/is-absolute-url": "^2.1.0",
     "@types/meow": "^5.0.0",
     "@types/mocha": "^5.2.5",
     "@types/node": "^11.9.3",

@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
 import * as gaxios from 'gaxios';
-import * as getty from 'get-urls';
+import {getLinks} from './links';
 import * as http from 'http';
 
 const ecstatic = require('ecstatic');
@@ -33,7 +33,7 @@ interface CrawlOptions {
   crawl: boolean;
   results?: LinkResult[];
   cache?: string[];
-  linksToSkip: string[];
+  checkOptions: CheckOptions;
 }
 
 
@@ -50,14 +50,17 @@ export class LinkChecker extends EventEmitter {
     let server: http.Server|undefined;
     let result: CrawlResult;
     try {
-      let rootUrl = options.path;
+      options.linksToSkip = options.linksToSkip || [];
       if (!options.path.startsWith('http')) {
         const port = 5000 + Math.round(Math.random() * 1000);
         server = await this.startWebServer(options.path, port);
-        rootUrl = `http://localhost:${port}`;
+        options.path = `http://localhost:${port}`;
       }
-      const results = await this.crawl(
-          {url: rootUrl, crawl: true, linksToSkip: options.linksToSkip || []});
+      const results = await this.crawl({
+        url: options.path,
+        crawl: true,
+        checkOptions: options
+      });
       result = {
         links: results,
         passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
@@ -109,7 +112,7 @@ export class LinkChecker extends EventEmitter {
     opts.cache.push(opts.url);
 
     // Check for links that should be skipped
-    const skips = opts.linksToSkip
+    const skips = opts.checkOptions.linksToSkip!
                       .map(linkToSkip => {
                         return (new RegExp(linkToSkip)).test(opts.url);
                       })
@@ -138,17 +141,20 @@ export class LinkChecker extends EventEmitter {
     this.emit('link', result);
 
     // If we need to go deeper, scan the next level of depth for links and crawl
-    // them
     if (opts.crawl) {
-      const urls = getty(res.data);
-      await Promise.all(Array.from(urls).map(url => {
-        return this.crawl({
+      this.emit('pagestart', opts.url);
+      const urls = getLinks(res.data, opts.checkOptions.path);
+      for (const url of urls) {
+        // only crawl links that start with the same host
+        const crawl = url.startsWith(opts.checkOptions.path);
+        await this.crawl({
           url,
-          crawl: false,
+          crawl,
+          cache: opts.cache,
           results: opts.results,
-          linksToSkip: opts.linksToSkip
+          checkOptions: opts.checkOptions
         });
-      }));
+      }
     }
 
     // Return the aggregate results

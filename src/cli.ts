@@ -3,7 +3,7 @@
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
 import chalk from 'chalk';
-import {LinkChecker, LinkState, LinkResult, CheckOptions} from './index';
+import {LinkChecker, LinkState, LinkResult, CheckOptions, check} from './index';
 
 const pkg = require('../../package.json');
 updateNotifier({pkg}).notify();
@@ -49,6 +49,9 @@ async function main() {
   const start = Date.now();
   console.log(`🏊‍♂️ crawling ${cli.input}`);
   const checker = new LinkChecker();
+  checker.on('pagestart', url => {
+    console.log(`\n Scanning ${chalk.grey(url)}`);
+  });
   checker.on('link', (link: LinkResult) => {
     let state = '';
     switch (link.state) {
@@ -64,7 +67,7 @@ async function main() {
       default:
         throw new Error('Invalid state.');
     }
-    console.log(` ${state} ${link.url}`);
+    console.log(`  ${state} ${chalk.gray(link.url)}`);
   });
   const opts: CheckOptions = {path: cli.input[0], recurse: cli.flags.recurse};
   if (cli.flags.skip) {
@@ -81,7 +84,7 @@ async function main() {
     process.exit(1);
   }
   const total = (Date.now() - start) / 1000;
-  console.log(chalk.bold(`🎉 Successfully scanned ${
+  console.log(chalk.bold(`🤖 Successfully scanned ${
       chalk.green(result.links.length.toString())} links in ${
       chalk.cyan(total.toString())} seconds.`));
 }
