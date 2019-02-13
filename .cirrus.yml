@@ -21,7 +21,7 @@ commit_lint_task:
 
 coverage_task:
   env:
-    CODECOV_TOKEN: ENCRYPTED[9add171b436ba748661210b916536d56fe932283ad9f886af42b3524fd6afb82c17a95b6fa8cccd7ab0b9f94ac08f812]
+    CODECOV_TOKEN: ENCRYPTED[1cff75bbe021a6c009f2df6ff21061f0056c0312359a88e17ce7c22718d1e73fcbd66a696bc6ce95c74041be15280d7f]
   script:
     - npm install
     - npm test
@@ -34,8 +34,8 @@ publish_task:
     - lint_task
     - commit_lint_task
   environment:
-    GITHUB_TOKEN: ENCRYPTED[af3c089bdc078ef8f0b7e0cff554ab14b4b3a0dd3806af9a66fcab064c92e67e21502b7143ca126cf78760dfbce670ea]
-    NPM_TOKEN: ENCRYPTED[8b66b7c827a85a560fd6665ec768714cef489e35ab636c4e2aa8142e15a407fec6839f09074a09ed244078fae66d69f0]
+    GITHUB_TOKEN: ENCRYPTED[9797fc5164c7a6338c866075e6b0624980718cfbec499c651b1a858b1de1fabf2d2c297005f5df461dc66116b80c2a14]
+    NPM_TOKEN: ENCRYPTED[188593d2219e49e28e05c983a768a7e89ef89441f07f450a58744161674b2e7f127caff0a8021bb5bb75a09d4e18750f]
   script:
     - npm install
     - npm run compile
