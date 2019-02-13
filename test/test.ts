@@ -1,7 +1,8 @@
 import * as assert from 'assert';
+import * as gaxios from 'gaxios';
 import * as nock from 'nock';
 import * as sinon from 'sinon';
-import * as gaxios from 'gaxios';
+
 import {check, LinkState} from '../src';
 
 nock.disableNetConnect();
@@ -56,7 +57,7 @@ describe('linkinator', () => {
     const results = await check({path: 'test/fixtures/basic'});
     assert.ok(!results.passed);
     assert.strictEqual(
-      results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
+        results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
     requestStub.restore();
   });
 });
