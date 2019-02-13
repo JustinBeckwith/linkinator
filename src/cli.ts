@@ -3,7 +3,7 @@
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
 import chalk from 'chalk';
-import {LinkChecker, LinkState, LinkResult, CheckOptions, check} from './index';
+import {LinkChecker, LinkState, LinkResult, CheckOptions} from './index';
 
 const pkg = require('../../package.json');
 updateNotifier({pkg}).notify();
