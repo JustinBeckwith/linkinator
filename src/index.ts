@@ -20,7 +20,7 @@ export enum LinkState {
 export interface LinkResult {
   url: string;
   status?: number;
-  state: LinkState
+  state: LinkState;
 }
 
 export interface CrawlResult {
@@ -55,11 +55,8 @@ export class LinkChecker extends EventEmitter {
         server = await this.startWebServer(options.path, port);
         rootUrl = `http://localhost:${port}`;
       }
-      const results = await this.crawl({
-        url: rootUrl,
-        crawl: true,
-        linksToSkip: options.linksToSkip || []
-      });
+      const results = await this.crawl(
+          {url: rootUrl, crawl: true, linksToSkip: options.linksToSkip || []});
       result = {
         links: results,
         passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
@@ -106,14 +103,13 @@ export class LinkChecker extends EventEmitter {
     opts.results = opts.results || [];
 
     // Check for links that should be skipped
-    const skips = opts.linksToSkip.map(linkToSkip => {
-      return (new RegExp(linkToSkip)).test(opts.url)
-    }).filter(match => !!match);
+    const skips = opts.linksToSkip
+                      .map(linkToSkip => {
+                        return (new RegExp(linkToSkip)).test(opts.url);
+                      })
+                      .filter(match => !!match);
     if (skips.length > 0) {
-      const result: LinkResult = {
-        url: opts.url,
-        state:  LinkState.SKIPPED
-      }
+      const result: LinkResult = {url: opts.url, state: LinkState.SKIPPED};
       opts.results.push(result);
       this.emit('link', result);
       return opts.results;
@@ -129,22 +125,24 @@ export class LinkChecker extends EventEmitter {
     const result: LinkResult = {
       url: opts.url,
       status: res.status,
-      state: (res.status >= 200 && res.status < 300) ? LinkState.OK : LinkState.BROKEN
+      state: (res.status >= 200 && res.status < 300) ? LinkState.OK :
+                                                       LinkState.BROKEN
     };
     opts.results.push(result);
     this.emit('link', result);
 
-    // If we need to go deeper, scan the next level of depth for links and crawl them
+    // If we need to go deeper, scan the next level of depth for links and crawl
+    // them
     if (opts.crawl) {
       const urls = getty(res.data);
-      urls.forEach(async url => {
-        await this.crawl({
+      await Promise.all(Array.from(urls).map(url => {
+        return this.crawl({
           url,
           crawl: false,
           results: opts.results,
           linksToSkip: opts.linksToSkip
         });
-      });
+      }));
     }
 
     // Return the aggregate results

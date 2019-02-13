@@ -2,7 +2,8 @@
 
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
-import {LinkChecker, CheckOptions} from './index';
+import chalk from 'chalk';
+import {LinkChecker, LinkState, LinkResult, CheckOptions} from './index';
 
 const pkg = require('../../package.json');
 updateNotifier({pkg}).notify();
@@ -22,7 +23,7 @@ const cli = meow(
           Recurively follow links on the same root domain.
 
       --skip, -s
-          List of urls or globb'd urls to not include in the check.
+          List of urls in regexy form to not include in the check.
 
       --help
           Show this command.
@@ -45,9 +46,25 @@ async function main() {
     cli.showHelp();
     return;
   }
+  const start = Date.now();
+  console.log(`Crawling ${cli.input} ...`);
   const checker = new LinkChecker();
-  checker.on('link', link => {
-    console.log(link);
+  checker.on('link', (link: LinkResult) => {
+    let state = '';
+    switch (link.state) {
+      case LinkState.BROKEN:
+        state = `[${chalk.red(link.status!.toString())}]`;
+        break;
+      case LinkState.OK:
+        state = `[${chalk.green(link.status!.toString())}]`;
+        break;
+      case LinkState.SKIPPED:
+        state = `[${chalk.grey('SKP')}]`;
+        break;
+      default:
+        throw new Error('Invalid state.');
+    }
+    console.log(`${state} ${link.url}`);
   });
   const opts: CheckOptions = {path: cli.input[0], recurse: cli.flags.recurse};
   if (cli.flags.skip) {
@@ -56,8 +73,15 @@ async function main() {
   }
   const result = await checker.check(opts);
   if (!result.passed) {
+    const borked = result.links.filter(x => x.state === LinkState.BROKEN);
+    console.error(chalk.bold(
+        `${chalk.red('ERROR')} - detected ${borked.length} broken links.`));
     process.exit(1);
   }
+  const total = (Date.now() - start) / 1000;
+  console.log(chalk.bold(`Successfully scanned ${
+      chalk.green(result.links.length.toString())} links in ${
+      chalk.cyan(total.toString())} seconds`));
 }
 
 main();
