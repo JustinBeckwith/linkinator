@@ -75,4 +75,20 @@ describe('linkinator', () => {
     assert.strictEqual(
         results.links.filter(x => x.state === LinkState.OK).length, 2);
   });
+
+  it('should perform a recursive scan', async () => {
+    // This test is making sure that we do a recursive scan of links,
+    // but also that we don't follow links to another site
+    const scope = nock('http://fake.local')
+                      .get('/')
+                      .replyWithFile(200, 'test/fixtures/recurse/fake.html');
+    const results = await check({path: 'test/fixtures/recurse', recurse: true});
+    assert.strictEqual(results.links.length, 5);
+    scope.done();
+  });
+
+  it('should not recurse by default', async () => {
+    const results = await check({path: 'test/fixtures/recurse'});
+    assert.strictEqual(results.links.length, 2);
+  });
 });

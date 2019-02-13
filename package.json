@@ -26,6 +26,7 @@
     "gaxios": "^1.6.0",
     "is-absolute-url": "^2.1.0",
     "meow": "^5.0.0",
+    "server-destroy": "^1.0.1",
     "update-notifier": "^2.5.0"
   },
   "devDependencies": {
@@ -37,6 +38,7 @@
     "@types/mocha": "^5.2.5",
     "@types/nock": "^9.3.1",
     "@types/node": "^11.9.3",
+    "@types/server-destroy": "^1.0.0",
     "@types/sinon": "^7.0.5",
     "@types/update-notifier": "^2.5.0",
     "codecov": "^3.1.0",

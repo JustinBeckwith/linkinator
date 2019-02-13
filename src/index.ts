@@ -1,6 +1,7 @@
 import {EventEmitter} from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
+import enableDestroy = require('server-destroy');
 
 import {getLinks} from './links';
 
@@ -55,6 +56,7 @@ export class LinkChecker extends EventEmitter {
     if (!options.path.startsWith('http')) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
       server = await this.startWebServer(options.path, port);
+      enableDestroy(server);
       options.path = `http://localhost:${port}`;
     }
     const results = await this.crawl(
@@ -64,7 +66,7 @@ export class LinkChecker extends EventEmitter {
       passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
     };
     if (server) {
-      server.close();
+      server.destroy();
     }
     return result;
   }
@@ -141,7 +143,8 @@ export class LinkChecker extends EventEmitter {
       const urls = getLinks(data, opts.checkOptions.path);
       for (const url of urls) {
         // only crawl links that start with the same host
-        const crawl = url.startsWith(opts.checkOptions.path);
+        const crawl = opts.checkOptions.recurse! &&
+            url.startsWith(opts.checkOptions.path);
         await this.crawl({
           url,
           crawl,
