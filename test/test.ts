@@ -14,14 +14,14 @@ describe('linkinator', () => {
   });
 
   it('should perform a basic shallow scan', async () => {
-    const scope = nock('http://fake.local').get('/').reply(200);
+    const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({path: 'test/fixtures/basic'});
     assert.ok(results.passed);
     scope.done();
   });
 
   it('should only try a link once', async () => {
-    const scope = nock('http://fake.local').get('/').reply(200);
+    const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({path: 'test/fixtures/twice'});
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
@@ -37,7 +37,7 @@ describe('linkinator', () => {
   });
 
   it('should report broken links', async () => {
-    const scope = nock('http://fake.local').get('/').reply(404);
+    const scope = nock('http://fake.local').head('/').reply(404);
     const results = await check({path: 'test/fixtures/broke'});
     assert.ok(!results.passed);
     assert.strictEqual(
@@ -79,9 +79,7 @@ describe('linkinator', () => {
   it('should perform a recursive scan', async () => {
     // This test is making sure that we do a recursive scan of links,
     // but also that we don't follow links to another site
-    const scope = nock('http://fake.local')
-                      .get('/')
-                      .replyWithFile(200, 'test/fixtures/recurse/fake.html');
+    const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({path: 'test/fixtures/recurse', recurse: true});
     assert.strictEqual(results.links.length, 5);
     scope.done();
@@ -90,5 +88,15 @@ describe('linkinator', () => {
   it('should not recurse by default', async () => {
     const results = await check({path: 'test/fixtures/recurse'});
     assert.strictEqual(results.links.length, 2);
+  });
+
+  it('should retry with a GET after a HEAD', async () => {
+    const scopes = [
+      nock('http://fake.local').head('/').reply(405),
+      nock('http://fake.local').get('/').reply(200)
+    ];
+    const results = await check({path: 'test/fixtures/basic'});
+    assert.ok(results.passed);
+    scopes.forEach(x => x.done());
   });
 });
