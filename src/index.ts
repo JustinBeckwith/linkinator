@@ -112,25 +112,32 @@ export class LinkChecker extends EventEmitter {
     }
 
     // Perform a HEAD or GET request based on the need to crawl
-    const res = await gaxios.request<string>({
-      method: 'GET',
-      url: opts.url,
-      responseType: opts.crawl ? 'text' : 'stream',
-      validateStatus: () => true
-    });
-    const result: LinkResult = {
-      url: opts.url,
-      status: res.status,
-      state: (res.status >= 200 && res.status < 300) ? LinkState.OK :
-                                                       LinkState.BROKEN
-    };
+    let status = 0;
+    let state = LinkState.BROKEN;
+    let data = '';
+    try {
+      const res = await gaxios.request<string>({
+        method: 'GET',
+        url: opts.url,
+        responseType: opts.crawl ? 'text' : 'stream',
+        validateStatus: () => true
+      });
+      status = res.status;
+      if (res.status >= 200 && res.status < 300) {
+        state = LinkState.OK;
+      }
+      data = res.data;
+    } catch (err) {
+      // request failure: invalid domain name, etc.
+    }
+    const result: LinkResult = {url: opts.url, status, state};
     opts.results.push(result);
     this.emit('link', result);
 
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl) {
       this.emit('pagestart', opts.url);
-      const urls = getLinks(res.data, opts.checkOptions.path);
+      const urls = getLinks(data, opts.checkOptions.path);
       for (const url of urls) {
         // only crawl links that start with the same host
         const crawl = url.startsWith(opts.checkOptions.path);
