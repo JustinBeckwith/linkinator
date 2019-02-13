@@ -60,7 +60,7 @@ describe('linkinator', () => {
         results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
     requestStub.restore();
   });
-    
+
   it('should skip mailto: links', async () => {
     const results = await check({path: 'test/fixtures/mailto'});
     assert.ok(results.passed);
