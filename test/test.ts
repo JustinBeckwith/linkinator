@@ -47,4 +47,11 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
   });
+
+  it('should skip mailto: links', async () => {
+    const results = await check({path: 'test/fixtures/mailto'});
+    assert.ok(results.passed);
+    assert.strictEqual(
+        results.links.filter(x => x.state === LinkState.SKIPPED).length, 1);
+  });
 });
