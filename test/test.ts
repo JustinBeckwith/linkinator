@@ -1,5 +1,8 @@
 import * as assert from 'assert';
+import * as gaxios from 'gaxios';
 import * as nock from 'nock';
+import * as sinon from 'sinon';
+
 import {check, LinkState} from '../src';
 
 nock.disableNetConnect();
@@ -46,6 +49,16 @@ describe('linkinator', () => {
     const results = await check({path: 'test/fixtures/relative'});
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
+  });
+
+  it('should handle fetch exceptions', async () => {
+    const requestStub = sinon.stub(gaxios, 'request');
+    requestStub.throws('Fetch error');
+    const results = await check({path: 'test/fixtures/basic'});
+    assert.ok(!results.passed);
+    assert.strictEqual(
+        results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
+    requestStub.restore();
   });
 
   it('should skip mailto: links', async () => {
