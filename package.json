@@ -1,7 +1,7 @@
 {
   "name": "linkinator",
   "description": "Find broken links, missing images, etc in your HTML.",
-  "version": "0.0.0",
+  "version": "1.4.0",
   "license": "MIT",
   "repository": "JustinBeckwith/linkinator",
   "main": "build/src/index.js",
