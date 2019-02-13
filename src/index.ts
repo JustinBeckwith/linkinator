@@ -35,7 +35,7 @@ interface CrawlOptions {
   url: string;
   crawl: boolean;
   results?: LinkResult[];
-  cache?: string[];
+  cache?: Set<string>;
   checkOptions: CheckOptions;
 }
 
@@ -93,13 +93,13 @@ export class LinkChecker extends EventEmitter {
    */
   private async crawl(opts: CrawlOptions): Promise<LinkResult[]> {
     opts.results = opts.results || [];
-    opts.cache = opts.cache || [];
+    opts.cache = opts.cache || new Set();
 
     // Check to see if we've already scanned this url
-    if (opts.cache.includes(opts.url)) {
+    if (opts.cache.has(opts.url)) {
       return opts.results;
     }
-    opts.cache.push(opts.url);
+    opts.cache.add(opts.url);
 
     // Check for links that should be skipped
     const skips = opts.checkOptions.linksToSkip!
