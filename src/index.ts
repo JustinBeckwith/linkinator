@@ -1,11 +1,13 @@
 import {EventEmitter} from 'events';
 import * as gaxios from 'gaxios';
-import {getLinks} from './links';
 import * as http from 'http';
+
+import {getLinks} from './links';
 
 const ecstatic = require('ecstatic');
 
 export interface CheckOptions {
+  port?: number;
   path: string;
   recurse?: boolean;
   linksToSkip?: string[];
@@ -52,15 +54,12 @@ export class LinkChecker extends EventEmitter {
     try {
       options.linksToSkip = options.linksToSkip || [];
       if (!options.path.startsWith('http')) {
-        const port = 5000 + Math.round(Math.random() * 1000);
+        const port = options.port || 5000 + Math.round(Math.random() * 1000);
         server = await this.startWebServer(options.path, port);
         options.path = `http://localhost:${port}`;
       }
-      const results = await this.crawl({
-        url: options.path,
-        crawl: true,
-        checkOptions: options
-      });
+      const results = await this.crawl(
+          {url: options.path, crawl: true, checkOptions: options});
       result = {
         links: results,
         passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
