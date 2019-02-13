@@ -67,4 +67,12 @@ describe('linkinator', () => {
     assert.strictEqual(
         results.links.filter(x => x.state === LinkState.SKIPPED).length, 1);
   });
+
+  it('should detect broken image links', async () => {
+    const results = await check({path: 'test/fixtures/image'});
+    assert.strictEqual(
+        results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
+    assert.strictEqual(
+        results.links.filter(x => x.state === LinkState.OK).length, 2);
+  });
 });
