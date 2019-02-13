@@ -49,27 +49,21 @@ export class LinkChecker extends EventEmitter {
    * @param options Options to use while checking for 404s
    */
   async check(options: CheckOptions) {
+    options.linksToSkip = options.linksToSkip || [];
     let server: http.Server|undefined;
-    let result: CrawlResult;
-    try {
-      options.linksToSkip = options.linksToSkip || [];
-      if (!options.path.startsWith('http')) {
-        const port = options.port || 5000 + Math.round(Math.random() * 1000);
-        server = await this.startWebServer(options.path, port);
-        options.path = `http://localhost:${port}`;
-      }
-      const results = await this.crawl(
-          {url: options.path, crawl: true, checkOptions: options});
-      result = {
-        links: results,
-        passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
-      };
-    } catch (e) {
-      throw e;
-    } finally {
-      if (server) {
-        server.close();
-      }
+    if (!options.path.startsWith('http')) {
+      const port = options.port || 5000 + Math.round(Math.random() * 1000);
+      server = await this.startWebServer(options.path, port);
+      options.path = `http://localhost:${port}`;
+    }
+    const results = await this.crawl(
+        {url: options.path, crawl: true, checkOptions: options});
+    const result = {
+      links: results,
+      passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
+    };
+    if (server) {
+      server.close();
     }
     return result;
   }
@@ -82,15 +76,9 @@ export class LinkChecker extends EventEmitter {
    * @returns Promise that resolves with the instance of the HTTP server
    */
   private startWebServer(root: string, port: number): Promise<http.Server> {
-    return new Promise((resolve, reject) => {
-      const server =
-          http.createServer(ecstatic({root})).listen(port, (err: Error) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(server);
-            }
-          });
+    return new Promise(resolve => {
+      const server = http.createServer(ecstatic({root}))
+                         .listen(port, () => resolve(server));
     });
   }
 
