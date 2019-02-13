@@ -3,31 +3,48 @@ import * as nock from 'nock';
 import {check, LinkState} from '../src';
 
 nock.disableNetConnect();
-nock.enableNetConnect('localhost:1234');
+nock.enableNetConnect('localhost');
 
 describe('linkinator', () => {
-  async function performScan() {
-    const scope = nock('http://fake.local').get('/').reply(200);
-    const results = await check(
-        {port: 1234, path: 'test/fixtures', linksToSkip: ['http://very.bad']});
-    return {scope, results};
-  }
-
   afterEach(() => {
     nock.cleanAll();
   });
 
   it('should perform a basic shallow scan', async () => {
-    const {scope, results} = await performScan();
+    const scope = nock('http://fake.local').get('/').reply(200);
+    const results = await check({path: 'test/fixtures/basic'});
     assert.ok(results.passed);
     scope.done();
   });
 
+  it('should only try a link once', async () => {
+    const scope = nock('http://fake.local').get('/').reply(200);
+    const results = await check({path: 'test/fixtures/twice'});
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 2);
+    scope.done();
+  });
+
   it('should skip links if asked nicely', async () => {
-    const {scope, results} = await performScan();
+    const results = await check(
+        {path: 'test/fixtures/skip', linksToSkip: ['http://very.bad']});
     assert.ok(results.passed);
     assert.strictEqual(
         results.links.filter(x => x.state === LinkState.SKIPPED).length, 1);
+  });
+
+  it('should report broken links', async () => {
+    const scope = nock('http://fake.local').get('/').reply(404);
+    const results = await check({path: 'test/fixtures/broke'});
+    assert.ok(!results.passed);
+    assert.strictEqual(
+        results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
     scope.done();
+  });
+
+  it('should handle relative links', async () => {
+    const results = await check({path: 'test/fixtures/relative'});
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 2);
   });
 });
