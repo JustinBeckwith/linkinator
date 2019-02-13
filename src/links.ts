@@ -6,7 +6,8 @@ export function getLinks(source: string, baseUrl: string) {
   const $ = cheerio.load(source);
   const links = $('a').toArray().map(e => e.attribs.href).filter(x => !!x);
   const sanitized = links.map(link => {
-    const slink = isAbsoluteUrl(link) ? new URL(link) : (new URL(link, baseUrl));
+    const slink =
+        isAbsoluteUrl(link) ? new URL(link) : (new URL(link, baseUrl));
     slink.hash = '';
     return slink.href;
   });
