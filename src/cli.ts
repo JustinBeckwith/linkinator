@@ -72,6 +72,8 @@ async function main() {
     opts.linksToSkip = skips.split(' ').filter(x => !!x);
   }
   const result = await checker.check(opts);
+  console.log();
+
   if (!result.passed) {
     const borked = result.links.filter(x => x.state === LinkState.BROKEN);
     console.error(chalk.bold(
@@ -79,9 +81,9 @@ async function main() {
     process.exit(1);
   }
   const total = (Date.now() - start) / 1000;
-  console.log(chalk.bold(`Successfully scanned ${
+  console.log(chalk.bold(`🎉 Successfully scanned ${
       chalk.green(result.links.length.toString())} links in ${
-      chalk.cyan(total.toString())} seconds`));
+      chalk.cyan(total.toString())} seconds.`));
 }
 
 main();

@@ -117,7 +117,7 @@ export class LinkChecker extends EventEmitter {
 
     // Perform a HEAD or GET request based on the need to crawl
     const res = await gaxios.request<string>({
-      method: opts.crawl ? 'GET' : 'HEAD',
+      method: 'GET',
       url: opts.url,
       responseType: opts.crawl ? 'text' : 'stream',
       validateStatus: () => true
