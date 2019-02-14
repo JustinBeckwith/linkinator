@@ -85,6 +85,11 @@ describe('linkinator', () => {
     scope.done();
   });
 
+  it('should not recurse non-html files', async () => {
+    const results = await check({path: 'test/fixtures/scripts', recurse: true});
+    assert.strictEqual(results.links.length, 2);
+  });
+
   it('should not recurse by default', async () => {
     const results = await check({path: 'test/fixtures/recurse'});
     assert.strictEqual(results.links.length, 2);
