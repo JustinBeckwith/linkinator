@@ -120,6 +120,7 @@ export class LinkChecker extends EventEmitter {
     let status = 0;
     let state = LinkState.BROKEN;
     let data = '';
+    let shouldRecurse = false;
     try {
       let res = await gaxios.request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
@@ -144,6 +145,7 @@ export class LinkChecker extends EventEmitter {
         state = LinkState.OK;
       }
       data = res.data;
+      shouldRecurse = isHtml(res);
     } catch (err) {
       // request failure: invalid domain name, etc.
     }
@@ -152,7 +154,7 @@ export class LinkChecker extends EventEmitter {
     this.emit('link', result);
 
     // If we need to go deeper, scan the next level of depth for links and crawl
-    if (opts.crawl) {
+    if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
       const urls = getLinks(data, opts.checkOptions.path);
       for (const url of urls) {
@@ -182,4 +184,14 @@ export async function check(options: CheckOptions) {
   const checker = new LinkChecker();
   const results = await checker.check(options);
   return results;
+}
+
+/**
+ * Checks to see if a given source is HTML.
+ * @param {object} response Page response.
+ * @returns {boolean}
+ */
+function isHtml(response: gaxios.GaxiosResponse): boolean {
+  const contentType = response.headers['content-type'] || '';
+  return !!contentType.match('text/html');
 }
