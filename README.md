@@ -1,6 +1,5 @@
-
-
 # 🐿 linkinator
+
 [![npm version](https://img.shields.io/npm/v/linkinator.svg)](https://www.npmjs.org/package/linkinator)
 [![Build Status](https://api.cirrus-ci.com/github/JustinBeckwith/linkinator.svg)](https://cirrus-ci.com/github/JustinBeckwith/linkinator)
 [![codecov](https://codecov.io/gh/JustinBeckwith/linkinator/branch/master/graph/badge.svg)](https://codecov.io/gh/JustinBeckwith/linkinator)
@@ -11,30 +10,37 @@
 > A super simple site crawler and broken link checker.
 
 ## Installation
-```bash
+
+```sh
 $ npm install linkinator
 ```
 
 ## Usage
+
 You can use this as a library, or as a CLI.  Let's see the CLI!
+
 ```sh
 $ npx linkinator http://jbeckwith.com
 ```
 
 That was fun.  What about local files?  The linkinator will stand up a static web server for yinz:
+
 ```sh
 $ npx linkinator ./docs
 ```
 
 But that only gets the top level of links.  Lets go deeper and do a full recursive scan!
+
 ```sh
 $ npx linkinator ./docs --recurse
 ```
 
 Aw, snap.  I didn't want that to check *those* links.  Let's skip em:
+
 ```sh
 $ npx linkinator ./docs --skip www.googleapis.com
 ```
 
 ## License
+
 [MIT](LICENSE)
