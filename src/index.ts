@@ -156,7 +156,7 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urls = getLinks(data, opts.checkOptions.path);
+      const urls = getLinks(data, opts.url);
       for (const url of urls) {
         // only crawl links that start with the same host
         const crawl = opts.checkOptions.recurse! &&

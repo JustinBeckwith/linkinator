@@ -46,9 +46,10 @@ describe('linkinator', () => {
   });
 
   it('should handle relative links', async () => {
-    const results = await check({path: 'test/fixtures/relative'});
+    const results =
+        await check({path: 'test/fixtures/relative', recurse: true});
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 2);
+    assert.strictEqual(results.links.length, 4);
   });
 
   it('should handle fetch exceptions', async () => {
