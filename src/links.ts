@@ -1,5 +1,4 @@
 import * as cheerio from 'cheerio';
-import isAbsoluteUrl = require('is-absolute-url');
 import {URL} from 'url';
 
 const linksAttr = {
@@ -34,7 +33,7 @@ export function getLinks(source: string, baseUrl: string) {
 }
 
 function normalizeLink(link: string, baseUrl: string): URL {
-  const slink = isAbsoluteUrl(link) ? new URL(link) : (new URL(link, baseUrl));
+  const slink = new URL(link, baseUrl);
   slink.hash = '';
   return slink;
 }
