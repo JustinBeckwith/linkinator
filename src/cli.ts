@@ -77,13 +77,17 @@ async function main() {
   const result = await checker.check(opts);
   console.log();
 
+  const total = (Date.now() - start) / 1000;
+
   if (!result.passed) {
     const borked = result.links.filter(x => x.state === LinkState.BROKEN);
-    console.error(chalk.bold(
-        `${chalk.red('ERROR')} - detected ${borked.length} broken links.`));
+    console.error(chalk.bold(`${chalk.red('ERROR')}: Detected ${
+        borked.length} broken links. Scanned ${
+        chalk.yellow(result.links.length.toString())} links in ${
+        chalk.cyan(total.toString())} seconds.`));
     process.exit(1);
   }
-  const total = (Date.now() - start) / 1000;
+
   console.log(chalk.bold(`🤖 Successfully scanned ${
       chalk.green(result.links.length.toString())} links in ${
       chalk.cyan(total.toString())} seconds.`));
