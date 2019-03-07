@@ -27,8 +27,8 @@ export function getLinks(source: string, baseUrl: string) {
       links.push(element.attribs[attr]);
     });
   });
-  const sanitized = links.filter(link => !!link)
-                        .map(link => normalizeLink(link, baseUrl));
+  const sanitized =
+      links.filter(link => !!link).map(link => normalizeLink(link, baseUrl));
   return sanitized;
 }
 
