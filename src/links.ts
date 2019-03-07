@@ -28,12 +28,16 @@ export function getLinks(source: string, baseUrl: string) {
     });
   });
   const sanitized = links.filter(link => !!link)
-                        .map(link => normalizeLink(link, baseUrl).href);
+                        .map(link => normalizeLink(link, baseUrl));
   return sanitized;
 }
 
-function normalizeLink(link: string, baseUrl: string): URL {
-  const slink = new URL(link, baseUrl);
-  slink.hash = '';
-  return slink;
+function normalizeLink(link: string, baseUrl: string): string {
+  try {
+    const slink = new URL(link, baseUrl);
+    slink.hash = '';
+    return slink.href;
+  } catch (e) {
+    return link;
+  }
 }
