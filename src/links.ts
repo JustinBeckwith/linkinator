@@ -16,6 +16,7 @@ const linksAttr = {
     'audio', 'embed', 'frame', 'iframe', 'img', 'input', 'script', 'source',
     'track', 'video'
   ],
+  srcset: ['img', 'source'],
 } as {[index: string]: string[]};
 
 export function getLinks(source: string, baseUrl: string) {
@@ -24,12 +25,23 @@ export function getLinks(source: string, baseUrl: string) {
   Object.keys(linksAttr).forEach(attr => {
     const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
     $(elements).each((i, element) => {
-      links.push(element.attribs[attr]);
+      const values = parseAttr(attr, element.attribs[attr]);
+      links.push(...values);
     });
   });
   const sanitized =
       links.filter(link => !!link).map(link => normalizeLink(link, baseUrl));
   return sanitized;
+}
+
+function parseAttr(name: string, value: string): string[] {
+  switch (name) {
+    case 'srcset':
+      return value.split(',').map(
+          (pair: string) => pair.trim().split(/\s+/)[0]);
+    default:
+      return [value];
+  }
 }
 
 function normalizeLink(link: string, baseUrl: string): string {

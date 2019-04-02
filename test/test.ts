@@ -79,7 +79,7 @@ describe('linkinator', () => {
   it('should detect broken image links', async () => {
     const results = await check({path: 'test/fixtures/image'});
     assert.strictEqual(
-        results.links.filter(x => x.state === LinkState.BROKEN).length, 1);
+        results.links.filter(x => x.state === LinkState.BROKEN).length, 2);
     assert.strictEqual(
         results.links.filter(x => x.state === LinkState.OK).length, 2);
   });
