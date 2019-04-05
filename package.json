@@ -22,7 +22,7 @@
   "dependencies": {
     "chalk": "^2.4.2",
     "cheerio": "^1.0.0-rc.2",
-    "ecstatic": "^3.3.1",
+    "ecstatic": "^4.0.0",
     "gaxios": "^1.7.0",
     "meow": "^5.0.0",
     "server-destroy": "^1.0.1",
