@@ -43,7 +43,7 @@
     "gts": "^0.9.0",
     "mocha": "^6.0.0",
     "nock": "^10.0.6",
-    "nyc": "^13.3.0",
+    "nyc": "^14.0.0",
     "semantic-release": "^15.13.3",
     "sinon": "^7.2.3",
     "source-map-support": "^0.5.10",
