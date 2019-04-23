@@ -113,9 +113,9 @@ async function main() {
       chalk.cyan(total.toString())} seconds.`));
 }
 
-function log(message?: string) {
+function log(message = '\n') {
   if (!flags.format) {
-    console.log(message || '\n');
+    console.log(message);
   }
 }
 

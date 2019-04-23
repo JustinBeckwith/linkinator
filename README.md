@@ -43,6 +43,9 @@ $ linkinator LOCATION [ --arguments ]
     --include, -i
         List of urls in regexy form to include.  The opposite of --skip.
 
+    --format, -f
+        Return the data in CSV or JSON format.
+
     --help
         Show this command.
 ```
@@ -77,6 +80,12 @@ The `--skip` parameter will accept any regex! You can do more complex matching, 
 
 ```sh
 $ linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
+```
+
+Maybe you're going to pipe the output to another program.  Use the `--format` option to get JSON or CSV!
+
+```sh
+$ linkinator ./docs --format CSV
 ```
 
 ## API Usage
