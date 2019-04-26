@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import {URL} from 'url';
+import { URL } from 'url';
 
 const linksAttr = {
   background: ['body'],
@@ -13,11 +13,19 @@ const linksAttr = {
   pluginspage: ['embed'],
   pluginurl: ['embed'],
   src: [
-    'audio', 'embed', 'frame', 'iframe', 'img', 'input', 'script', 'source',
-    'track', 'video'
+    'audio',
+    'embed',
+    'frame',
+    'iframe',
+    'img',
+    'input',
+    'script',
+    'source',
+    'track',
+    'video',
   ],
   srcset: ['img', 'source'],
-} as {[index: string]: string[]};
+} as { [index: string]: string[] };
 
 export function getLinks(source: string, baseUrl: string) {
   const $ = cheerio.load(source);
@@ -29,16 +37,18 @@ export function getLinks(source: string, baseUrl: string) {
       links.push(...values);
     });
   });
-  const sanitized =
-      links.filter(link => !!link).map(link => normalizeLink(link, baseUrl));
+  const sanitized = links
+    .filter(link => !!link)
+    .map(link => normalizeLink(link, baseUrl));
   return sanitized;
 }
 
 function parseAttr(name: string, value: string): string[] {
   switch (name) {
     case 'srcset':
-      return value.split(',').map(
-          (pair: string) => pair.trim().split(/\s+/)[0]);
+      return value
+        .split(',')
+        .map((pair: string) => pair.trim().split(/\s+/)[0]);
     default:
       return [value];
   }

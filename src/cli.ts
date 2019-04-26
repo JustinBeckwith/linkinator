@@ -3,15 +3,15 @@
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
 import chalk from 'chalk';
-import {LinkChecker, LinkState, LinkResult, CheckOptions} from './index';
-import {promisify} from 'util';
+import { LinkChecker, LinkState, LinkResult, CheckOptions } from './index';
+import { promisify } from 'util';
 const toCSV = promisify(require('jsonexport'));
 
 const pkg = require('../../package.json');
-updateNotifier({pkg}).notify();
+updateNotifier({ pkg }).notify();
 
 const cli = meow(
-    `
+  `
     Usage
       $ linkinator LOCATION [ --arguments ]
 
@@ -40,15 +40,16 @@ const cli = meow(
       $ linkinator . --skip www.googleapis.com
       $ linkinator . --format CSV
 `,
-    {
-      flags: {
-        recurse: {type: 'boolean', alias: 'r'},
-        skip: {type: 'string', alias: 's'},
-        format: {type: 'string', alias: 'f'}
-      }
-    });
+  {
+    flags: {
+      recurse: { type: 'boolean', alias: 'r' },
+      skip: { type: 'string', alias: 's' },
+      format: { type: 'string', alias: 'f' },
+    },
+  }
+);
 
-let flags: {[index: string]: string};
+let flags: { [index: string]: string };
 
 async function main() {
   if (cli.input.length !== 1) {
@@ -79,7 +80,7 @@ async function main() {
     }
     log(`  ${state} ${chalk.gray(link.url)}`);
   });
-  const opts: CheckOptions = {path: cli.input[0], recurse: cli.flags.recurse};
+  const opts: CheckOptions = { path: cli.input[0], recurse: cli.flags.recurse };
   if (cli.flags.skip) {
     const skips = cli.flags.skip as string;
     opts.linksToSkip = skips.split(' ').filter(x => !!x);
@@ -101,16 +102,25 @@ async function main() {
 
   if (!result.passed) {
     const borked = result.links.filter(x => x.state === LinkState.BROKEN);
-    console.error(chalk.bold(`${chalk.red('ERROR')}: Detected ${
-        borked.length} broken links. Scanned ${
-        chalk.yellow(result.links.length.toString())} links in ${
-        chalk.cyan(total.toString())} seconds.`));
+    console.error(
+      chalk.bold(
+        `${chalk.red('ERROR')}: Detected ${
+          borked.length
+        } broken links. Scanned ${chalk.yellow(
+          result.links.length.toString()
+        )} links in ${chalk.cyan(total.toString())} seconds.`
+      )
+    );
     process.exit(1);
   }
 
-  log(chalk.bold(`🤖 Successfully scanned ${
-      chalk.green(result.links.length.toString())} links in ${
-      chalk.cyan(total.toString())} seconds.`));
+  log(
+    chalk.bold(
+      `🤖 Successfully scanned ${chalk.green(
+        result.links.length.toString()
+      )} links in ${chalk.cyan(total.toString())} seconds.`
+    )
+  );
 }
 
 function log(message = '\n') {

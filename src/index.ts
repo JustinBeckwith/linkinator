@@ -1,9 +1,9 @@
-import {EventEmitter} from 'events';
+import { EventEmitter } from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
 
-import {getLinks} from './links';
+import { getLinks } from './links';
 
 const ecstatic = require('ecstatic');
 
@@ -17,7 +17,7 @@ export interface CheckOptions {
 export enum LinkState {
   OK = 'OK',
   BROKEN = 'BROKEN',
-  SKIPPED = 'SKIPPED'
+  SKIPPED = 'SKIPPED',
 }
 
 export interface LinkResult {
@@ -39,7 +39,6 @@ interface CrawlOptions {
   checkOptions: CheckOptions;
 }
 
-
 /**
  * Instance class used to perform a crawl job.
  */
@@ -52,7 +51,7 @@ export class LinkChecker extends EventEmitter {
   async check(options: CheckOptions) {
     options.linksToSkip = options.linksToSkip || [];
     options.linksToSkip.push('^mailto:');
-    let server: http.Server|undefined;
+    let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
       server = await this.startWebServer(options.path, port);
@@ -64,11 +63,11 @@ export class LinkChecker extends EventEmitter {
       crawl: true,
       checkOptions: options,
       results: [],
-      cache: new Set()
+      cache: new Set(),
     });
     const result = {
       links: results,
-      passed: results.filter(x => x.state === LinkState.BROKEN).length === 0
+      passed: results.filter(x => x.state === LinkState.BROKEN).length === 0,
     };
     if (server) {
       server.destroy();
@@ -85,8 +84,9 @@ export class LinkChecker extends EventEmitter {
    */
   private startWebServer(root: string, port: number): Promise<http.Server> {
     return new Promise(resolve => {
-      const server = http.createServer(ecstatic({root}))
-                         .listen(port, () => resolve(server));
+      const server = http
+        .createServer(ecstatic({ root }))
+        .listen(port, () => resolve(server));
     });
   }
 
@@ -104,13 +104,13 @@ export class LinkChecker extends EventEmitter {
     opts.cache.add(opts.url);
 
     // Check for links that should be skipped
-    const skips = opts.checkOptions.linksToSkip!
-                      .map(linkToSkip => {
-                        return (new RegExp(linkToSkip)).test(opts.url);
-                      })
-                      .filter(match => !!match);
+    const skips = opts.checkOptions
+      .linksToSkip!.map(linkToSkip => {
+        return new RegExp(linkToSkip).test(opts.url);
+      })
+      .filter(match => !!match);
     if (skips.length > 0) {
-      const result: LinkResult = {url: opts.url, state: LinkState.SKIPPED};
+      const result: LinkResult = { url: opts.url, state: LinkState.SKIPPED };
       opts.results.push(result);
       this.emit('link', result);
       return opts.results;
@@ -126,7 +126,7 @@ export class LinkChecker extends EventEmitter {
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url,
         responseType: opts.crawl ? 'text' : 'stream',
-        validateStatus: () => true
+        validateStatus: () => true,
       });
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
@@ -135,7 +135,7 @@ export class LinkChecker extends EventEmitter {
           method: 'GET',
           url: opts.url,
           responseType: 'stream',
-          validateStatus: () => true
+          validateStatus: () => true,
         });
       }
 
@@ -149,7 +149,7 @@ export class LinkChecker extends EventEmitter {
     } catch (err) {
       // request failure: invalid domain name, etc.
     }
-    const result: LinkResult = {url: opts.url, status, state};
+    const result: LinkResult = { url: opts.url, status, state };
     opts.results.push(result);
     this.emit('link', result);
 
@@ -159,14 +159,14 @@ export class LinkChecker extends EventEmitter {
       const urls = getLinks(data, opts.url);
       for (const url of urls) {
         // only crawl links that start with the same host
-        const crawl = opts.checkOptions.recurse! &&
-            url.startsWith(opts.checkOptions.path);
+        const crawl =
+          opts.checkOptions.recurse! && url.startsWith(opts.checkOptions.path);
         await this.crawl({
           url,
           crawl,
           cache: opts.cache,
           results: opts.results,
-          checkOptions: opts.checkOptions
+          checkOptions: opts.checkOptions,
         });
       }
     }
