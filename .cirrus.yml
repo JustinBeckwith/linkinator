@@ -2,23 +2,23 @@ container:
   image: node:10
 
 lint_task:
-  install_script: npm install
+  install_script: npm ci
   test_script: npm run lint
 
 test_task:
   container:
     matrix:
-      image: node:11
+      image: node:12
       image: node:10
       image: node:8
-  install_script: npm install
+  install_script: npm ci
   test_script: npm test
 
 coverage_task:
   env:
     CODECOV_TOKEN: ENCRYPTED[1cff75bbe021a6c009f2df6ff21061f0056c0312359a88e17ce7c22718d1e73fcbd66a696bc6ce95c74041be15280d7f]
   script:
-    - npm install
+    - npm ci
     - npm test
     - npm run codecov
 
@@ -31,6 +31,6 @@ publish_task:
     GITHUB_TOKEN: ENCRYPTED[9797fc5164c7a6338c866075e6b0624980718cfbec499c651b1a858b1de1fabf2d2c297005f5df461dc66116b80c2a14]
     NPM_TOKEN: ENCRYPTED[188593d2219e49e28e05c983a768a7e89ef89441f07f450a58744161674b2e7f127caff0a8021bb5bb75a09d4e18750f]
   script:
-    - npm install
+    - npm ci
     - npm run compile
     - npx semantic-release
