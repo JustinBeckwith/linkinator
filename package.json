@@ -16,13 +16,12 @@
     "test": "nyc mocha build/test",
     "fix": "gts fix",
     "codecov": "nyc report --reporter=json && codecov -f coverage/*.json",
-    "commitlint": "git log -1 --pretty=%B | commitlint",
     "lint": "gts check"
   },
   "dependencies": {
     "chalk": "^2.4.2",
     "cheerio": "^1.0.0-rc.2",
-    "ecstatic": "^4.0.0",
+    "ecstatic": "^4.1.2",
     "gaxios": "^2.0.0",
     "jsonexport": "^2.4.1",
     "meow": "^5.0.0",
@@ -30,8 +29,6 @@
     "update-notifier": "^2.5.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^7.5.2",
-    "@commitlint/config-conventional": "^7.5.0",
     "@types/cheerio": "^0.22.10",
     "@types/meow": "^5.0.0",
     "@types/mocha": "^5.2.6",
@@ -42,10 +39,10 @@
     "@types/update-notifier": "^2.5.0",
     "codecov": "^3.2.0",
     "gts": "^1.0.0",
-    "mocha": "^6.0.0",
+    "mocha": "^6.1.4",
     "nock": "^10.0.6",
     "nyc": "^14.0.0",
-    "semantic-release": "^15.13.3",
+    "semantic-release": "^15.13.12",
     "sinon": "^7.2.3",
     "source-map-support": "^0.5.10",
     "typescript": "^3.3.3"
