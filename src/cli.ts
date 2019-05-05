@@ -30,6 +30,9 @@ const cli = meow(
       --format, -f
           Return the data in CSV or JSON format.
 
+      --silent, -s
+          Only output broken links
+
       --help
           Show this command.
 
@@ -45,6 +48,7 @@ const cli = meow(
       recurse: { type: 'boolean', alias: 'r' },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
+      silent: { type: 'boolean', alias: 's' },
     },
   }
 );
@@ -58,12 +62,21 @@ async function main() {
   }
   flags = cli.flags;
   const start = Date.now();
-  log(`🏊‍♂️ crawling ${cli.input}`);
+
+  if (!flags.silent) {
+    log(`🏊‍♂️ crawling ${cli.input}`);
+  }
   const checker = new LinkChecker();
   checker.on('pagestart', url => {
-    log(`\n Scanning ${chalk.grey(url)}`);
+    if (!flags.silent) {
+      log(`\n Scanning ${chalk.grey(url)}`);
+    }
   });
   checker.on('link', (link: LinkResult) => {
+    if (flags.silent && link.state !== LinkState.BROKEN) {
+      return;
+    }
+
     let state = '';
     switch (link.state) {
       case LinkState.BROKEN:
