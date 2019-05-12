@@ -21,19 +21,22 @@
   "dependencies": {
     "chalk": "^2.4.2",
     "cheerio": "^1.0.0-rc.2",
-    "ecstatic": "^4.1.2",
+    "finalhandler": "^1.1.2",
     "gaxios": "^2.0.0",
     "jsonexport": "^2.4.1",
     "meow": "^5.0.0",
+    "serve-static": "^1.14.1",
     "server-destroy": "^1.0.1",
     "update-notifier": "^3.0.0"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.10",
+    "@types/finalhandler": "^1.1.0",
     "@types/meow": "^5.0.0",
     "@types/mocha": "^5.2.6",
     "@types/nock": "^10.0.0",
     "@types/node": "^11.9.4",
+    "@types/serve-static": "^1.13.2",
     "@types/server-destroy": "^1.0.0",
     "@types/sinon": "^7.0.6",
     "@types/update-notifier": "^2.5.0",
@@ -42,7 +45,7 @@
     "mocha": "^6.1.4",
     "nock": "^10.0.6",
     "nyc": "^14.0.0",
-    "semantic-release": "^15.13.12",
+    "semantic-release": "^15.13.13",
     "sinon": "^7.2.3",
     "source-map-support": "^0.5.10",
     "typescript": "^3.3.3"
