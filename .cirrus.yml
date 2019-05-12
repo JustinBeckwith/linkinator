@@ -1,6 +1,13 @@
 container:
   image: node:10
 
+windows_task:
+  windows_container:
+    dockerfile: .ci/docker/windows/Dockerfile
+    os_version: 2019
+  install_script: npm install
+  test_script: npm test
+
 lint_task:
   install_script: npm install
   test_script: npm run lint

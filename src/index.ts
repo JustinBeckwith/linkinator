@@ -5,7 +5,8 @@ import enableDestroy = require('server-destroy');
 
 import { getLinks } from './links';
 
-const ecstatic = require('ecstatic');
+const finalhandler = require('finalhandler');
+const serveStatic = require('serve-static');
 
 export interface CheckOptions {
   port?: number;
@@ -83,10 +84,12 @@ export class LinkChecker extends EventEmitter {
    * @returns Promise that resolves with the instance of the HTTP server
    */
   private startWebServer(root: string, port: number): Promise<http.Server> {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
+      const serve = serveStatic(root);
       const server = http
-        .createServer(ecstatic({ root }))
-        .listen(port, () => resolve(server));
+        .createServer((req, res) => serve(req, res, finalhandler(req, res)))
+        .listen(port, () => resolve(server))
+        .on('error', reject);
     });
   }
 
