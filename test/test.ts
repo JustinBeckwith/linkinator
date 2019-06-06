@@ -61,9 +61,10 @@ describe('linkinator', () => {
     const results = await check({
       path: 'test/fixtures/relative',
       recurse: true,
+      directoryIndexes: true,
     });
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 4);
+    assert.strictEqual(results.links.length, 5);
   });
 
   it('should handle fetch exceptions', async () => {

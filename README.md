@@ -95,6 +95,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `path` (string) - A fully qualified path to the url to be scanned, or the path to the directory on disk that contains files to be scanned. *required*.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
+- `directoryIndexes` (boolean) - If your site uses directory indexes, this setting avoids false-positives on relative links that would be correctly resolved by a server, but fail a `GET`/`HEAD` request.
 - `linksToSkip` (array) - An array of regular expression strings that should be skipped during the scan.
 
 #### linkinator.LinkChecker()

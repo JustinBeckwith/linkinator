@@ -12,6 +12,7 @@ export interface CheckOptions {
   port?: number;
   path: string;
   recurse?: boolean;
+  directoryIndexes?: boolean;
   linksToSkip?: string[];
 }
 
@@ -100,6 +101,11 @@ export class LinkChecker extends EventEmitter {
    * @returns A list of crawl results consisting of urls and status codes
    */
   private async crawl(opts: CrawlOptions): Promise<LinkResult[]> {
+    // Support directory indexes by adding a trailing slash if required
+    if (opts.checkOptions.directoryIndexes && !opts.url.match(/\/$|\./)) {
+      opts.url += '/';
+    }
+
     // Check to see if we've already scanned this url
     if (opts.cache.has(opts.url)) {
       return opts.results;
