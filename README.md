@@ -46,6 +46,9 @@ $ linkinator LOCATION [ --arguments ]
     --format, -f
         Return the data in CSV or JSON format.
 
+    --silent
+        Only output broken links.
+
     --help
         Show this command.
 ```

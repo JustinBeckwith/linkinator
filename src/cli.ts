@@ -30,7 +30,7 @@ const cli = meow(
       --format, -f
           Return the data in CSV or JSON format.
 
-      --silent, -s
+      --silent
           Only output broken links
 
       --help
@@ -48,7 +48,7 @@ const cli = meow(
       recurse: { type: 'boolean', alias: 'r' },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
-      silent: { type: 'boolean', alias: 's' },
+      silent: { type: 'boolean' },
     },
   }
 );
