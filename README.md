@@ -102,8 +102,8 @@ All options are optional. It should look like this:
 
 ```json
 {
-  "format": "json", // optional
-  "recurse": true,  // optional
+  "format": "json",
+  "recurse": true,
   "silent": true,
   "skip": "www.googleapis.com"
 }

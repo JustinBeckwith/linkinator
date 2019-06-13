@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { getConfig, Flags } from '../src/config';
+const assertRejects = require('assert-rejects');
 
 describe('config', () => {
   it('should allow passing no config', async () => {
@@ -18,7 +19,7 @@ describe('config', () => {
     const cfg = {
       config: '/path/does/not/exist',
     };
-    await assert.rejects(getConfig(cfg), /ENOENT: no such file or directory/);
+    await assertRejects(getConfig(cfg), /ENOENT: no such file or directory/);
   });
 
   it('should allow reading from a config file', async () => {
