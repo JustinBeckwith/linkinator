@@ -5,6 +5,7 @@ import * as updateNotifier from 'update-notifier';
 import chalk from 'chalk';
 import { LinkChecker, LinkState, LinkResult, CheckOptions } from './index';
 import { promisify } from 'util';
+import { Flags, getConfig } from './config';
 const toCSV = promisify(require('jsonexport'));
 
 const pkg = require('../../package.json');
@@ -21,6 +22,9 @@ const cli = meow(
         Required. Either the URL or the path on disk to check for broken links.
 
     Flags
+      --config
+          Path to the config file to use. Looks for \`linkinator.config.json\` by default.
+
       --recurse, -r
           Recurively follow links on the same root domain.
 
@@ -45,6 +49,7 @@ const cli = meow(
 `,
   {
     flags: {
+      config: { type: 'string' },
       recurse: { type: 'boolean', alias: 'r' },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
@@ -53,14 +58,16 @@ const cli = meow(
   }
 );
 
-let flags: { [index: string]: string };
+let flags: Flags;
 
 async function main() {
   if (cli.input.length !== 1) {
     cli.showHelp();
     return;
   }
-  flags = cli.flags;
+  flags = await getConfig(cli.flags);
+  console.log(flags);
+
   const start = Date.now();
 
   if (!flags.silent) {
