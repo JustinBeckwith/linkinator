@@ -13,9 +13,9 @@
     "pretest": "npm run compile",
     "prepare": "npm run compile",
     "compile": "tsc -p .",
-    "test": "nyc mocha build/test",
+    "test": "c8 mocha build/test",
     "fix": "gts fix",
-    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json",
+    "codecov": "c8 report --reporter=json && codecov -f coverage/*.json",
     "lint": "gts check"
   },
   "dependencies": {
@@ -40,11 +40,12 @@
     "@types/server-destroy": "^1.0.0",
     "@types/sinon": "^7.0.6",
     "@types/update-notifier": "^2.5.0",
+    "assert-rejects": "^1.0.0",
+    "c8": "^5.0.1",
     "codecov": "^3.2.0",
     "gts": "^1.0.0",
     "mocha": "^6.1.4",
     "nock": "^10.0.6",
-    "nyc": "^14.0.0",
     "semantic-release": "^15.13.15",
     "sinon": "^7.2.3",
     "source-map-support": "^0.5.10",
@@ -68,7 +69,7 @@
     "link",
     "checker"
   ],
-  "nyc": {
+  "c8": {
     "exclude": [
       "build/test"
     ]

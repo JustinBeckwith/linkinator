@@ -34,6 +34,10 @@ $ linkinator LOCATION [ --arguments ]
       Required. Either the URL or the path on disk to check for broken links.
 
   Flags
+
+    --config
+        Path to the config file to use. Looks for `linkinator.config.json` by default.
+
     --recurse, -r
         Recurively follow links on the same root domain.
 
@@ -89,6 +93,26 @@ Maybe you're going to pipe the output to another program.  Use the `--format` op
 
 ```sh
 $ linkinator ./docs --format CSV
+```
+
+### Configuration file
+You can pass options directly to the `linkinator` CLI, or you can define a config file.  By default, `linkinator` will look for a `linkinator.config.json` file in the current working directory.
+
+All options are optional. It should look like this:
+
+```json
+{
+  "format": "json",
+  "recurse": true,
+  "silent": true,
+  "skip": "www.googleapis.com"
+}
+```
+
+To load config settings outside the CWD, you can pass the `--config` flag to the `linkinator` CLI:
+
+```sh
+$ linkinator --config /some/path/your-config.json
 ```
 
 ## API Usage

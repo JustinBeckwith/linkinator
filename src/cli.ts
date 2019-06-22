@@ -5,6 +5,7 @@ import * as updateNotifier from 'update-notifier';
 import chalk from 'chalk';
 import { LinkChecker, LinkState, LinkResult, CheckOptions } from './index';
 import { promisify } from 'util';
+import { Flags, getConfig } from './config';
 const toCSV = promisify(require('jsonexport'));
 
 const pkg = require('../../package.json');
@@ -21,6 +22,9 @@ const cli = meow(
         Required. Either the URL or the path on disk to check for broken links.
 
     Flags
+      --config
+          Path to the config file to use. Looks for \`linkinator.config.json\` by default.
+
       --recurse, -r
           Recurively follow links on the same root domain.
 
@@ -45,22 +49,24 @@ const cli = meow(
 `,
   {
     flags: {
-      recurse: { type: 'boolean', alias: 'r' },
+      config: { type: 'string' },
+      recurse: { type: 'boolean', alias: 'r', default: undefined },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
-      silent: { type: 'boolean' },
+      silent: { type: 'boolean', default: undefined },
     },
   }
 );
 
-let flags: { [index: string]: string };
+let flags: Flags;
 
 async function main() {
   if (cli.input.length !== 1) {
     cli.showHelp();
     return;
   }
-  flags = cli.flags;
+  flags = await getConfig(cli.flags);
+
   const start = Date.now();
 
   if (!flags.silent) {
@@ -93,10 +99,13 @@ async function main() {
     }
     log(`  ${state} ${chalk.gray(link.url)}`);
   });
-  const opts: CheckOptions = { path: cli.input[0], recurse: cli.flags.recurse };
-  if (cli.flags.skip) {
-    const skips = cli.flags.skip as string;
-    opts.linksToSkip = skips.split(' ').filter(x => !!x);
+  const opts: CheckOptions = { path: cli.input[0], recurse: flags.recurse };
+  if (flags.skip) {
+    if (typeof flags.skip === 'string') {
+      opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
+    } else if (Array.isArray(flags.skip)) {
+      opts.linksToSkip = flags.skip;
+    }
   }
   const result = await checker.check(opts);
   log();
