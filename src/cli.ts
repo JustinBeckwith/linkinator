@@ -50,10 +50,10 @@ const cli = meow(
   {
     flags: {
       config: { type: 'string' },
-      recurse: { type: 'boolean', alias: 'r' },
+      recurse: { type: 'boolean', alias: 'r', default: undefined },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
-      silent: { type: 'boolean' },
+      silent: { type: 'boolean', default: undefined },
     },
   }
 );
@@ -66,7 +66,6 @@ async function main() {
     return;
   }
   flags = await getConfig(cli.flags);
-  console.log(flags);
 
   const start = Date.now();
 
@@ -100,10 +99,13 @@ async function main() {
     }
     log(`  ${state} ${chalk.gray(link.url)}`);
   });
-  const opts: CheckOptions = { path: cli.input[0], recurse: cli.flags.recurse };
-  if (cli.flags.skip) {
-    const skips = cli.flags.skip as string;
-    opts.linksToSkip = skips.split(' ').filter(x => !!x);
+  const opts: CheckOptions = { path: cli.input[0], recurse: flags.recurse };
+  if (flags.skip) {
+    if (typeof flags.skip === 'string') {
+      opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
+    } else if (Array.isArray(flags.skip)) {
+      opts.linksToSkip = flags.skip;
+    }
   }
   const result = await checker.check(opts);
   log();
