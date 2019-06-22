@@ -18,7 +18,6 @@ export async function getConfig(flags: Flags) {
   try {
     configData = await readFile(configPath, { encoding: 'utf8' });
   } catch (e) {
-    console.error(e);
     if (flags.config) {
       console.error(`Unable to find config file ${flags.config}`);
       throw e;
@@ -42,6 +41,5 @@ export async function getConfig(flags: Flags) {
   // combine the flags passed on the CLI with the flags in the config file,
   // with CLI flags getting precedence
   config = Object.assign({}, config, strippedFlags);
-  console.log(config);
   return config;
 }
