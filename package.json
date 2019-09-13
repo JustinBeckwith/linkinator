@@ -9,6 +9,13 @@
   "bin": {
     "linkinator": "build/src/cli.js"
   },
+  "prettier": {
+    "useTabs": false,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "semi": true,
+    "printWidth": 160
+  },
   "scripts": {
     "pretest": "npm run compile",
     "prepare": "npm run compile",
