@@ -196,5 +196,8 @@ export async function check(options: CheckOptions) {
  */
 function isHtml(response: gaxios.GaxiosResponse): boolean {
   const contentType = response.headers['content-type'] || '';
-  return !!contentType.match(/text\/html/g) || !!contentType.match(/application\/xhtml\+xml/g)
+  return (
+    !!contentType.match(/text\/html/g) ||
+    !!contentType.match(/application\/xhtml\+xml/g)
+  );
 }
