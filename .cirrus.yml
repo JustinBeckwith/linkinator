@@ -32,8 +32,8 @@ coverage_task:
 publish_task:
   only_if: $CIRRUS_BRANCH == 'master'
   depends_on:
-    - test_task
-    - lint_task
+    - test
+    - lint
   environment:
     GITHUB_TOKEN: ENCRYPTED[9797fc5164c7a6338c866075e6b0624980718cfbec499c651b1a858b1de1fabf2d2c297005f5df461dc66116b80c2a14]
     NPM_TOKEN: ENCRYPTED[fb4c4d308adf6db29ffc41ec9c779b553ef3910b9222356a9b1dc0e33de3edf34607ecc769918c4ff28726665530da51]
