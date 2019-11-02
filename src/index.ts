@@ -51,7 +51,7 @@ export class LinkChecker extends EventEmitter {
    */
   async check(options: CheckOptions) {
     options.linksToSkip = options.linksToSkip || [];
-    options.linksToSkip.push('^mailto:');
+    options.linksToSkip.push('^mailto:', '^irc:');
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
