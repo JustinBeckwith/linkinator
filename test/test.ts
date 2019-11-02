@@ -130,6 +130,15 @@ describe('linkinator', () => {
     assert.strictEqual(results.links.length, 2);
   });
 
+  it('should not folow non-http[s] links', async () => {
+    const results = await check({ path: 'test/fixtures/protocols' });
+    assert.ok(results.passed);
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.SKIPPED).length,
+      1
+    );
+  });
+
   it('should not recurse by default', async () => {
     const results = await check({ path: 'test/fixtures/recurse' });
     assert.strictEqual(results.links.length, 2);
