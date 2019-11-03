@@ -9,6 +9,10 @@
   "bin": {
     "linkinator": "build/src/cli.js"
   },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
   "scripts": {
     "pretest": "npm run compile",
     "prepare": "npm run compile",
