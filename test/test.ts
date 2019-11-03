@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as gaxios from 'gaxios';
 import * as nock from 'nock';
 import * as sinon from 'sinon';
+import * as path from 'path';
 
 import { check, LinkState } from '../src';
 
@@ -146,6 +147,26 @@ describe('linkinator', () => {
         .reply(200),
     ];
     const results = await check({ path: 'test/fixtures/basic' });
+    assert.ok(results.passed);
+    scopes.forEach(x => x.done());
+  });
+
+  it('should only follow links on the same origin domain', async () => {
+    const scopes = [
+      nock('http://fake.local')
+        .get('/')
+        .replyWithFile(200, path.resolve('test/fixtures/baseurl/index.html'), {
+          'content-type': 'text/html',
+        }),
+      nock('http://fake.local.br')
+        .head('/deep.html')
+        .reply(200),
+    ];
+    const results = await check({
+      path: 'http://fake.local',
+      recurse: true,
+    });
+    assert.strictEqual(results.links.length, 2);
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });

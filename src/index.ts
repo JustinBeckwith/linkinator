@@ -4,6 +4,7 @@ import * as http from 'http';
 import enableDestroy = require('server-destroy');
 
 import { getLinks } from './links';
+import { URL } from 'url';
 
 const finalhandler = require('finalhandler');
 const serveStatic = require('serve-static');
@@ -161,9 +162,16 @@ export class LinkChecker extends EventEmitter {
       this.emit('pagestart', opts.url);
       const urls = getLinks(data, opts.url);
       for (const url of urls) {
-        // only crawl links that start with the same host
-        const crawl =
+        let crawl =
           opts.checkOptions.recurse! && url.startsWith(opts.checkOptions.path);
+        // only crawl links that start with the same host
+        if (crawl) {
+          try {
+            const parsedUrl = new URL(url);
+            const pathUrl = new URL(opts.checkOptions.path);
+            crawl = crawl && parsedUrl.host === pathUrl.host;
+          } catch {}
+        }
         await this.crawl({
           url,
           crawl,

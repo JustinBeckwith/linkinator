@@ -27,7 +27,7 @@ const linksAttr = {
   srcset: ['img', 'source'],
 } as { [index: string]: string[] };
 
-export function getLinks(source: string, baseUrl: string) {
+export function getLinks(source: string, baseUrl: string): string[] {
   const $ = cheerio.load(source);
   const links = new Array<string>();
   Object.keys(linksAttr).forEach(attr => {
