@@ -78,15 +78,6 @@ describe('linkinator', () => {
     requestStub.restore();
   });
 
-  it('should skip mailto: links', async () => {
-    const results = await check({ path: 'test/fixtures/mailto' });
-    assert.ok(results.passed);
-    assert.strictEqual(
-      results.links.filter(x => x.state === LinkState.SKIPPED).length,
-      1
-    );
-  });
-
   it('should report malformed links as broken', async () => {
     const results = await check({ path: 'test/fixtures/malformed' });
     assert.ok(!results.passed);
@@ -131,11 +122,12 @@ describe('linkinator', () => {
   });
 
   it('should not folow non-http[s] links', async () => {
+    // includes mailto, data urls, and irc
     const results = await check({ path: 'test/fixtures/protocols' });
     assert.ok(results.passed);
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.SKIPPED).length,
-      1
+      3
     );
   });
 
