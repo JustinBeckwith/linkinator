@@ -2,7 +2,7 @@
 
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
-import chalk from 'chalk';
+import chalk = require('chalk');
 import { LinkChecker, LinkState, LinkResult, CheckOptions } from './index';
 import { promisify } from 'util';
 import { Flags, getConfig } from './config';
