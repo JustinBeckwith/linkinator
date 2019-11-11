@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
-import PQueue, { Queue, DefaultAddOptions } from 'p-queue';
+import PQueue, { DefaultAddOptions } from 'p-queue';
 
 import { getLinks } from './links';
 import { URL } from 'url';
@@ -29,6 +29,7 @@ export interface LinkResult {
   url: string;
   status?: number;
   state: LinkState;
+  parent?: string;
 }
 
 export interface CrawlResult {
@@ -38,6 +39,7 @@ export interface CrawlResult {
 
 interface CrawlOptions {
   url: string;
+  parent?: string;
   crawl: boolean;
   results: LinkResult[];
   cache: Set<string>;
@@ -130,7 +132,11 @@ export class LinkChecker extends EventEmitter {
       .filter(match => !!match);
 
     if (skips.length > 0) {
-      const result: LinkResult = { url: opts.url, state: LinkState.SKIPPED };
+      const result: LinkResult = {
+        url: opts.url,
+        state: LinkState.SKIPPED,
+        parent: opts.parent
+      };
       opts.results.push(result);
       this.emit('link', result);
       return;
@@ -169,7 +175,12 @@ export class LinkChecker extends EventEmitter {
     } catch (err) {
       // request failure: invalid domain name, etc.
     }
-    const result: LinkResult = { url: opts.url, status, state };
+    const result: LinkResult = {
+      url: opts.url,
+      status,
+      state,
+      parent: opts.parent
+    };
     opts.results.push(result);
     this.emit('link', result);
 
@@ -197,6 +208,7 @@ export class LinkChecker extends EventEmitter {
             results: opts.results,
             checkOptions: opts.checkOptions,
             queue: opts.queue,
+            parent: opts.url
           });
         });
       }

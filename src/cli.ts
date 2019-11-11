@@ -73,40 +73,40 @@ async function main() {
 
   const start = Date.now();
 
-  if (!flags.silent) {
-    log(`🏊‍♂️ crawling ${cli.input}`);
-  }
+  // if (!flags.silent) {
+  //   log(`🏊‍♂️ crawling ${cli.input}`);
+  // }
   const checker = new LinkChecker();
-  checker.on('pagestart', url => {
-    if (!flags.silent) {
-      log(`\n Scanning ${chalk.grey(url)}`);
-    }
-  });
-  checker.on('link', (link: LinkResult) => {
-    if (flags.silent && link.state !== LinkState.BROKEN) {
-      return;
-    }
+  // checker.on('pagestart', url => {
+  //   if (!flags.silent) {
+  //     log(`\n Scanning ${chalk.grey(url)}`);
+  //   }
+  // });
+  // checker.on('link', (link: LinkResult) => {
+  //   if (flags.silent && link.state !== LinkState.BROKEN) {
+  //     return;
+  //   }
 
-    let state = '';
-    switch (link.state) {
-      case LinkState.BROKEN:
-        state = `[${chalk.red(link.status!.toString())}]`;
-        break;
-      case LinkState.OK:
-        state = `[${chalk.green(link.status!.toString())}]`;
-        break;
-      case LinkState.SKIPPED:
-        state = `[${chalk.grey('SKP')}]`;
-        break;
-      default:
-        throw new Error('Invalid state.');
-    }
-    log(`  ${state} ${chalk.gray(link.url)}`);
-  });
+  //   let state = '';
+  //   switch (link.state) {
+  //     case LinkState.BROKEN:
+  //       state = `[${chalk.red(link.status!.toString())}]`;
+  //       break;
+  //     case LinkState.OK:
+  //       state = `[${chalk.green(link.status!.toString())}]`;
+  //       break;
+  //     case LinkState.SKIPPED:
+  //       state = `[${chalk.grey('SKP')}]`;
+  //       break;
+  //     default:
+  //       throw new Error('Invalid state.');
+  //   }
+  //   log(`  ${state} ${chalk.gray(link.url)}`);
+  // });
   const opts: CheckOptions = {
     path: cli.input[0],
     recurse: flags.recurse,
-    concurrency: flags.concurrency,
+    concurrency: Number(flags.concurrency),
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
@@ -126,6 +126,39 @@ async function main() {
     const csv = await toCSV(result.links);
     console.log(csv);
     return;
+  } else {
+    const parents = result.links.reduce((acc, curr) => {
+      const parent = curr.parent || '';
+      if (!acc[parent]) {
+        acc[parent] = [];
+      }
+      acc[parent].push(curr);
+      return acc;
+    }, {} as { [index: string]: LinkResult[]});
+    Object.keys(parents).forEach(parent => {
+      const links = parents[parent];
+      log(chalk.blue(parent));
+      links.forEach(link => {
+        if (flags.silent && link.state !== LinkState.BROKEN) {
+          return;
+        }
+        let state = '';
+        switch (link.state) {
+          case LinkState.BROKEN:
+            state = `[${chalk.red(link.status!.toString())}]`;
+            break;
+          case LinkState.OK:
+            state = `[${chalk.green(link.status!.toString())}]`;
+            break;
+          case LinkState.SKIPPED:
+            state = `[${chalk.grey('SKP')}]`;
+            break;
+          default:
+            throw new Error('Invalid state.');
+        }
+        log(`  ${state} ${chalk.gray(link.url)}`);
+      });
+    });
   }
 
   const total = (Date.now() - start) / 1000;
