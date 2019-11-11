@@ -25,6 +25,9 @@ const cli = meow(
       --config
           Path to the config file to use. Looks for \`linkinator.config.json\` by default.
 
+      --concurrency
+          The number of connections to make simultaneously. Defaults to 100.
+
       --recurse, -r
           Recurively follow links on the same root domain.
 
@@ -50,6 +53,7 @@ const cli = meow(
   {
     flags: {
       config: { type: 'string' },
+      concurrency: { type: 'string' },
       recurse: { type: 'boolean', alias: 'r', default: undefined },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
@@ -99,7 +103,11 @@ async function main() {
     }
     log(`  ${state} ${chalk.gray(link.url)}`);
   });
-  const opts: CheckOptions = { path: cli.input[0], recurse: flags.recurse };
+  const opts: CheckOptions = {
+    path: cli.input[0],
+    recurse: flags.recurse,
+    concurrency: flags.concurrency
+  };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
       opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);

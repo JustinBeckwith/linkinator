@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
+import PQueue from 'p-queue';
 
 import { getLinks } from './links';
 import { URL } from 'url';
@@ -10,6 +11,7 @@ const finalhandler = require('finalhandler');
 const serveStatic = require('serve-static');
 
 export interface CheckOptions {
+  concurrency?: number;
   port?: number;
   path: string;
   recurse?: boolean;
@@ -60,6 +62,11 @@ export class LinkChecker extends EventEmitter {
       enableDestroy(server);
       options.path = `http://localhost:${port}`;
     }
+
+    const queue = new PQueue({
+      concurrency: 10
+    });
+
     const results = await this.crawl({
       url: options.path,
       crawl: true,
