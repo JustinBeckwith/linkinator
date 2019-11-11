@@ -106,7 +106,7 @@ async function main() {
   const opts: CheckOptions = {
     path: cli.input[0],
     recurse: flags.recurse,
-    concurrency: flags.concurrency
+    concurrency: flags.concurrency,
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
