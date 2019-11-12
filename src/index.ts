@@ -2,14 +2,17 @@ import { EventEmitter } from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
+import PQueue, { DefaultAddOptions } from 'p-queue';
 
 import { getLinks } from './links';
 import { URL } from 'url';
+import PriorityQueue from 'p-queue/dist/priority-queue';
 
 const finalhandler = require('finalhandler');
 const serveStatic = require('serve-static');
 
 export interface CheckOptions {
+  concurrency?: number;
   port?: number;
   path: string;
   recurse?: boolean;
@@ -26,6 +29,7 @@ export interface LinkResult {
   url: string;
   status?: number;
   state: LinkState;
+  parent?: string;
 }
 
 export interface CrawlResult {
@@ -35,10 +39,12 @@ export interface CrawlResult {
 
 interface CrawlOptions {
   url: string;
+  parent?: string;
   crawl: boolean;
   results: LinkResult[];
   cache: Set<string>;
   checkOptions: CheckOptions;
+  queue: PQueue<PriorityQueue, DefaultAddOptions>;
 }
 
 /**
@@ -60,13 +66,24 @@ export class LinkChecker extends EventEmitter {
       enableDestroy(server);
       options.path = `http://localhost:${port}`;
     }
-    const results = await this.crawl({
-      url: options.path,
-      crawl: true,
-      checkOptions: options,
-      results: [],
-      cache: new Set(),
+
+    const queue = new PQueue({
+      concurrency: options.concurrency || 100,
     });
+
+    const results = new Array<LinkResult>();
+    queue.add(async () => {
+      await this.crawl({
+        url: options.path,
+        crawl: true,
+        checkOptions: options,
+        results,
+        cache: new Set(),
+        queue,
+      });
+    });
+    await queue.onIdle();
+
     const result = {
       links: results,
       passed: results.filter(x => x.state === LinkState.BROKEN).length === 0,
@@ -100,10 +117,10 @@ export class LinkChecker extends EventEmitter {
    * @private
    * @returns A list of crawl results consisting of urls and status codes
    */
-  private async crawl(opts: CrawlOptions): Promise<LinkResult[]> {
+  private async crawl(opts: CrawlOptions): Promise<void> {
     // Check to see if we've already scanned this url
     if (opts.cache.has(opts.url)) {
-      return opts.results;
+      return;
     }
     opts.cache.add(opts.url);
 
@@ -113,11 +130,16 @@ export class LinkChecker extends EventEmitter {
         return new RegExp(linkToSkip).test(opts.url);
       })
       .filter(match => !!match);
+
     if (skips.length > 0) {
-      const result: LinkResult = { url: opts.url, state: LinkState.SKIPPED };
+      const result: LinkResult = {
+        url: opts.url,
+        state: LinkState.SKIPPED,
+        parent: opts.parent,
+      };
       opts.results.push(result);
       this.emit('link', result);
-      return opts.results;
+      return;
     }
 
     // Perform a HEAD or GET request based on the need to crawl
@@ -153,7 +175,12 @@ export class LinkChecker extends EventEmitter {
     } catch (err) {
       // request failure: invalid domain name, etc.
     }
-    const result: LinkResult = { url: opts.url, status, state };
+    const result: LinkResult = {
+      url: opts.url,
+      status,
+      state,
+      parent: opts.parent,
+    };
     opts.results.push(result);
     this.emit('link', result);
 
@@ -172,18 +199,20 @@ export class LinkChecker extends EventEmitter {
             crawl = crawl && parsedUrl.host === pathUrl.host;
           } catch {}
         }
-        await this.crawl({
-          url,
-          crawl,
-          cache: opts.cache,
-          results: opts.results,
-          checkOptions: opts.checkOptions,
+
+        opts.queue.add(async () => {
+          await this.crawl({
+            url,
+            crawl,
+            cache: opts.cache,
+            results: opts.results,
+            checkOptions: opts.checkOptions,
+            queue: opts.queue,
+            parent: opts.url,
+          });
         });
       }
     }
-
-    // Return the aggregate results
-    return opts.results;
   }
 }
 

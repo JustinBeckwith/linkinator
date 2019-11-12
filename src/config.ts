@@ -4,6 +4,7 @@ import { promisify } from 'util';
 const readFile = promisify(fs.readFile);
 
 export interface Flags {
+  concurrency?: number;
   config?: string;
   recurse?: boolean;
   skip?: string;
