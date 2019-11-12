@@ -10,7 +10,7 @@ describe('config', () => {
       recurse: true,
       silent: true,
       skip: '🌳',
-      concurrency: 22
+      concurrency: 22,
     };
     const config = await getConfig(cfg);
     assert.deepStrictEqual(config, cfg);
