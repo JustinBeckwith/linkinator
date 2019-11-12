@@ -128,13 +128,16 @@ async function main() {
     return;
   } else {
     const parents = result.links.reduce((acc, curr) => {
-      const parent = curr.parent || '';
-      if (!acc[parent]) {
-        acc[parent] = [];
+      if (!flags.silent || curr.state === LinkState.BROKEN) {
+        const parent = curr.parent || '';
+        if (!acc[parent]) {
+          acc[parent] = [];
+        }
+        acc[parent].push(curr);
       }
-      acc[parent].push(curr);
       return acc;
     }, {} as { [index: string]: LinkResult[] });
+
     Object.keys(parents).forEach(parent => {
       const links = parents[parent];
       log(chalk.blue(parent));
