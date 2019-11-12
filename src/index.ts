@@ -135,7 +135,7 @@ export class LinkChecker extends EventEmitter {
       const result: LinkResult = {
         url: opts.url,
         state: LinkState.SKIPPED,
-        parent: opts.parent
+        parent: opts.parent,
       };
       opts.results.push(result);
       this.emit('link', result);
@@ -179,7 +179,7 @@ export class LinkChecker extends EventEmitter {
       url: opts.url,
       status,
       state,
-      parent: opts.parent
+      parent: opts.parent,
     };
     opts.results.push(result);
     this.emit('link', result);
@@ -208,7 +208,7 @@ export class LinkChecker extends EventEmitter {
             results: opts.results,
             checkOptions: opts.checkOptions,
             queue: opts.queue,
-            parent: opts.url
+            parent: opts.url,
           });
         });
       }
