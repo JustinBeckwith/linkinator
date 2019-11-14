@@ -4,7 +4,7 @@ import * as http from 'http';
 import enableDestroy = require('server-destroy');
 import PQueue, { DefaultAddOptions } from 'p-queue';
 
-import { getLinks } from './links';
+import { AttributeRules, getLinks, getBaseLinkAttributes } from './links';
 import { URL } from 'url';
 import PriorityQueue from 'p-queue/dist/priority-queue';
 
@@ -17,6 +17,7 @@ export interface CheckOptions {
   path: string;
   recurse?: boolean;
   linksToSkip?: string[];
+  linksAttributes?: AttributeRules;
 }
 
 export enum LinkState {
@@ -57,6 +58,11 @@ export class LinkChecker extends EventEmitter {
    * @param options Options to use while checking for 404s
    */
   async check(options: CheckOptions) {
+    options.linksAttributes = {
+      ...getBaseLinkAttributes(),
+      ...options.linksAttributes,
+    };
+
     options.linksToSkip = options.linksToSkip || [];
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
@@ -200,7 +206,11 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urlResults = getLinks(data, opts.url.href);
+      const urlResults = getLinks(
+        data,
+        opts.url.href,
+        opts.checkOptions.linksAttributes || {}
+      );
       for (const result of urlResults) {
         // if there was some sort of problem parsing the link while
         // creating a new URL obj, treat it as a broken link.

@@ -128,6 +128,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
 - `linksToSkip` (array) - An array of regular expression strings that should be skipped during the scan.
+- `linksAttributes` (object) - Expand tag attributes to detect broken links in custom attributes like `data-src` for lazeload. Keys are attributes and values are array of tag to search.
 
 #### linkinator.LinkChecker()
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:
@@ -207,6 +208,11 @@ async function complex() {
     path: 'http://example.com',
     // port: 8673,
     // recurse: true,
+    // linksAttributes: {
+    //   'data-src': [
+    //      'img'
+    //   ]
+    // }
     // linksToSkip: [
     //   'https://jbeckwith.com/some/link',
     //   'http://example.com'
@@ -220,8 +226,8 @@ async function complex() {
   console.log(`Scanned total of ${result.links.length} links!`);
 
   // The final result will contain the list of checked links, and the pass/fail
-  const brokeLinksCount = result.links.filter(x => x.state === 'BROKEN');
-  console.log(`Detected ${brokeLinksCount.length} broken links.`);
+  const brokenLinksCount = result.links.filter(x => x.state === 'BROKEN');
+  console.log(`Detected ${brokenLinksCount.length} broken links.`);
 }
 
 complex();

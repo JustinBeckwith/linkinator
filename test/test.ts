@@ -100,6 +100,24 @@ describe('linkinator', () => {
     );
   });
 
+  it('should detect broken custom attributes', async () => {
+    const results = await check({
+      path: 'test/fixtures/linksAttributes',
+      linksAttributes: {
+        'data-img': ['img'],
+        'data-src': ['img', 'div'],
+      },
+    });
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.BROKEN).length,
+      2
+    );
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.OK).length,
+      2
+    );
+  });
+
   it('should perform a recursive scan', async () => {
     // This test is making sure that we do a recursive scan of links,
     // but also that we don't follow links to another site
