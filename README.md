@@ -125,9 +125,9 @@ $ linkinator --config /some/path/your-config.json
 Asynchronous method that runs a site wide scan. Options come in the form of an object that includes:
 - `path` (string) - A fully qualified path to the url to be scanned, or the path to the directory on disk that contains files to be scanned. *required*.
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
-- `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
+- `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server. Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
-- `linksToSkip` (array) - An array of regular expression strings that should be skipped during the scan.
+- `linksToSkip` (array) - An array of regular expression strings that should be skipped during the scan. Links with `mailto:`, `tel:`, `irc:`, `data:` protocols are skipped by default. 
 
 #### linkinator.LinkChecker()
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:

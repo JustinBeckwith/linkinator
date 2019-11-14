@@ -122,14 +122,19 @@ describe('linkinator', () => {
     assert.strictEqual(results.links.length, 2);
   });
 
-  it('should not folow non-http[s] links', async () => {
-    // includes mailto, data urls, and irc
+  it('should not follow non-http[s] links', async () => {
+    const scope = nock('http://fake.local')
+      .head('/')
+      .reply(200);
+    // includes mailto, data urls, and other
     const results = await check({ path: 'test/fixtures/protocols' });
     assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 6);
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.SKIPPED).length,
-      3
+      4
     );
+    scope.done();
   });
 
   it('should not recurse by default', async () => {
