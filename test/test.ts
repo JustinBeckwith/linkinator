@@ -45,6 +45,30 @@ describe('linkinator', () => {
     );
   });
 
+  it('should include even skipped links if asked forcely', async () => {
+    const scope = nock('http://fake.local')
+      .head('/INCLUDED_part/end')
+      .reply(200)
+      .head('/included_part')
+      .reply(200)
+      .head('/force_included_part_very_bad/for_example')
+      .reply(200)
+      .head('/very_bad/force_included_PART')
+      .reply(200);
+    const results = await check({
+      path: 'test/fixtures/include',
+      linksToSkip: [/very_bad/],
+      linksToInclude: [/included_part/i],
+    });
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 7);
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.SKIPPED).length,
+      2
+    );
+    scope.done();
+  });
+
   it('should report broken links', async () => {
     const scope = nock('http://fake.local')
       .head('/')

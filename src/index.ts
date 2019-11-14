@@ -16,7 +16,8 @@ export interface CheckOptions {
   port?: number;
   path: string;
   recurse?: boolean;
-  linksToSkip?: string[];
+  linksToSkip?: Array<string | RegExp>;
+  linksToInclude?: Array<string | RegExp>;
 }
 
 export enum LinkState {
@@ -58,6 +59,8 @@ export class LinkChecker extends EventEmitter {
    */
   async check(options: CheckOptions) {
     options.linksToSkip = options.linksToSkip || [];
+    options.linksToInclude = options.linksToInclude || [];
+
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
@@ -142,9 +145,14 @@ export class LinkChecker extends EventEmitter {
       .linksToSkip!.map(linkToSkip => {
         return new RegExp(linkToSkip).test(opts.url.href);
       })
-      .filter(match => !!match);
+      .filter(Boolean);
+    const forceInclude = opts.checkOptions
+      .linksToInclude!.map(linkToInclude => {
+        return new RegExp(linkToInclude).test(opts.url.href);
+      })
+      .filter(Boolean);
 
-    if (skips.length > 0) {
+    if (skips.length > 0 && forceInclude.length === 0) {
       const result: LinkResult = {
         url: opts.url.href,
         state: LinkState.SKIPPED,

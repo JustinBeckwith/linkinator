@@ -13,7 +13,7 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 - 🔥Easily perform scans on remote sites or local files
 - 🔥Scan any element that includes links, not just `<a href>`
 - 🔥Supports redirects, absolute links, relative links, all the things
-- 🔥Configure specific regex patterns to skip
+- 🔥Configure specific regex patterns to skip and ignore it when needed
 
 ## Installation
 
@@ -128,6 +128,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
 - `linksToSkip` (array) - An array of regular expression strings that should be skipped during the scan.
+- `linksToInclude` (array) - An array of regular expression strings that should be included even if it should be skipped by rules during the scan.
 
 #### linkinator.LinkChecker()
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:
@@ -210,6 +211,9 @@ async function complex() {
     // linksToSkip: [
     //   'https://jbeckwith.com/some/link',
     //   'http://example.com'
+    // ]
+    // linksToInclude: [
+    //   /important/i
     // ]
   });
 

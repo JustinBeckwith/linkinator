@@ -34,6 +34,9 @@ const cli = meow(
       --skip, -s
           List of urls in regexy form to not include in the check.
 
+      --include, -i
+          List of urls in regexy form to force include in the check.
+
       --format, -f
           Return the data in CSV or JSON format.
 
@@ -48,6 +51,7 @@ const cli = meow(
       $ linkinator https://www.google.com
       $ linkinator . --recurse
       $ linkinator . --skip www.googleapis.com
+      $ linkinator . --skip www.googleapis.com --include /api/v2
       $ linkinator . --format CSV
 `,
   {
@@ -56,6 +60,7 @@ const cli = meow(
       concurrency: { type: 'string' },
       recurse: { type: 'boolean', alias: 'r', default: undefined },
       skip: { type: 'string', alias: 's' },
+      include: { type: 'string', alias: 'i' },
       format: { type: 'string', alias: 'f' },
       silent: { type: 'boolean', default: undefined },
     },
@@ -113,6 +118,13 @@ async function main() {
       opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
     } else if (Array.isArray(flags.skip)) {
       opts.linksToSkip = flags.skip;
+    }
+  }
+  if (flags.include) {
+    if (typeof flags.include === 'string') {
+      opts.linksToInclude = flags.include.split(' ').filter(x => !!x);
+    } else if (Array.isArray(flags.include)) {
+      opts.linksToInclude = flags.include;
     }
   }
   const result = await checker.check(opts);

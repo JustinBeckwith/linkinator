@@ -8,6 +8,7 @@ export interface Flags {
   config?: string;
   recurse?: boolean;
   skip?: string;
+  include?: string;
   format?: string;
   silent?: boolean;
 }
