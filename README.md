@@ -206,7 +206,7 @@ async function complex() {
   const result = await checker.check({
     path: 'http://example.com',
     // port: 8673,
-    // recurse?: true,
+    // recurse: true,
     // linksToSkip: [
     //   'https://jbeckwith.com/some/link',
     //   'http://example.com'
