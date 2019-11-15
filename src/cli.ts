@@ -29,7 +29,7 @@ const cli = meow(
           The number of connections to make simultaneously. Defaults to 100.
 
       --recurse, -r
-          Recurively follow links on the same root domain.
+          Recursively follow links on the same root domain.
 
       --skip, -s
           List of urls in regexy form to not include in the check.
