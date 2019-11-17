@@ -175,6 +175,8 @@ export class LinkChecker extends EventEmitter {
     // Perform a HEAD or GET request based on the need to crawl
     let status = 0;
     let state = LinkState.BROKEN;
+    let responseUrl = opts.url.href;
+
     let data = '';
     let shouldRecurse = false;
     try {
@@ -195,6 +197,7 @@ export class LinkChecker extends EventEmitter {
         });
       }
 
+      responseUrl = res.request.responseURL;
       // Assume any 2xx status is 👌
       status = res.status;
       if (res.status >= 200 && res.status < 300) {
@@ -206,7 +209,7 @@ export class LinkChecker extends EventEmitter {
       // request failure: invalid domain name, etc.
     }
     const result: LinkResult = {
-      url: opts.url.href,
+      url: responseUrl,
       status,
       state,
       parent: opts.parent,
@@ -217,7 +220,7 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urlResults = getLinks(data, opts.url.href);
+      const urlResults = getLinks(data, result.url);
       for (const result of urlResults) {
         // if there was some sort of problem parsing the link while
         // creating a new URL obj, treat it as a broken link.

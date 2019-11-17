@@ -22,7 +22,7 @@
     "chalk": "^3.0.0",
     "cheerio": "^1.0.0-rc.2",
     "finalhandler": "^1.1.2",
-    "gaxios": "^2.0.1",
+    "gaxios": "^2.2.0",
     "jsonexport": "^2.4.1",
     "meow": "^5.0.0",
     "p-queue": "^6.2.1",

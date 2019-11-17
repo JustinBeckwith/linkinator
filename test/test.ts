@@ -201,6 +201,38 @@ describe('linkinator', () => {
     scope.done();
   });
 
+  it('should handle redirects correctly', async () => {
+    const body = `
+        <a href="./ok">relative link</a>
+        <a href="./broken">relative link</a>
+    `;
+
+    const scope = nock('http://redirected.local')
+      .get('/index')
+      .reply(200, body, {
+        'Content-Type': 'text/html; charset=UTF-8',
+      })
+      .get('/subfolder/index')
+      .reply(301, undefined, {
+        Location: '/index',
+      })
+      .head('/ok')
+      .reply(200);
+
+    const results = await check({
+      path: 'http://redirected.local/subfolder/index',
+    });
+
+    assert.strictEqual(results.links.length, 3);
+    // only one should be broken
+    // and link should be /ok not /subfolder/ok
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.BROKEN).length,
+      1
+    );
+    scope.done();
+  });
+
   it('should not recurse non-html files', async () => {
     const results = await check({
       path: 'test/fixtures/scripts',
