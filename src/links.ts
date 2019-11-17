@@ -25,6 +25,7 @@ const linksAttr = {
     'video',
   ],
   srcset: ['img', 'source'],
+  style: [''],
 } as { [index: string]: string[] };
 
 export interface ParsedUrl {
@@ -51,6 +52,25 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
 
 function parseAttr(name: string, value: string): string[] {
   switch (name) {
+    case 'style':
+      return value
+        .split(';')
+        .filter(val => !!val)
+        .map((rules: string) => {
+          if (!rules) {
+            return '';
+          }
+
+          const [attr, value] = rules.split(':');
+          const urlValueRegexp = /^.*url\(('|"|)?([^)]+?)('|"|)?\).*/;
+          if (
+            ['background', 'background-image'].includes(attr.trim()) &&
+            value.match(urlValueRegexp)
+          ) {
+            return value.replace(urlValueRegexp, '$2');
+          }
+          return '';
+        });
     case 'srcset':
       return value
         .split(',')

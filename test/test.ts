@@ -100,6 +100,19 @@ describe('linkinator', () => {
     );
   });
 
+  it('should detect broken image links in inline styles', async () => {
+    const results = await check({ path: 'test/fixtures/style' });
+
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.BROKEN).length,
+      2
+    );
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.OK).length,
+      2
+    );
+  });
+
   it('should perform a recursive scan', async () => {
     // This test is making sure that we do a recursive scan of links,
     // but also that we don't follow links to another site
