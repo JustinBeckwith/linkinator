@@ -38,7 +38,7 @@ export interface CrawlResult {
 }
 
 interface CrawlOptions {
-  url: string;
+  url: URL;
   parent?: string;
   crawl: boolean;
   results: LinkResult[];
@@ -58,7 +58,6 @@ export class LinkChecker extends EventEmitter {
    */
   async check(options: CheckOptions) {
     options.linksToSkip = options.linksToSkip || [];
-    options.linksToSkip.push('^mailto:', '^irc:', '^data:');
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
@@ -74,7 +73,7 @@ export class LinkChecker extends EventEmitter {
     const results = new Array<LinkResult>();
     queue.add(async () => {
       await this.crawl({
-        url: options.path,
+        url: new URL(options.path),
         crawl: true,
         checkOptions: options,
         results,
@@ -119,21 +118,35 @@ export class LinkChecker extends EventEmitter {
    */
   private async crawl(opts: CrawlOptions): Promise<void> {
     // Check to see if we've already scanned this url
-    if (opts.cache.has(opts.url)) {
+    if (opts.cache.has(opts.url.href)) {
       return;
     }
-    opts.cache.add(opts.url);
+    opts.cache.add(opts.url.href);
 
-    // Check for links that should be skipped
+    // explicitly skip non-http[s] links before making the request
+    const proto = opts.url.protocol;
+    if (proto !== 'http:' && proto !== 'https:') {
+      const r = {
+        url: opts.url.href,
+        status: 0,
+        state: LinkState.SKIPPED,
+        parent: opts.parent,
+      };
+      opts.results.push(r);
+      this.emit('link', r);
+      return;
+    }
+
+    // Check for user configured links that should be skipped
     const skips = opts.checkOptions
       .linksToSkip!.map(linkToSkip => {
-        return new RegExp(linkToSkip).test(opts.url);
+        return new RegExp(linkToSkip).test(opts.url.href);
       })
       .filter(match => !!match);
 
     if (skips.length > 0) {
       const result: LinkResult = {
-        url: opts.url,
+        url: opts.url.href,
         state: LinkState.SKIPPED,
         parent: opts.parent,
       };
@@ -150,7 +163,7 @@ export class LinkChecker extends EventEmitter {
     try {
       let res = await gaxios.request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
-        url: opts.url,
+        url: opts.url.href,
         responseType: opts.crawl ? 'text' : 'stream',
         validateStatus: () => true,
       });
@@ -159,7 +172,7 @@ export class LinkChecker extends EventEmitter {
       if (res.status === 405) {
         res = await gaxios.request<string>({
           method: 'GET',
-          url: opts.url,
+          url: opts.url.href,
           responseType: 'stream',
           validateStatus: () => true,
         });
@@ -176,7 +189,7 @@ export class LinkChecker extends EventEmitter {
       // request failure: invalid domain name, etc.
     }
     const result: LinkResult = {
-      url: opts.url,
+      url: opts.url.href,
       status,
       state,
       parent: opts.parent,
@@ -187,28 +200,43 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urls = getLinks(data, opts.url);
-      for (const url of urls) {
-        let crawl =
-          opts.checkOptions.recurse! && url.startsWith(opts.checkOptions.path);
+      const urlResults = getLinks(data, opts.url.href);
+      for (const result of urlResults) {
+        // if there was some sort of problem parsing the link while
+        // creating a new URL obj, treat it as a broken link.
+        if (!result.url) {
+          const r = {
+            url: result.link,
+            status: 0,
+            state: LinkState.BROKEN,
+            parent: opts.url.href,
+          };
+          opts.results.push(r);
+          this.emit('link', r);
+          continue;
+        }
+
+        let crawl = (opts.checkOptions.recurse! &&
+          result.url &&
+          result.url.href.startsWith(opts.checkOptions.path)) as boolean;
+
         // only crawl links that start with the same host
         if (crawl) {
           try {
-            const parsedUrl = new URL(url);
             const pathUrl = new URL(opts.checkOptions.path);
-            crawl = crawl && parsedUrl.host === pathUrl.host;
+            crawl = crawl && result.url!.host === pathUrl.host;
           } catch {}
         }
 
         opts.queue.add(async () => {
           await this.crawl({
-            url,
+            url: result.url!,
             crawl,
             cache: opts.cache,
             results: opts.results,
             checkOptions: opts.checkOptions,
             queue: opts.queue,
-            parent: opts.url,
+            parent: opts.url.href,
           });
         });
       }

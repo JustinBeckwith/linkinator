@@ -110,7 +110,7 @@ describe('linkinator', () => {
       path: 'test/fixtures/recurse',
       recurse: true,
     });
-    assert.strictEqual(results.links.length, 5);
+    assert.strictEqual(results.links.length, 4);
     scope.done();
   });
 
@@ -122,7 +122,7 @@ describe('linkinator', () => {
     assert.strictEqual(results.links.length, 2);
   });
 
-  it('should not folow non-http[s] links', async () => {
+  it('should not follow non-http[s] links', async () => {
     // includes mailto, data urls, and irc
     const results = await check({ path: 'test/fixtures/protocols' });
     assert.ok(results.passed);

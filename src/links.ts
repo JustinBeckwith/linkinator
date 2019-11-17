@@ -27,7 +27,13 @@ const linksAttr = {
   srcset: ['img', 'source'],
 } as { [index: string]: string[] };
 
-export function getLinks(source: string, baseUrl: string): string[] {
+export interface ParsedUrl {
+  link: string;
+  error?: Error;
+  url?: URL;
+}
+
+export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
   const $ = cheerio.load(source);
   const links = new Array<string>();
   Object.keys(linksAttr).forEach(attr => {
@@ -39,7 +45,7 @@ export function getLinks(source: string, baseUrl: string): string[] {
   });
   const sanitized = links
     .filter(link => !!link)
-    .map(link => normalizeLink(link, baseUrl));
+    .map(link => parseLink(link, baseUrl));
   return sanitized;
 }
 
@@ -54,12 +60,12 @@ function parseAttr(name: string, value: string): string[] {
   }
 }
 
-function normalizeLink(link: string, baseUrl: string): string {
+function parseLink(link: string, baseUrl: string): ParsedUrl {
   try {
-    const slink = new URL(link, baseUrl);
-    slink.hash = '';
-    return slink.href;
-  } catch (e) {
-    return link;
+    const url = new URL(link, baseUrl);
+    url.hash = '';
+    return { link, url };
+  } catch (error) {
+    return { link, error };
   }
 }
