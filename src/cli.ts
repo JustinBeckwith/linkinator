@@ -120,7 +120,7 @@ async function main() {
 
   const format = flags.format ? flags.format.toLowerCase() : null;
   if (format === 'json') {
-    console.log(result);
+    console.log(JSON.stringify(result, null, 2));
     return;
   } else if (format === 'csv') {
     const csv = await toCSV(result.links);
