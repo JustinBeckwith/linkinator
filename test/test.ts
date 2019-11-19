@@ -51,9 +51,9 @@ describe('linkinator', () => {
       .reply(200);
     const results = await check({
       path: 'test/fixtures/filter',
-      filterLink: (href) => {
-        return href.includes('filterme')
-      }
+      filterLink: href => {
+        return href.includes('filterme');
+      },
     });
     assert.ok(results.passed);
     assert.strictEqual(

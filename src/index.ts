@@ -145,7 +145,11 @@ export class LinkChecker extends EventEmitter {
       })
       .filter(match => !!match);
 
-    if (skips.length > 0 || (opts.checkOptions.filterLink && opts.checkOptions.filterLink(opts.url.href))) {
+    if (
+      skips.length > 0 ||
+      (opts.checkOptions.filterLink &&
+        opts.checkOptions.filterLink(opts.url.href))
+    ) {
       const result: LinkResult = {
         url: opts.url.href,
         state: LinkState.SKIPPED,
