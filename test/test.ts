@@ -88,6 +88,77 @@ describe('linkinator', () => {
     );
   });
 
+  it('should detect relative urls with relative base', async () => {
+    const cases = [
+      {
+        fixture: 'test/fixtures/basetag/relative-to-root.html',
+        nonBrokenUrl: '/anotherBase/ok',
+      },
+      {
+        fixture: 'test/fixtures/basetag/relative-folder.html',
+        nonBrokenUrl: '/pageBase/anotherBase/ok',
+      },
+      {
+        fixture: 'test/fixtures/basetag/relative-dot-folder.html',
+        nonBrokenUrl: '/pageBase/anotherBase/ok',
+      },
+      {
+        fixture: 'test/fixtures/basetag/relative-page.html',
+        nonBrokenUrl: '/pageBase/ok',
+      },
+      {
+        fixture: 'test/fixtures/basetag/empty-base.html',
+        nonBrokenUrl: '/pageBase/ok',
+      },
+    ];
+
+    for (let i = 0; i < cases.length; i++) {
+      const { fixture, nonBrokenUrl } = cases[i];
+      const scope = nock('http://fake.local')
+        .get('/pageBase/index')
+        .replyWithFile(200, fixture, {
+          'Content-Type': 'text/html; charset=UTF-8',
+        })
+        .head(nonBrokenUrl)
+        .reply(200);
+
+      const results = await check({
+        path: 'http://fake.local/pageBase/index',
+      });
+
+      assert.strictEqual(results.links.length, 3);
+      assert.strictEqual(
+        results.links.filter(x => x.state === LinkState.BROKEN).length,
+        1
+      );
+      scope.done();
+    }
+  });
+
+  it('should detect relative urls with absolute base', async () => {
+    const scope = nock('http://fake.local')
+      .get('/pageBase/index')
+      .replyWithFile(200, 'test/fixtures/basetag/absolute.html', {
+        'Content-Type': 'text/html; charset=UTF-8',
+      });
+
+    const anotherScope = nock('http://another.fake.local')
+      .head('/ok')
+      .reply(200);
+
+    const results = await check({
+      path: 'http://fake.local/pageBase/index',
+    });
+
+    assert.strictEqual(results.links.length, 3);
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.BROKEN).length,
+      1
+    );
+    scope.done();
+    anotherScope.done();
+  });
+
   it('should detect broken image links', async () => {
     const results = await check({ path: 'test/fixtures/image' });
     assert.strictEqual(

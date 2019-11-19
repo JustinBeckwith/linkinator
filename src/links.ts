@@ -43,10 +43,41 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
       links.push(...values);
     });
   });
+
+  let realBaseUrl = baseUrl;
+  const base = $('base[href]');
+  if (base.length) {
+    // only first <base by specification
+    const htmlBaseUrl = base.first().attr('href');
+
+    realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
+  }
+
   const sanitized = links
     .filter(link => !!link)
-    .map(link => parseLink(link, baseUrl));
+    .map(link => parseLink(link, realBaseUrl));
   return sanitized;
+}
+
+function getBaseUrl(htmlBaseUrl: string, oldBaseUrl: string): string {
+  if (isAbsoluteUrl(htmlBaseUrl)) {
+    return htmlBaseUrl;
+  }
+
+  const url = new URL(htmlBaseUrl, oldBaseUrl);
+  url.hash = '';
+  return url.href;
+}
+
+function isAbsoluteUrl(url: string): boolean {
+  // Don't match Windows paths
+  if (/^[a-zA-Z]:\\/.test(url)) {
+    return false;
+  }
+
+  // Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
+  // Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
+  return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
 }
 
 function parseAttr(name: string, value: string): string[] {
