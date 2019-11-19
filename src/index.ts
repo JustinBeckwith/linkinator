@@ -17,7 +17,7 @@ export interface CheckOptions {
   path: string;
   recurse?: boolean;
   linksToSkip?: string[];
-  filterLink?: (arg0: string) => boolean;
+  filter?: (arg0: string) => boolean;
 }
 
 export enum LinkState {
@@ -147,8 +147,7 @@ export class LinkChecker extends EventEmitter {
 
     if (
       skips.length > 0 ||
-      (opts.checkOptions.filterLink &&
-        opts.checkOptions.filterLink(opts.url.href))
+      (opts.checkOptions.filter && !opts.checkOptions.filter(opts.url.href))
     ) {
       const result: LinkResult = {
         url: opts.url.href,
