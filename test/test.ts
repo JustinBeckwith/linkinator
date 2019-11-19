@@ -45,6 +45,24 @@ describe('linkinator', () => {
     );
   });
 
+  it('should skip links if passed a filterLink function', async () => {
+    const scope = nock('https://good.com')
+      .head('/')
+      .reply(200);
+    const results = await check({
+      path: 'test/fixtures/filter',
+      filterLink: (href) => {
+        return href.includes('filterme')
+      }
+    });
+    assert.ok(results.passed);
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.SKIPPED).length,
+      2
+    );
+    scope.done();
+  });
+
   it('should report broken links', async () => {
     const scope = nock('http://fake.local')
       .head('/')
