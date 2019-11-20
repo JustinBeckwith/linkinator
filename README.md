@@ -200,6 +200,9 @@ async function complex() {
 
     // What was the status code of the response?
     console.log(`  ${result.status}`);
+
+    // What page linked here?
+    console.log(`  ${result.parent}`);
   });
 
   // Go ahead and start the scan! As events occur, we will see them above.
