@@ -16,8 +16,7 @@ export interface CheckOptions {
   port?: number;
   path: string;
   recurse?: boolean;
-  linksToSkip?: string[];
-  filter?: (arg0: string) => boolean;
+  linksToSkip?: string[] | ((link: string) => boolean);
 }
 
 export enum LinkState {
@@ -138,16 +137,10 @@ export class LinkChecker extends EventEmitter {
       return;
     }
 
-    // Check for user configured links that should be skipped
-    const skips = opts.checkOptions
-      .linksToSkip!.map(linkToSkip => {
-        return new RegExp(linkToSkip).test(opts.url.href);
-      })
-      .filter(match => !!match);
-
+    // Check for a user-configured function to filter out links
     if (
-      skips.length > 0 ||
-      (opts.checkOptions.filter && !opts.checkOptions.filter(opts.url.href))
+      typeof opts.checkOptions.linksToSkip === 'function' &&
+      opts.checkOptions.linksToSkip(opts.url.href)
     ) {
       const result: LinkResult = {
         url: opts.url.href,
@@ -157,6 +150,26 @@ export class LinkChecker extends EventEmitter {
       opts.results.push(result);
       this.emit('link', result);
       return;
+    }
+
+    // Check for a user-configured array of link regular expressions that should be skipped
+    if (Array.isArray(opts.checkOptions.linksToSkip)) {
+      const skips = opts.checkOptions.linksToSkip
+        .map(linkToSkip => {
+          return new RegExp(linkToSkip).test(opts.url.href);
+        })
+        .filter(match => !!match);
+
+      if (skips.length > 0) {
+        const result: LinkResult = {
+          url: opts.url.href,
+          state: LinkState.SKIPPED,
+          parent: opts.parent,
+        };
+        opts.results.push(result);
+        this.emit('link', result);
+        return;
+      }
     }
 
     // Perform a HEAD or GET request based on the need to crawl
