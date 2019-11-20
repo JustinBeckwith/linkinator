@@ -51,7 +51,7 @@ describe('linkinator', () => {
       .reply(200);
     const results = await check({
       path: 'test/fixtures/filter',
-      linksToSkip: link => link.includes('filterme'),
+      linksToSkip: link => Promise.resolve(link.includes('filterme')),
     });
     assert.ok(results.passed);
     assert.strictEqual(

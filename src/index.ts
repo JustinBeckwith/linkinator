@@ -16,7 +16,7 @@ export interface CheckOptions {
   port?: number;
   path: string;
   recurse?: boolean;
-  linksToSkip?: string[] | ((link: string) => boolean);
+  linksToSkip?: string[] | ((link: string) => Promise<boolean>);
 }
 
 export enum LinkState {
@@ -140,7 +140,7 @@ export class LinkChecker extends EventEmitter {
     // Check for a user-configured function to filter out links
     if (
       typeof opts.checkOptions.linksToSkip === 'function' &&
-      opts.checkOptions.linksToSkip(opts.url.href)
+      (await opts.checkOptions.linksToSkip(opts.url.href))
     ) {
       const result: LinkResult = {
         url: opts.url.href,
