@@ -49,7 +49,6 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
   if (base.length) {
     // only first <base by specification
     const htmlBaseUrl = base.first().attr('href');
-
     realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
   }
 
