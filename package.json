@@ -31,6 +31,7 @@
     "update-notifier": "^4.0.0"
   },
   "devDependencies": {
+    "@types/chai": "^4.2.7",
     "@types/cheerio": "^0.22.10",
     "@types/finalhandler": "^1.1.0",
     "@types/meow": "^5.0.0",
@@ -42,7 +43,9 @@
     "@types/update-notifier": "^2.5.0",
     "assert-rejects": "^1.0.0",
     "c8": "^6.0.0",
+    "chai": "^4.2.0",
     "codecov": "^3.6.1",
+    "execa": "^4.0.0",
     "gts": "^1.1.0",
     "mocha": "^6.2.1",
     "nock": "^11.4.0",
