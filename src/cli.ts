@@ -54,11 +54,12 @@ const cli = meow(
     flags: {
       config: { type: 'string' },
       concurrency: { type: 'string' },
-      recurse: { type: 'boolean', alias: 'r', default: undefined },
+      recurse: { type: 'boolean', alias: 'r' },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
-      silent: { type: 'boolean', default: undefined },
+      silent: { type: 'boolean' },
     },
+    booleanDefault: undefined
   }
 );
 
