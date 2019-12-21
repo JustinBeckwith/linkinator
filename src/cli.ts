@@ -59,7 +59,7 @@ const cli = meow(
       format: { type: 'string', alias: 'f' },
       silent: { type: 'boolean' },
     },
-    booleanDefault: undefined
+    booleanDefault: undefined,
   }
 );
 
