@@ -9,5 +9,5 @@ describe('cli', () => {
       reject: false,
     });
     assert.include(res.stderr, 'ERROR: Detected 1 broken links');
-  }).timeout(20000);
+  }).timeout(60000);
 });
