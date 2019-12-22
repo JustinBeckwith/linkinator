@@ -50,7 +50,7 @@
     "mocha": "^6.2.1",
     "nock": "^11.4.0",
     "semantic-release": "^15.13.24",
-    "sinon": "^7.5.0",
+    "sinon": "^8.0.0",
     "source-map-support": "^0.5.13",
     "typescript": "^3.6.4"
   },
