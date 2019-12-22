@@ -42,7 +42,7 @@
     "@types/sinon": "^7.5.0",
     "@types/update-notifier": "^2.5.0",
     "assert-rejects": "^1.0.0",
-    "c8": "^6.0.0",
+    "c8": "^7.0.0",
     "chai": "^4.2.0",
     "codecov": "^3.6.1",
     "execa": "^3.4.0",
