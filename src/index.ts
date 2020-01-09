@@ -181,6 +181,10 @@ export class LinkChecker extends EventEmitter {
       let res = await gaxios.request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url.href,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
+        },
         responseType: opts.crawl ? 'text' : 'stream',
         validateStatus: () => true,
       });
@@ -190,6 +194,10 @@ export class LinkChecker extends EventEmitter {
         res = await gaxios.request<string>({
           method: 'GET',
           url: opts.url.href,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
+          },
           responseType: 'stream',
           validateStatus: () => true,
         });
