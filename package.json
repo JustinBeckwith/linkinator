@@ -49,7 +49,7 @@
     "gts": "^1.1.0",
     "mocha": "^7.0.0",
     "nock": "^11.4.0",
-    "semantic-release": "^16.0.0",
+    "semantic-release": "^17.0.0",
     "sinon": "^8.0.0",
     "source-map-support": "^0.5.13",
     "typescript": "^3.6.4"
