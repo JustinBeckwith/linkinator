@@ -241,7 +241,7 @@ export class LinkChecker extends EventEmitter {
         if (crawl) {
           try {
             const pathUrl = new URL(opts.checkOptions.path);
-            crawl = crawl && result.url!.host === pathUrl.host;
+            crawl = result.url!.host === pathUrl.host;
           } catch {}
         }
 
