@@ -40,6 +40,14 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
     const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
     $(elements).each((i, element) => {
       const values = parseAttr(attr, element.attribs[attr]);
+      // ignore href properties for link tags where rel is likely to fail
+      const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
+      if (
+        element.tagName === 'link' &&
+        relValuesToIgnore.includes(element.attribs['rel'])
+      ) {
+        return;
+      }
       links.push(...values);
     });
   });
@@ -62,7 +70,6 @@ function getBaseUrl(htmlBaseUrl: string, oldBaseUrl: string): string {
   if (isAbsoluteUrl(htmlBaseUrl)) {
     return htmlBaseUrl;
   }
-
   const url = new URL(htmlBaseUrl, oldBaseUrl);
   url.hash = '';
   return url.href;
