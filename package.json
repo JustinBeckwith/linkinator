@@ -51,7 +51,6 @@
     "nock": "^11.4.0",
     "semantic-release": "^17.0.0",
     "sinon": "^8.0.0",
-    "source-map-support": "^0.5.13",
     "typescript": "^3.6.4"
   },
   "engines": {
@@ -76,11 +75,5 @@
     "exclude": [
       "build/test"
     ]
-  },
-  "mocha": {
-    "check-leaks": true,
-    "timeout": 10000,
-    "throw-deprecation": true,
-    "require": "source-map-support/register"
   }
 }
