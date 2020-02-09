@@ -76,5 +76,11 @@
     "exclude": [
       "build/test"
     ]
+  },
+  "mocha": {
+    "check-leaks": true,
+    "timeout": 10000,
+    "throw-deprecation": true,
+    "require": "source-map-support/register"
   }
 }
