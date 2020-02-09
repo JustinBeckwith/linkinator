@@ -1,5 +1,5 @@
 container:
-  image: node:10
+  image: node:12
 
 windows_task:
   windows_container:
@@ -15,9 +15,9 @@ lint_task:
 test_task:
   container:
     matrix:
+      image: node:13
       image: node:12
       image: node:10
-      image: node:8
   install_script: npm install
   test_script: npm test
 
