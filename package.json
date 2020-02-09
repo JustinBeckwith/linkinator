@@ -24,35 +24,38 @@
     "finalhandler": "^1.1.2",
     "gaxios": "^2.0.1",
     "jsonexport": "^2.4.1",
-    "meow": "^5.0.0",
+    "meow": "^6.0.0",
     "p-queue": "^6.2.1",
     "serve-static": "^1.14.1",
     "server-destroy": "^1.0.1",
-    "update-notifier": "^3.0.1"
+    "update-notifier": "^4.0.0"
   },
   "devDependencies": {
+    "@types/chai": "^4.2.7",
     "@types/cheerio": "^0.22.10",
     "@types/finalhandler": "^1.1.0",
     "@types/meow": "^5.0.0",
-    "@types/mocha": "^5.2.7",
+    "@types/mocha": "^7.0.0",
     "@types/node": "^12.7.12",
     "@types/serve-static": "^1.13.3",
     "@types/server-destroy": "^1.0.0",
     "@types/sinon": "^7.5.0",
     "@types/update-notifier": "^2.5.0",
     "assert-rejects": "^1.0.0",
-    "c8": "^6.0.0",
+    "c8": "^7.0.0",
+    "chai": "^4.2.0",
     "codecov": "^3.6.1",
+    "execa": "^4.0.0",
     "gts": "^1.1.0",
-    "mocha": "^6.2.1",
+    "mocha": "^7.0.0",
     "nock": "^11.4.0",
-    "semantic-release": "^15.13.24",
-    "sinon": "^7.5.0",
+    "semantic-release": "^17.0.0",
+    "sinon": "^8.0.0",
     "source-map-support": "^0.5.13",
     "typescript": "^3.6.4"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=10"
   },
   "files": [
     "build/src"
@@ -73,5 +76,11 @@
     "exclude": [
       "build/test"
     ]
+  },
+  "mocha": {
+    "check-leaks": true,
+    "timeout": 10000,
+    "throw-deprecation": true,
+    "require": "source-map-support/register"
   }
 }

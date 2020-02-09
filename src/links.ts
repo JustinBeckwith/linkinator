@@ -48,8 +48,7 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
   const base = $('base[href]');
   if (base.length) {
     // only first <base by specification
-    const htmlBaseUrl = base.first().attr('href');
-
+    const htmlBaseUrl = base.first().attr('href')!;
     realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
   }
 
