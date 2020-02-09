@@ -54,11 +54,12 @@ const cli = meow(
     flags: {
       config: { type: 'string' },
       concurrency: { type: 'string' },
-      recurse: { type: 'boolean', alias: 'r', default: undefined },
+      recurse: { type: 'boolean', alias: 'r' },
       skip: { type: 'string', alias: 's' },
       format: { type: 'string', alias: 'f' },
-      silent: { type: 'boolean', default: undefined },
+      silent: { type: 'boolean' },
     },
+    booleanDefault: undefined,
   }
 );
 
@@ -120,7 +121,7 @@ async function main() {
 
   const format = flags.format ? flags.format.toLowerCase() : null;
   if (format === 'json') {
-    console.log(result);
+    console.log(JSON.stringify(result, null, 2));
     return;
   } else if (format === 'csv') {
     const csv = await toCSV(result.links);

@@ -16,7 +16,7 @@ export interface CheckOptions {
   port?: number;
   path: string;
   recurse?: boolean;
-  linksToSkip?: string[];
+  linksToSkip?: string[] | ((link: string) => Promise<boolean>);
 }
 
 export enum LinkState {
@@ -137,14 +137,11 @@ export class LinkChecker extends EventEmitter {
       return;
     }
 
-    // Check for user configured links that should be skipped
-    const skips = opts.checkOptions
-      .linksToSkip!.map(linkToSkip => {
-        return new RegExp(linkToSkip).test(opts.url.href);
-      })
-      .filter(match => !!match);
-
-    if (skips.length > 0) {
+    // Check for a user-configured function to filter out links
+    if (
+      typeof opts.checkOptions.linksToSkip === 'function' &&
+      (await opts.checkOptions.linksToSkip(opts.url.href))
+    ) {
       const result: LinkResult = {
         url: opts.url.href,
         state: LinkState.SKIPPED,
@@ -153,6 +150,26 @@ export class LinkChecker extends EventEmitter {
       opts.results.push(result);
       this.emit('link', result);
       return;
+    }
+
+    // Check for a user-configured array of link regular expressions that should be skipped
+    if (Array.isArray(opts.checkOptions.linksToSkip)) {
+      const skips = opts.checkOptions.linksToSkip
+        .map(linkToSkip => {
+          return new RegExp(linkToSkip).test(opts.url.href);
+        })
+        .filter(match => !!match);
+
+      if (skips.length > 0) {
+        const result: LinkResult = {
+          url: opts.url.href,
+          state: LinkState.SKIPPED,
+          parent: opts.parent,
+        };
+        opts.results.push(result);
+        this.emit('link', result);
+        return;
+      }
     }
 
     // Perform a HEAD or GET request based on the need to crawl
@@ -224,7 +241,7 @@ export class LinkChecker extends EventEmitter {
         if (crawl) {
           try {
             const pathUrl = new URL(opts.checkOptions.path);
-            crawl = crawl && result.url!.host === pathUrl.host;
+            crawl = result.url!.host === pathUrl.host;
           } catch {}
         }
 

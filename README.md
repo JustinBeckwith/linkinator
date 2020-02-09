@@ -127,7 +127,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
-- `linksToSkip` (array) - An array of regular expression strings that should be skipped during the scan.
+- `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 
 #### linkinator.LinkChecker()
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:
@@ -200,6 +200,9 @@ async function complex() {
 
     // What was the status code of the response?
     console.log(`  ${result.status}`);
+
+    // What page linked here?
+    console.log(`  ${result.parent}`);
   });
 
   // Go ahead and start the scan! As events occur, we will see them above.
