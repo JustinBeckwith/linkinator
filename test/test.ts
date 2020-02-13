@@ -257,4 +257,14 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });
+
+  it('should not attempt to validate preconnect or prefetch urls', async () => {
+    const scope = nock('http://fake.local')
+      .head('/site.css')
+      .reply(200, '');
+    const results = await check({ path: 'test/fixtures/prefetch' });
+    scope.done();
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 2);
+  });
 });
