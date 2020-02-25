@@ -63,6 +63,22 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
   const sanitized = links
     .filter(link => !!link)
     .map(link => parseLink(link, realBaseUrl));
+  // Filter out the links with the same url.href like
+  // `google.cloud.vision.v1.IAddProductToProductSetRequest#.decode` and `google.cloud.vision.v1.IAddProductToProductSetRequest#.encode`
+  const uniqueHref = new Set();
+  const uniqueLinks: ParsedUrl[] = [];
+  sanitized.forEach(link => {
+    // ignore the links without a url
+    if (!link.url) {
+      uniqueLinks.push(link);
+    } else {
+      // if the url is existing, then we will not add this link to the list.
+      if (!uniqueHref.has(link.url.href)) {
+        uniqueLinks.push(link);
+        uniqueHref.add(link.url.href);
+      }
+    }
+  });
   return sanitized;
 }
 
