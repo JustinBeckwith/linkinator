@@ -79,7 +79,7 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
       }
     }
   });
-  return sanitized;
+  return uniqueLinks;
 }
 
 function getBaseUrl(htmlBaseUrl: string, oldBaseUrl: string): string {
