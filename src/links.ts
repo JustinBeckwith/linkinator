@@ -64,7 +64,7 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
     .filter(link => !!link)
     .map(link => parseLink(link, realBaseUrl));
   // Filter out the links with the same url.href like
-  // `google.cloud.vision.v1.IAddProductToProductSetRequest#.decode` and `google.cloud.vision.v1.IAddProductToProductSetRequest#.encode`
+  // /page /page#fragment1 /page#fragment2
   const uniqueHref = new Set();
   const uniqueLinks: ParsedUrl[] = [];
   sanitized.forEach(link => {
