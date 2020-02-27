@@ -33,6 +33,16 @@ describe('linkinator', () => {
     scope.done();
   });
 
+  it('should deduplicate urls with differing fragments', async () => {
+    const scope = nock('http://fake.local')
+      .head('/')
+      .reply(200);
+    const results = await check({ path: 'test/fixtures/fragment' });
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 2);
+    scope.done();
+  });
+
   it('should skip links if asked nicely', async () => {
     const results = await check({
       path: 'test/fixtures/skip',
