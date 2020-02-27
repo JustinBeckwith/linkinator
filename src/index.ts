@@ -177,43 +177,24 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     let shouldRecurse = false;
-    let res;
-    for (let attempt = 0; attempt < 5; ++attempt) {
-      if (attempt > 0) {
-          console.error("RETRY attempt #", attempt, " url ", opts.url.href);
+    try {
+      let res = await gaxios.request<string>({
+        method: opts.crawl ? 'GET' : 'HEAD',
+        url: opts.url.href,
+        responseType: opts.crawl ? 'text' : 'stream',
+        validateStatus: () => true,
+      });
+
+      // If we got an HTTP 405, the server may not like HEAD. GET instead!
+      if (res.status === 405) {
+        res = await gaxios.request<string>({
+          method: 'GET',
+          url: opts.url.href,
+          responseType: 'stream',
+          validateStatus: () => true,
+        });
       }
-      try {
-          const request = {
-              method: opts.crawl ? 'GET' : 'HEAD',
-              url: opts.url.href,
-              responseType: opts.crawl ? 'text' : 'stream',
-              validateStatus: () => true,
-          }
-          res = await gaxios.request(request);
-          // If we got an HTTP 405, the server may not like HEAD. GET instead!
-          if (res.status === 405) {
-              res = await gaxios.request({
-                  method: 'GET',
-                  url: opts.url.href,
-                  responseType: 'stream',
-                  validateStatus: () => true,
-              });
-          }
-          if (res.status >= 200 && res.status < 300) {
-              break;
-          }
-      }
-      catch (err) {
-          if (err.code === 'ECONNRESET') {
-              console.error('we are having ECONNRESET fetch error!');
-              continue;
-          }
-          console.error('status: ', status)
-          console.error('err: ', err);
-          // process.exit(0)
-          // request failure: invalid domain name, etc.
-      }
-    }
+
       // Assume any 2xx status is 👌
       status = res.status;
       if (res.status >= 200 && res.status < 300) {
@@ -221,6 +202,9 @@ export class LinkChecker extends EventEmitter {
       }
       data = res.data;
       shouldRecurse = isHtml(res);
+    } catch (err) {
+      // request failure: invalid domain name, etc.
+    }
     const result: LinkResult = {
       url: opts.url.href,
       status,
