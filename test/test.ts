@@ -35,11 +35,13 @@ describe('linkinator', () => {
     scope.done();
   });
 
-  it('should filter links with same URL', async () => {
-    fs.readFile('./test/fixtures/twice/index.html', 'utf8', (err, data) => {
-      const results = getLinks(data, 'http://localhost:5097/');
-      assert.strictEqual(results.length, 1);
-    });
+  it('should ignore fragments when parsing DOM', async () => {
+    const data = await fs.promises.readFile(
+      './test/fixtures/twice/index.html',
+      'utf8'
+    );
+    const results = getLinks(data, 'http://localhost:5097/');
+    assert.strictEqual(results.length, 1);
   });
 
   it('should skip links if asked nicely', async () => {
