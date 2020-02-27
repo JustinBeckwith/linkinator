@@ -5,6 +5,8 @@ import * as sinon from 'sinon';
 import * as path from 'path';
 
 import { check, LinkState } from '../src';
+import {getLinks} from '../src/links';
+import * as fs from 'fs';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -31,6 +33,14 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
     scope.done();
+  });
+
+  it('should filter links with same URL', async () => {
+    
+    fs.readFile('./test/fixtures/twice/index.html', "utf8", (err, data) => {
+      const results = getLinks(data, 'http://localhost:5097/');
+      assert.strictEqual(results.length, 1);
+    });
   });
 
   it('should skip links if asked nicely', async () => {
