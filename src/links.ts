@@ -35,8 +35,16 @@ export interface ParsedUrl {
 
 export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
   const $ = cheerio.load(source);
-  const links = new Array<string>();
-  Object.keys(linksAttr).forEach(attr => {
+  let realBaseUrl = baseUrl;
+  const base = $('base[href]');
+  if (base.length) {
+    // only first <base by specification
+    const htmlBaseUrl = base.first().attr('href')!;
+    realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
+  }
+  const links = new Array<ParsedUrl>();
+  const attrs = Object.keys(linksAttr);
+  for (const attr of attrs) {
     const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
     $(elements).each((i, element) => {
       const values = parseAttr(attr, element.attribs[attr]);
@@ -48,22 +56,15 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
       ) {
         return;
       }
-      links.push(...values);
+      for (const v of values) {
+        if (!!v) {
+          const link = parseLink(v, realBaseUrl);
+          links.push(link);
+        }
+      }
     });
-  });
-
-  let realBaseUrl = baseUrl;
-  const base = $('base[href]');
-  if (base.length) {
-    // only first <base by specification
-    const htmlBaseUrl = base.first().attr('href')!;
-    realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
   }
-
-  const sanitized = links
-    .filter(link => !!link)
-    .map(link => parseLink(link, realBaseUrl));
-  return sanitized;
+  return links;
 }
 
 function getBaseUrl(htmlBaseUrl: string, oldBaseUrl: string): string {
