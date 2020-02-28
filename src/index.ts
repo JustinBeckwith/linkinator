@@ -245,17 +245,21 @@ export class LinkChecker extends EventEmitter {
           } catch {}
         }
 
-        opts.queue.add(async () => {
-          await this.crawl({
-            url: result.url!,
-            crawl,
-            cache: opts.cache,
-            results: opts.results,
-            checkOptions: opts.checkOptions,
-            queue: opts.queue,
-            parent: opts.url.href,
+        // Ensure the url hasn't already been touched, largely to avoid a
+        // very large queue length and runaway memory consumption
+        if (!opts.cache.has(result.url.href)) {
+          opts.queue.add(async () => {
+            await this.crawl({
+              url: result.url!,
+              crawl,
+              cache: opts.cache,
+              results: opts.results,
+              checkOptions: opts.checkOptions,
+              queue: opts.queue,
+              parent: opts.url.href,
+            });
           });
-        });
+        }
       }
     }
   }
