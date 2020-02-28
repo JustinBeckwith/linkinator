@@ -117,6 +117,7 @@ export class LinkChecker extends EventEmitter {
    * @returns A list of crawl results consisting of urls and status codes
    */
   private async crawl(opts: CrawlOptions): Promise<void> {
+    this.emit('crawl', opts.url.href);
     // Check to see if we've already scanned this url
     if (opts.cache.has(opts.url.href)) {
       return;
