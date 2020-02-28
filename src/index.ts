@@ -260,7 +260,6 @@ export class LinkChecker extends EventEmitter {
             });
           });
         }
-
       }
     }
   }
