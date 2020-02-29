@@ -119,7 +119,7 @@ export class LinkChecker extends EventEmitter {
    * @private
    * @returns A list of crawl results consisting of urls and status codes
    */
-  private async crawl(opts: CrawlOptions): Promise<void> {
+  public async crawl(opts: CrawlOptions): Promise<void> {
     // explicitly skip non-http[s] links before making the request
     const proto = opts.url.protocol;
     if (proto !== 'http:' && proto !== 'https:') {
