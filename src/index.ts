@@ -72,7 +72,7 @@ export class LinkChecker extends EventEmitter {
 
     const results = new Array<LinkResult>();
     const url = new URL(options.path);
-    let initCache: Set<string> = new Set();
+    const initCache: Set<string> = new Set();
     initCache.add(url.href);
     queue.add(async () => {
       await this.crawl({
@@ -119,7 +119,7 @@ export class LinkChecker extends EventEmitter {
    * @private
    * @returns A list of crawl results consisting of urls and status codes
    */
-  public async crawl(opts: CrawlOptions): Promise<void> {
+  async crawl(opts: CrawlOptions): Promise<void> {
     // explicitly skip non-http[s] links before making the request
     const proto = opts.url.protocol;
     if (proto !== 'http:' && proto !== 'https:') {
