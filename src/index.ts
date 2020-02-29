@@ -71,13 +71,16 @@ export class LinkChecker extends EventEmitter {
     });
 
     const results = new Array<LinkResult>();
+    const url = new URL(options.path);
+    let initCache: Set<string> = new Set();
+    initCache.add(url.href);
     queue.add(async () => {
       await this.crawl({
         url: new URL(options.path),
         crawl: true,
         checkOptions: options,
         results,
-        cache: new Set(),
+        cache: initCache,
         queue,
       });
     });
@@ -117,12 +120,6 @@ export class LinkChecker extends EventEmitter {
    * @returns A list of crawl results consisting of urls and status codes
    */
   private async crawl(opts: CrawlOptions): Promise<void> {
-    // Check to see if we've already scanned this url
-    if (opts.cache.has(opts.url.href)) {
-      return;
-    }
-    opts.cache.add(opts.url.href);
-
     // explicitly skip non-http[s] links before making the request
     const proto = opts.url.protocol;
     if (proto !== 'http:' && proto !== 'https:') {
@@ -248,6 +245,7 @@ export class LinkChecker extends EventEmitter {
         // Ensure the url hasn't already been touched, largely to avoid a
         // very large queue length and runaway memory consumption
         if (!opts.cache.has(result.url.href)) {
+          opts.cache.add(result.url.href);
           opts.queue.add(async () => {
             await this.crawl({
               url: result.url!,
