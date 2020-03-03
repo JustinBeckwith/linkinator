@@ -4,7 +4,7 @@ import * as nock from 'nock';
 import * as sinon from 'sinon';
 import * as path from 'path';
 
-import { check, LinkState } from '../src';
+import { check, LinkState, LinkChecker } from '../src';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -30,6 +30,19 @@ describe('linkinator', () => {
     const results = await check({ path: 'test/fixtures/twice' });
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
+    scope.done();
+  });
+
+  it('should only queue a link once', async () => {
+    const scope = nock('http://fake.local')
+      .head('/')
+      .reply(200);
+    const checker = new LinkChecker();
+    const checkerSpy = sinon.spy(checker, 'crawl');
+    const results = await checker.check({ path: 'test/fixtures/twice' });
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 2);
+    assert.strictEqual(checkerSpy.callCount, 2);
     scope.done();
   });
 
