@@ -174,8 +174,9 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     let shouldRecurse = false;
+    let res: gaxios.GaxiosResponse<string> | undefined = undefined
     try {
-      let res = await gaxios.request<string>({
+      res = await gaxios.request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url.href,
         responseType: opts.crawl ? 'text' : 'stream',
@@ -191,17 +192,37 @@ export class LinkChecker extends EventEmitter {
           validateStatus: () => true,
         });
       }
-
-      // Assume any 2xx status is 👌
-      status = res.status;
-      if (res.status >= 200 && res.status < 300) {
-        state = LinkState.OK;
-      }
-      data = res.data;
-      shouldRecurse = isHtml(res);
     } catch (err) {
       // request failure: invalid domain name, etc.
+      // this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
+      // for this reason, we also try doing a GET below to see if the link is valid
     }
+
+    try {
+      //some sites don't respond to a stream response type correctly, especially with a HEAD. Try a GET with a text response type
+      if ((res == undefined || res.status < 200 || res.status >= 300) && !opts.crawl) {
+        let res = await gaxios.request<string>({
+          method: 'GET',
+          url: opts.url.href,
+          responseType: 'text',
+          validateStatus: () => true,
+        });
+      }
+    } catch (ex) {
+      //catch the next failure
+    }
+
+    if (res !== undefined) {
+      status = res.status;
+      data = res.data;
+      shouldRecurse = isHtml(res);
+    }
+
+    // Assume any 2xx status is 👌
+    if (status >= 200 && status < 300) {
+      state = LinkState.OK;
+    }
+
     const result: LinkResult = {
       url: opts.url.href,
       status,
