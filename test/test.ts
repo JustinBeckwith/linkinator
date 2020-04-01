@@ -280,4 +280,18 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
   });
+
+  it('should attempt a GET request if a HEAD request fails on external links', async () => {
+    const scopes = [
+      nock('http://fake.local')
+        .head('/')
+        .reply(403),
+      nock('http://fake.local')
+        .get('/')
+        .reply(200),
+    ];
+    const results = await check({ path: 'test/fixtures/basic' });
+    assert.ok(results.passed);
+    scopes.forEach(x => x.done());
+  });
 });
