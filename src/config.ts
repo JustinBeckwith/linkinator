@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { promisify } from 'util';
+import {promisify} from 'util';
 
 const readFile = promisify(fs.readFile);
 
@@ -17,7 +17,7 @@ export async function getConfig(flags: Flags) {
   const configPath = flags.config || 'linkinator.config.json';
   let configData: string | undefined;
   try {
-    configData = await readFile(configPath, { encoding: 'utf8' });
+    configData = await readFile(configPath, {encoding: 'utf8'});
   } catch (e) {
     if (flags.config) {
       console.error(`Unable to find config file ${flags.config}`);
@@ -35,7 +35,7 @@ export async function getConfig(flags: Flags) {
   const strippedFlags = Object.assign({}, flags);
   Object.entries(strippedFlags).forEach(([key, value]) => {
     if (typeof value === 'undefined') {
-      delete (strippedFlags as { [index: string]: {} })[key];
+      delete (strippedFlags as {[index: string]: {}})[key];
     }
   });
 

@@ -3,13 +3,16 @@
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
 import chalk = require('chalk');
-import { LinkChecker, LinkState, LinkResult, CheckOptions } from './index';
-import { promisify } from 'util';
-import { Flags, getConfig } from './config';
+import {LinkChecker, LinkState, LinkResult, CheckOptions} from './index';
+import {promisify} from 'util';
+import {Flags, getConfig} from './config';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const toCSV = promisify(require('jsonexport'));
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = require('../../package.json');
-updateNotifier({ pkg }).notify();
+updateNotifier({pkg}).notify();
 
 const cli = meow(
   `
@@ -52,12 +55,12 @@ const cli = meow(
 `,
   {
     flags: {
-      config: { type: 'string' },
-      concurrency: { type: 'string' },
-      recurse: { type: 'boolean', alias: 'r' },
-      skip: { type: 'string', alias: 's' },
-      format: { type: 'string', alias: 'f' },
-      silent: { type: 'boolean' },
+      config: {type: 'string'},
+      concurrency: {type: 'string'},
+      recurse: {type: 'boolean', alias: 'r'},
+      skip: {type: 'string', alias: 's'},
+      format: {type: 'string', alias: 'f'},
+      silent: {type: 'boolean'},
     },
     booleanDefault: undefined,
   }
@@ -137,7 +140,7 @@ async function main() {
         acc[parent].push(curr);
       }
       return acc;
-    }, {} as { [index: string]: LinkResult[] });
+    }, {} as {[index: string]: LinkResult[]});
 
     Object.keys(parents).forEach(parent => {
       const links = parents[parent];
@@ -178,6 +181,7 @@ async function main() {
         )} links in ${chalk.cyan(total.toString())} seconds.`
       )
     );
+    // eslint-disable-next-line no-process-exit
     process.exit(1);
   }
 

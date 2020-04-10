@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { URL } from 'url';
+import {URL} from 'url';
 
 const linksAttr = {
   background: ['body'],
@@ -25,7 +25,7 @@ const linksAttr = {
     'video',
   ],
   srcset: ['img', 'source'],
-} as { [index: string]: string[] };
+} as {[index: string]: string[]};
 
 export interface ParsedUrl {
   link: string;
@@ -57,7 +57,7 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
         return;
       }
       for (const v of values) {
-        if (!!v) {
+        if (v) {
           const link = parseLink(v, realBaseUrl);
           links.push(link);
         }
@@ -102,8 +102,8 @@ function parseLink(link: string, baseUrl: string): ParsedUrl {
   try {
     const url = new URL(link, baseUrl);
     url.hash = '';
-    return { link, url };
+    return {link, url};
   } catch (error) {
-    return { link, error };
+    return {link, error};
   }
 }

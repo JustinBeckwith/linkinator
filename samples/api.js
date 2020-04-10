@@ -6,7 +6,7 @@ const link = require('linkinator');
  */
 async function simple() {
   const results = await link.check({
-    path: 'http://example.com'
+    path: 'http://example.com',
   });
 
   // To see if all the links passed, you can check `passed`
@@ -47,7 +47,6 @@ async function complex() {
 
   // After a page is scanned, check out the results!
   checker.on('link', result => {
-
     // check the specific url that was scanned
     console.log(`  ${result.url}`);
 

@@ -1,15 +1,15 @@
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
-import PQueue, { DefaultAddOptions } from 'p-queue';
+import PQueue, {DefaultAddOptions} from 'p-queue';
 
-import { getLinks } from './links';
-import { URL } from 'url';
+import {getLinks} from './links';
+import {URL} from 'url';
 import PriorityQueue from 'p-queue/dist/priority-queue';
 
-const finalhandler = require('finalhandler');
-const serveStatic = require('serve-static');
+import finalhandler = require('finalhandler');
+import serveStatic = require('serve-static');
 
 export interface CheckOptions {
   concurrency?: number;
@@ -107,7 +107,10 @@ export class LinkChecker extends EventEmitter {
     return new Promise((resolve, reject) => {
       const serve = serveStatic(root);
       const server = http
-        .createServer((req, res) => serve(req, res, finalhandler(req, res)))
+        .createServer((req, res) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          serve(req as any, res as any, finalhandler(req, res))
+        )
         .listen(port, () => resolve(server))
         .on('error', reject);
     });
@@ -263,7 +266,9 @@ export class LinkChecker extends EventEmitter {
           try {
             const pathUrl = new URL(opts.checkOptions.path);
             crawl = result.url!.host === pathUrl.host;
-          } catch {}
+          } catch {
+            // ignore errors
+          }
         }
 
         // Ensure the url hasn't already been touched, largely to avoid a

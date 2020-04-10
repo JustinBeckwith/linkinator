@@ -3,8 +3,9 @@ import * as gaxios from 'gaxios';
 import * as nock from 'nock';
 import * as sinon from 'sinon';
 import * as path from 'path';
+import {describe, it, afterEach} from 'mocha';
 
-import { check, LinkState, LinkChecker } from '../src';
+import {check, LinkState, LinkChecker} from '../src';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -15,31 +16,25 @@ describe('linkinator', () => {
   });
 
   it('should perform a basic shallow scan', async () => {
-    const scope = nock('http://fake.local')
-      .head('/')
-      .reply(200);
-    const results = await check({ path: 'test/fixtures/basic' });
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check({path: 'test/fixtures/basic'});
     assert.ok(results.passed);
     scope.done();
   });
 
   it('should only try a link once', async () => {
-    const scope = nock('http://fake.local')
-      .head('/')
-      .reply(200);
-    const results = await check({ path: 'test/fixtures/twice' });
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check({path: 'test/fixtures/twice'});
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
     scope.done();
   });
 
   it('should only queue a link once', async () => {
-    const scope = nock('http://fake.local')
-      .head('/')
-      .reply(200);
+    const scope = nock('http://fake.local').head('/').reply(200);
     const checker = new LinkChecker();
     const checkerSpy = sinon.spy(checker, 'crawl');
-    const results = await checker.check({ path: 'test/fixtures/twice' });
+    const results = await checker.check({path: 'test/fixtures/twice'});
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
     assert.strictEqual(checkerSpy.callCount, 2);
@@ -59,9 +54,7 @@ describe('linkinator', () => {
   });
 
   it('should skip links if passed a linksToSkip function', async () => {
-    const scope = nock('https://good.com')
-      .head('/')
-      .reply(200);
+    const scope = nock('https://good.com').head('/').reply(200);
     const results = await check({
       path: 'test/fixtures/filter',
       linksToSkip: link => Promise.resolve(link.includes('filterme')),
@@ -75,10 +68,8 @@ describe('linkinator', () => {
   });
 
   it('should report broken links', async () => {
-    const scope = nock('http://fake.local')
-      .head('/')
-      .reply(404);
-    const results = await check({ path: 'test/fixtures/broke' });
+    const scope = nock('http://fake.local').head('/').reply(404);
+    const results = await check({path: 'test/fixtures/broke'});
     assert.ok(!results.passed);
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
@@ -99,7 +90,7 @@ describe('linkinator', () => {
   it('should handle fetch exceptions', async () => {
     const requestStub = sinon.stub(gaxios, 'request');
     requestStub.throws('Fetch error');
-    const results = await check({ path: 'test/fixtures/basic' });
+    const results = await check({path: 'test/fixtures/basic'});
     assert.ok(!results.passed);
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
@@ -109,7 +100,7 @@ describe('linkinator', () => {
   });
 
   it('should report malformed links as broken', async () => {
-    const results = await check({ path: 'test/fixtures/malformed' });
+    const results = await check({path: 'test/fixtures/malformed'});
     assert.ok(!results.passed);
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
@@ -142,7 +133,7 @@ describe('linkinator', () => {
     ];
 
     for (let i = 0; i < cases.length; i++) {
-      const { fixture, nonBrokenUrl } = cases[i];
+      const {fixture, nonBrokenUrl} = cases[i];
       const scope = nock('http://fake.local')
         .get('/pageBase/index')
         .replyWithFile(200, fixture, {
@@ -189,7 +180,7 @@ describe('linkinator', () => {
   });
 
   it('should detect broken image links', async () => {
-    const results = await check({ path: 'test/fixtures/image' });
+    const results = await check({path: 'test/fixtures/image'});
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       2
@@ -203,9 +194,7 @@ describe('linkinator', () => {
   it('should perform a recursive scan', async () => {
     // This test is making sure that we do a recursive scan of links,
     // but also that we don't follow links to another site
-    const scope = nock('http://fake.local')
-      .head('/')
-      .reply(200);
+    const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({
       path: 'test/fixtures/recurse',
       recurse: true,
@@ -224,7 +213,7 @@ describe('linkinator', () => {
 
   it('should not follow non-http[s] links', async () => {
     // includes mailto, data urls, and irc
-    const results = await check({ path: 'test/fixtures/protocols' });
+    const results = await check({path: 'test/fixtures/protocols'});
     assert.ok(results.passed);
     assert.strictEqual(
       results.links.filter(x => x.state === LinkState.SKIPPED).length,
@@ -233,20 +222,16 @@ describe('linkinator', () => {
   });
 
   it('should not recurse by default', async () => {
-    const results = await check({ path: 'test/fixtures/recurse' });
+    const results = await check({path: 'test/fixtures/recurse'});
     assert.strictEqual(results.links.length, 2);
   });
 
   it('should retry with a GET after a HEAD', async () => {
     const scopes = [
-      nock('http://fake.local')
-        .head('/')
-        .reply(405),
-      nock('http://fake.local')
-        .get('/')
-        .reply(200),
+      nock('http://fake.local').head('/').reply(405),
+      nock('http://fake.local').get('/').reply(200),
     ];
-    const results = await check({ path: 'test/fixtures/basic' });
+    const results = await check({path: 'test/fixtures/basic'});
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });
@@ -258,9 +243,7 @@ describe('linkinator', () => {
         .replyWithFile(200, path.resolve('test/fixtures/baseurl/index.html'), {
           'content-type': 'text/html',
         }),
-      nock('http://fake.local.br')
-        .head('/deep.html')
-        .reply(200),
+      nock('http://fake.local.br').head('/deep.html').reply(200),
     ];
     const results = await check({
       path: 'http://fake.local',
@@ -272,10 +255,8 @@ describe('linkinator', () => {
   });
 
   it('should not attempt to validate preconnect or prefetch urls', async () => {
-    const scope = nock('http://fake.local')
-      .head('/site.css')
-      .reply(200, '');
-    const results = await check({ path: 'test/fixtures/prefetch' });
+    const scope = nock('http://fake.local').head('/site.css').reply(200, '');
+    const results = await check({path: 'test/fixtures/prefetch'});
     scope.done();
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 2);
@@ -283,14 +264,10 @@ describe('linkinator', () => {
 
   it('should attempt a GET request if a HEAD request fails on external links', async () => {
     const scopes = [
-      nock('http://fake.local')
-        .head('/')
-        .reply(403),
-      nock('http://fake.local')
-        .get('/')
-        .reply(200),
+      nock('http://fake.local').head('/').reply(403),
+      nock('http://fake.local').get('/').reply(200),
     ];
-    const results = await check({ path: 'test/fixtures/basic' });
+    const results = await check({path: 'test/fixtures/basic'});
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });
