@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
-import { getConfig, Flags } from '../src/config';
-const assertRejects = require('assert-rejects');
+import {describe, it} from 'mocha';
+import {getConfig, Flags} from '../src/config';
 
 describe('config', () => {
   it('should allow passing no config', async () => {
@@ -20,15 +20,16 @@ describe('config', () => {
     const cfg = {
       config: '/path/does/not/exist',
     };
-    await assertRejects(getConfig(cfg), /ENOENT: no such file or directory/);
+    await assert.rejects(getConfig(cfg), /ENOENT: no such file or directory/);
   });
 
   it('should allow reading from a config file', async () => {
     const configPath = path.resolve(
       'test/fixtures/config/linkinator.config.json'
     );
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const expected = require(configPath);
-    const config = await getConfig({ config: configPath });
+    const config = await getConfig({config: configPath});
     delete config.config;
     assert.deepStrictEqual(config, expected);
   });
@@ -37,6 +38,7 @@ describe('config', () => {
     const configPath = path.resolve(
       'test/fixtures/config/linkinator.config.json'
     );
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const expected = require(configPath);
     expected.skip = 'loo';
     const config = await getConfig({

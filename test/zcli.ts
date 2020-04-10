@@ -1,6 +1,6 @@
-import { describe, it } from 'mocha';
+import {describe, it} from 'mocha';
 import * as execa from 'execa';
-import { assert } from 'chai';
+import {assert} from 'chai';
 
 describe('cli', () => {
   it('should link and run a basic command', async () => {
