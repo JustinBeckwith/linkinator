@@ -11,6 +11,7 @@ describe('config', () => {
       silent: true,
       skip: '🌳',
       concurrency: 22,
+      timeout: 1,
     };
     const config = await getConfig(cfg);
     assert.deepStrictEqual(config, cfg);
