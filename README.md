@@ -56,6 +56,9 @@ $ linkinator LOCATION [ --arguments ]
     --silent
         Only output broken links.
 
+    --timeout
+        Request timeout in ms.  Defaults to 0 (no timeout).
+
     --help
         Show this command.
 ```
@@ -109,6 +112,7 @@ All options are optional. It should look like this:
   "recurse": true,
   "silent": true,
   "concurrency": 100,
+  "timeout": 0,
   "skip": "www.googleapis.com"
 }
 ```
@@ -127,6 +131,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
+- `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 
 #### linkinator.LinkChecker()

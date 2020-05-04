@@ -43,6 +43,9 @@ const cli = meow(
       --silent
           Only output broken links
 
+      --timeout
+          Request timeout in ms.  Defaults to 0 (no timeout).
+
       --help
           Show this command.
 
@@ -61,6 +64,7 @@ const cli = meow(
       skip: {type: 'string', alias: 's'},
       format: {type: 'string', alias: 'f'},
       silent: {type: 'boolean'},
+      timeout: {type: 'number'},
     },
     booleanDefault: undefined,
   }
@@ -110,6 +114,7 @@ async function main() {
   const opts: CheckOptions = {
     path: cli.input[0],
     recurse: flags.recurse,
+    timeout: Number(flags.timeout),
     concurrency: Number(flags.concurrency),
   };
   if (flags.skip) {

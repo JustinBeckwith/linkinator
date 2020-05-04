@@ -10,6 +10,7 @@ export interface Flags {
   skip?: string;
   format?: string;
   silent?: boolean;
+  timeout?: number;
 }
 
 export async function getConfig(flags: Flags) {

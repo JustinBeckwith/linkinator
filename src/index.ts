@@ -16,6 +16,7 @@ export interface CheckOptions {
   port?: number;
   path: string;
   recurse?: boolean;
+  timeout?: number;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
 }
 
@@ -184,6 +185,7 @@ export class LinkChecker extends EventEmitter {
         url: opts.url.href,
         responseType: opts.crawl ? 'text' : 'stream',
         validateStatus: () => true,
+        timeout: opts.checkOptions.timeout,
       });
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
@@ -193,6 +195,7 @@ export class LinkChecker extends EventEmitter {
           url: opts.url.href,
           responseType: 'stream',
           validateStatus: () => true,
+          timeout: opts.checkOptions.timeout,
         });
       }
     } catch (err) {
@@ -212,10 +215,11 @@ export class LinkChecker extends EventEmitter {
           url: opts.url.href,
           responseType: 'text',
           validateStatus: () => true,
+          timeout: opts.checkOptions.timeout,
         });
       }
     } catch (ex) {
-      //catch the next failure
+      // catch the next failure
     }
 
     if (res !== undefined) {

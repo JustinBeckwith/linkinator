@@ -271,4 +271,13 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });
+
+  it('should support a configurable timeout', async () => {
+    nock('http://fake.local').head('/').delay(200).reply(200);
+    const results = await check({
+      path: 'test/fixtures/basic',
+      timeout: 1,
+    });
+    assert.ok(!results.passed);
+  });
 });
