@@ -31,6 +31,9 @@ const cli = meow(
       --concurrency
           The number of connections to make simultaneously. Defaults to 100.
 
+      --port, -p
+          The port to start the temporary web server on for local scans.
+
       --recurse, -r
           Recursively follow links on the same root domain.
 
@@ -59,7 +62,8 @@ const cli = meow(
   {
     flags: {
       config: {type: 'string'},
-      concurrency: {type: 'string'},
+      concurrency: {type: 'number'},
+      port: {type: 'number', alias: 'p'},
       recurse: {type: 'boolean', alias: 'r'},
       skip: {type: 'string', alias: 's'},
       format: {type: 'string', alias: 'f'},
@@ -113,6 +117,7 @@ async function main() {
   });
   const opts: CheckOptions = {
     path: cli.input[0],
+    port: Number(flags.port),
     recurse: flags.recurse,
     timeout: Number(flags.timeout),
     concurrency: Number(flags.concurrency),

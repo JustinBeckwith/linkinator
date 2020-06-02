@@ -6,6 +6,7 @@ const readFile = promisify(fs.readFile);
 export interface Flags {
   concurrency?: number;
   config?: string;
+  port?: number;
   recurse?: boolean;
   skip?: string;
   format?: string;

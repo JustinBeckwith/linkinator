@@ -7,6 +7,7 @@ describe('config', () => {
   it('should allow passing no config', async () => {
     const cfg: Flags = {
       format: 'json',
+      port: 8888,
       recurse: true,
       silent: true,
       skip: '🌳',
