@@ -59,7 +59,7 @@ const cli = meow(
   {
     flags: {
       config: {type: 'string'},
-      concurrency: {type: 'string'},
+      concurrency: {type: 'number'},
       recurse: {type: 'boolean', alias: 'r'},
       skip: {type: 'string', alias: 's'},
       format: {type: 'string', alias: 'f'},
