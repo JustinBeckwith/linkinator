@@ -35,7 +35,7 @@
     "@types/cheerio": "^0.22.10",
     "@types/finalhandler": "^1.1.0",
     "@types/meow": "^5.0.0",
-    "@types/mocha": "^7.0.0",
+    "@types/mocha": "^8.0.0",
     "@types/node": "^12.7.12",
     "@types/serve-static": "^1.13.3",
     "@types/server-destroy": "^1.0.0",
