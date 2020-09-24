@@ -8,6 +8,7 @@ export interface Flags {
   config?: string;
   recurse?: boolean;
   skip?: string;
+  'skip-rel-values'?: string;
   format?: string;
   silent?: boolean;
   timeout?: number;

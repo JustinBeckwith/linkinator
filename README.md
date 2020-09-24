@@ -47,6 +47,9 @@ $ linkinator LOCATION [ --arguments ]
     --skip, -s
         List of urls in regexy form to not include in the check.
 
+    --skip-rel-values
+        List of `rel` link types to not include in the check
+
     --include, -i
         List of urls in regexy form to include.  The opposite of --skip.
 
@@ -113,7 +116,8 @@ All options are optional. It should look like this:
   "silent": true,
   "concurrency": 100,
   "timeout": 0,
-  "skip": "www.googleapis.com"
+  "skip": "www.googleapis.com",
+  "skipRelValues": ["dns-prefetch", "preconnect", "canonical"]
 }
 ```
 
@@ -133,6 +137,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
+- `relValuesToSkip` (array) - An array of strings representing `rel` [link types](https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types) to be ignored. Defaults to `['dns-prefetch', 'preconnect']`
 
 #### linkinator.LinkChecker()
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:

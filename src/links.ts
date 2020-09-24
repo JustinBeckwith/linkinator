@@ -33,7 +33,11 @@ export interface ParsedUrl {
   url?: URL;
 }
 
-export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
+export function getLinks(
+  source: string,
+  baseUrl: string,
+  relValuesToSkip: string[]
+): ParsedUrl[] {
   const $ = cheerio.load(source);
   let realBaseUrl = baseUrl;
   const base = $('base[href]');
@@ -48,11 +52,9 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
     const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
     $(elements).each((i, element) => {
       const values = parseAttr(attr, element.attribs[attr]);
-      // ignore href properties for link tags where rel is likely to fail
-      const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
       if (
-        element.tagName === 'link' &&
-        relValuesToIgnore.includes(element.attribs['rel'])
+        ['link', 'a', 'form', 'area'].includes(element.tagName) &&
+        relValuesToSkip.includes(element.attribs['rel'])
       ) {
         return;
       }

@@ -18,6 +18,7 @@ export interface CheckOptions {
   recurse?: boolean;
   timeout?: number;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
+  relValuesToSkip?: string[];
 }
 
 export enum LinkState {
@@ -59,6 +60,10 @@ export class LinkChecker extends EventEmitter {
    */
   async check(options: CheckOptions) {
     options.linksToSkip = options.linksToSkip || [];
+    options.relValuesToSkip = options.relValuesToSkip || [
+      'dns-prefetch',
+      'preconnect',
+    ];
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
@@ -245,7 +250,11 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urlResults = getLinks(data, opts.url.href);
+      const urlResults = getLinks(
+        data,
+        opts.url.href,
+        opts.checkOptions.relValuesToSkip || []
+      );
       for (const result of urlResults) {
         // if there was some sort of problem parsing the link while
         // creating a new URL obj, treat it as a broken link.
