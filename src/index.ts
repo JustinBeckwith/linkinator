@@ -1,21 +1,22 @@
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
-import PQueue, { DefaultAddOptions } from 'p-queue';
+import PQueue, {DefaultAddOptions} from 'p-queue';
 
-import { getLinks } from './links';
-import { URL } from 'url';
+import {getLinks} from './links';
+import {URL} from 'url';
 import PriorityQueue from 'p-queue/dist/priority-queue';
 
-const finalhandler = require('finalhandler');
-const serveStatic = require('serve-static');
+import finalhandler = require('finalhandler');
+import serveStatic = require('serve-static');
 
 export interface CheckOptions {
   concurrency?: number;
   port?: number;
   path: string;
   recurse?: boolean;
+  timeout?: number;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
 }
 
@@ -107,7 +108,10 @@ export class LinkChecker extends EventEmitter {
     return new Promise((resolve, reject) => {
       const serve = serveStatic(root);
       const server = http
-        .createServer((req, res) => serve(req, res, finalhandler(req, res)))
+        .createServer((req, res) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          serve(req as any, res as any, finalhandler(req, res))
+        )
         .listen(port, () => resolve(server))
         .on('error', reject);
     });
@@ -174,8 +178,9 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     let shouldRecurse = false;
+    let res: gaxios.GaxiosResponse<string> | undefined = undefined;
     try {
-      let res = await gaxios.request<string>({
+      res = await gaxios.request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url.href,
         headers: {
@@ -184,6 +189,7 @@ export class LinkChecker extends EventEmitter {
         },
         responseType: opts.crawl ? 'text' : 'stream',
         validateStatus: () => true,
+        timeout: opts.checkOptions.timeout,
       });
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
@@ -197,19 +203,44 @@ export class LinkChecker extends EventEmitter {
           },
           responseType: 'stream',
           validateStatus: () => true,
+          timeout: opts.checkOptions.timeout,
         });
       }
-
-      // Assume any 2xx status is 👌
-      status = res.status;
-      if (res.status >= 200 && res.status < 300) {
-        state = LinkState.OK;
-      }
-      data = res.data;
-      shouldRecurse = isHtml(res);
     } catch (err) {
       // request failure: invalid domain name, etc.
+      // this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
+      // for this reason, we also try doing a GET below to see if the link is valid
     }
+
+    try {
+      //some sites don't respond to a stream response type correctly, especially with a HEAD. Try a GET with a text response type
+      if (
+        (res === undefined || res.status < 200 || res.status >= 300) &&
+        !opts.crawl
+      ) {
+        res = await gaxios.request<string>({
+          method: 'GET',
+          url: opts.url.href,
+          responseType: 'text',
+          validateStatus: () => true,
+          timeout: opts.checkOptions.timeout,
+        });
+      }
+    } catch (ex) {
+      // catch the next failure
+    }
+
+    if (res !== undefined) {
+      status = res.status;
+      data = res.data;
+      shouldRecurse = isHtml(res);
+    }
+
+    // Assume any 2xx status is 👌
+    if (status >= 200 && status < 300) {
+      state = LinkState.OK;
+    }
+
     const result: LinkResult = {
       url: opts.url.href,
       status,
@@ -247,7 +278,9 @@ export class LinkChecker extends EventEmitter {
           try {
             const pathUrl = new URL(opts.checkOptions.path);
             crawl = result.url!.host === pathUrl.host;
-          } catch {}
+          } catch {
+            // ignore errors
+          }
         }
 
         // Ensure the url hasn't already been touched, largely to avoid a
