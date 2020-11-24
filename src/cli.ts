@@ -37,6 +37,9 @@ const cli = meow(
       --skip, -s
           List of urls in regexy form to not include in the check.
 
+      --skip-rel-values
+          List of \`rel\` link types to not include in the check  
+  
       --format, -f
           Return the data in CSV or JSON format.
 
@@ -54,6 +57,7 @@ const cli = meow(
       $ linkinator https://www.google.com
       $ linkinator . --recurse
       $ linkinator . --skip www.googleapis.com
+      $ linkinator . --skip-rel-values prefetch canonical
       $ linkinator . --format CSV
 `,
   {
@@ -62,6 +66,7 @@ const cli = meow(
       concurrency: {type: 'number'},
       recurse: {type: 'boolean', alias: 'r'},
       skip: {type: 'string', alias: 's'},
+      'skip-rel-values': {type: 'string'},
       format: {type: 'string', alias: 'f'},
       silent: {type: 'boolean'},
       timeout: {type: 'number'},
@@ -122,6 +127,15 @@ async function main() {
       opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
     } else if (Array.isArray(flags.skip)) {
       opts.linksToSkip = flags.skip;
+    }
+  }
+  if (flags['skip-rel-values']) {
+    if (typeof flags['skip-rel-values'] === 'string') {
+      opts.relValuesToSkip = flags['skip-rel-values']
+        .split(' ')
+        .filter(x => !!x);
+    } else if (Array.isArray(flags['skip-rel-values'])) {
+      opts.relValuesToSkip = flags['skip-rel-values'];
     }
   }
   const result = await checker.check(opts);

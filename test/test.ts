@@ -262,6 +262,17 @@ describe('linkinator', () => {
     assert.strictEqual(results.links.length, 2);
   });
 
+  it('should not attempt to validate an ignored link relation type', async () => {
+    const scope = nock('http://fake.local').head('/site.css').reply(200, '');
+    const results = await check({
+      path: 'test/fixtures/ignore-rel-values',
+      relValuesToSkip: ['canonical'],
+    });
+    scope.done();
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 2);
+  });
+
   it('should attempt a GET request if a HEAD request fails on external links', async () => {
     const scopes = [
       nock('http://fake.local').head('/').reply(403),
