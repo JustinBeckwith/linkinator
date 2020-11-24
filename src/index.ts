@@ -114,8 +114,7 @@ export class LinkChecker extends EventEmitter {
       const serve = serveStatic(root);
       const server = http
         .createServer((req, res) =>
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          serve(req as any, res as any, finalhandler(req, res))
+          serve(req, res, finalhandler(req, res) as () => void)
         )
         .listen(port, () => resolve(server))
         .on('error', reject);
