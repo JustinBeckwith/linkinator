@@ -22,7 +22,6 @@
     "chalk": "^4.0.0",
     "cheerio": "^1.0.0-rc.2",
     "express": "^4.17.1",
-  
     "gaxios": "^4.0.0",
     "jsonexport": "^3.0.0",
     "marked": "^1.2.5",

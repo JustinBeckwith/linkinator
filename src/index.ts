@@ -21,6 +21,7 @@ export interface CheckOptions {
   path: string;
   recurse?: boolean;
   timeout?: number;
+  markdown?: boolean;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
 }
 
@@ -76,7 +77,11 @@ export class LinkChecker extends EventEmitter {
           .join(path.sep);
       }
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
-      server = await this.startWebServer(localDirectory, port);
+      server = await this.startWebServer(
+        localDirectory,
+        port,
+        options.markdown
+      );
       enableDestroy(server);
       options.path = `http://localhost:${port}${localFile}`;
     }
@@ -115,12 +120,16 @@ export class LinkChecker extends EventEmitter {
    * Spin up a local HTTP server to serve static requests from disk
    * @param root The local path that should be mounted as a static web server
    * @param port The port on which to start the local web server
+   * @param markdown If markdown should be automatically compiled and served
    * @private
    * @returns Promise that resolves with the instance of the HTTP server
    */
-  private async startWebServer(root: string, port: number) {
+  private async startWebServer(root: string, port: number, markdown?: boolean) {
     const app = express()
       .use((req, res, next) => {
+        if (!markdown) {
+          return next();
+        }
         const pathParts = req.path
           .toLowerCase()
           .split('/')

@@ -11,6 +11,7 @@ export interface Flags {
   format?: string;
   silent?: boolean;
   timeout?: number;
+  markdown?: boolean;
 }
 
 export async function getConfig(flags: Flags) {
