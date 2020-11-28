@@ -14,6 +14,7 @@ import {URL} from 'url';
 import PriorityQueue from 'p-queue/dist/priority-queue';
 
 const stat = util.promisify(fs.stat);
+const readFile = util.promisify(fs.readFile);
 
 export interface CheckOptions {
   concurrency?: number;
@@ -126,36 +127,23 @@ export class LinkChecker extends EventEmitter {
    * @returns Promise that resolves with the instance of the HTTP server
    */
   private async startWebServer(root: string, port: number, markdown?: boolean) {
-    console.log(`root path: ${root}`);
     const app = express()
-      .use((req, res, next) => {
+      .use(async (req, res, next) => {
         if (!markdown) {
           return next();
         }
-        const pathParts = req.path
-          .toLowerCase()
-          .split('/')
-          .filter(x => !!x);
+        const pathParts = req.path.split('/').filter(x => !!x);
         if (pathParts.length === 0) {
           return next();
         }
         const ext = path.extname(pathParts[pathParts.length - 1]);
-        if (ext === '.md') {
-          fs.readFile(root + req.path, {encoding: 'utf-8'}, (err, data) => {
-            if (err) {
-              return next(err);
-            }
-            marked(data, {gfm: true}, (err, result) => {
-              if (err) {
-                return next(err);
-              }
-              res.send(result).end();
-              return;
-            });
-          });
-        } else {
-          return next();
+        if (ext.toLowerCase() === '.md') {
+          const data = await readFile(root + req.path, {encoding: 'utf-8'});
+          const result = marked(data, {gfm: true});
+          res.send(result).end();
+          return;
         }
+        return next();
       })
       .use(express.static(root));
     const server = await new Promise<http.Server>(resolve => {

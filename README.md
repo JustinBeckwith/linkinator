@@ -14,6 +14,7 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 - 🔥Scan any element that includes links, not just `<a href>`
 - 🔥Supports redirects, absolute links, relative links, all the things
 - 🔥Configure specific regex patterns to skip
+- 🔥Scan markdown files without transpilation
 
 ## Installation
 
@@ -102,6 +103,12 @@ Maybe you're going to pipe the output to another program.  Use the `--format` op
 
 ```sh
 $ linkinator ./docs --format CSV
+```
+
+Let's make sure the `README.md` in our repo doesn't have any busted links:
+
+```sh
+$ linkinator ./README.md
 ```
 
 ### Configuration file
