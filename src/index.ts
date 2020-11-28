@@ -2,14 +2,18 @@ import {EventEmitter} from 'events';
 import * as gaxios from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
+import * as express from 'express';
+import * as fs from 'fs';
+import * as util from 'util';
+import * as path from 'path';
+import * as marked from 'marked';
 import PQueue, {DefaultAddOptions} from 'p-queue';
 
 import {getLinks} from './links';
 import {URL} from 'url';
 import PriorityQueue from 'p-queue/dist/priority-queue';
 
-import finalhandler = require('finalhandler');
-import serveStatic = require('serve-static');
+const stat = util.promisify(fs.stat);
 
 export interface CheckOptions {
   concurrency?: number;
@@ -61,10 +65,20 @@ export class LinkChecker extends EventEmitter {
     options.linksToSkip = options.linksToSkip || [];
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
+      let localDirectory = options.path;
+      let localFile = '';
+      const s = await stat(options.path);
+      if (s.isFile()) {
+        const pathParts = options.path.split(path.sep);
+        localFile = path.sep + pathParts[pathParts.length - 1];
+        localDirectory = pathParts
+          .slice(0, pathParts.length - 1)
+          .join(path.sep);
+      }
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
-      server = await this.startWebServer(options.path, port);
+      server = await this.startWebServer(localDirectory, port);
       enableDestroy(server);
-      options.path = `http://localhost:${port}`;
+      options.path = `http://localhost:${port}${localFile}`;
     }
 
     const queue = new PQueue({
@@ -104,16 +118,39 @@ export class LinkChecker extends EventEmitter {
    * @private
    * @returns Promise that resolves with the instance of the HTTP server
    */
-  private startWebServer(root: string, port: number): Promise<http.Server> {
-    return new Promise((resolve, reject) => {
-      const serve = serveStatic(root);
-      const server = http
-        .createServer((req, res) =>
-          serve(req, res, finalhandler(req, res) as () => void)
-        )
-        .listen(port, () => resolve(server))
-        .on('error', reject);
+  private async startWebServer(root: string, port: number) {
+    const app = express()
+      .use((req, res, next) => {
+        const pathParts = req.path
+          .toLowerCase()
+          .split('/')
+          .filter(x => !!x);
+        if (pathParts.length === 0) {
+          return next();
+        }
+        const ext = path.extname(pathParts[pathParts.length - 1]);
+        if (ext === '.md') {
+          fs.readFile(root + req.path, {encoding: 'utf-8'}, (err, data) => {
+            if (err) {
+              return next(err);
+            }
+            marked(data, {gfm: true}, (err, result) => {
+              if (err) {
+                return next(err);
+              }
+              res.send(result).end();
+              return;
+            });
+          });
+        } else {
+          return next();
+        }
+      })
+      .use(express.static(root));
+    const server = await new Promise<http.Server>(resolve => {
+      const s = app.listen(port, () => resolve(s));
     });
+    return server;
   }
 
   /**

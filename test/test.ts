@@ -280,4 +280,13 @@ describe('linkinator', () => {
     });
     assert.ok(!results.passed);
   });
+
+  it('should handle markdown', async () => {
+    const results = await check({
+      path: 'test/fixtures/markdown/README.md',
+      recurse: true,
+    });
+    assert.strictEqual(results.links.length, 3);
+    assert.ok(results.passed);
+  });
 });
