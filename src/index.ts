@@ -125,6 +125,7 @@ export class LinkChecker extends EventEmitter {
    * @returns Promise that resolves with the instance of the HTTP server
    */
   private async startWebServer(root: string, port: number, markdown?: boolean) {
+    console.log(`root path: ${root}`);
     const app = express()
       .use((req, res, next) => {
         if (!markdown) {
