@@ -64,6 +64,7 @@ export class LinkChecker extends EventEmitter {
    */
   async check(options: CheckOptions) {
     options.linksToSkip = options.linksToSkip || [];
+    options.path = path.normalize(options.path);
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
       let localDirectory = options.path;
