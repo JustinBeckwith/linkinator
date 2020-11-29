@@ -12,6 +12,7 @@ export interface Flags {
   silent?: boolean;
   timeout?: number;
   markdown?: boolean;
+  serverRoot?: string;
 }
 
 export async function getConfig(flags: Flags) {

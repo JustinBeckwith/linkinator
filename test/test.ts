@@ -289,4 +289,24 @@ describe('linkinator', () => {
     assert.strictEqual(results.links.length, 3);
     assert.ok(results.passed);
   });
+
+  it('should throw an error if you pass server-root and an http based path', async () => {
+    await assert.rejects(
+      check({
+        path: 'https://jbeckwith.com',
+        serverRoot: process.cwd(),
+      }),
+      /cannot be defined/
+    );
+  });
+
+  it('should allow overriding the server root', async () => {
+    const results = await check({
+      serverRoot: 'test/fixtures/markdown',
+      markdown: true,
+      path: 'README.md',
+    });
+    assert.strictEqual(results.links.length, 3);
+    assert.ok(results.passed);
+  });
 });
