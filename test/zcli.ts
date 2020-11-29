@@ -1,22 +1,20 @@
 import {describe, it} from 'mocha';
 import * as execa from 'execa';
 import {assert} from 'chai';
+import * as path from 'path';
+
+const linkinator = path.join(__dirname, '..', 'src', 'cli.js');
 
 describe('cli', () => {
-  before(async () => {
-    await execa('npm', ['link']);
-  });
-
   it('should show output for failures', async () => {
-    const res = await execa('npx', ['linkinator', 'test/fixtures/basic'], {
+    const res = await execa(linkinator, ['test/fixtures/basic'], {
       reject: false,
     });
     assert.include(res.stderr, 'ERROR: Detected 1 broken links');
   });
 
   it('should pass successful markdown scan', async () => {
-    const res = await execa('npx', [
-      'linkinator',
+    const res = await execa(linkinator, [
       '--markdown',
       'test/fixtures/markdown/README.md',
     ]);
@@ -24,15 +22,14 @@ describe('cli', () => {
   });
 
   it('should show help if no params are provided', async () => {
-    const res = await execa('npx', ['linkinator'], {
+    const res = await execa(linkinator, {
       reject: false,
     });
     assert.include(res.stdout, '$ linkinator LOCATION [ --arguments ]');
   });
 
   it('should flag skipped links', async () => {
-    const res = await execa('npx', [
-      'linkinator',
+    const res = await execa(linkinator, [
       '--markdown',
       '--skip',
       'LICENSE.md',
@@ -42,8 +39,7 @@ describe('cli', () => {
   });
 
   it('should provide CSV if asked nicely', async () => {
-    const res = await execa('npx', [
-      'linkinator',
+    const res = await execa(linkinator, [
       '--markdown',
       '--format',
       'csv',
@@ -53,8 +49,7 @@ describe('cli', () => {
   });
 
   it('should not show links if --silent', async () => {
-    const res = await execa('npx', [
-      'linkinator',
+    const res = await execa(linkinator, [
       '--markdown',
       '--silent',
       'test/fixtures/markdown/README.md',
@@ -63,8 +58,7 @@ describe('cli', () => {
   });
 
   it('should accept a server-root', async () => {
-    const res = await execa('npx', [
-      'linkinator',
+    const res = await execa(linkinator, [
       '--markdown',
       '--server-root',
       'test/fixtures/markdown',
