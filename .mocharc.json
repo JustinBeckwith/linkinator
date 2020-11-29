@@ -1,6 +1,6 @@
 {
   "check-leaks": true,
-  "timeout": 20000,
+  "timeout": 30000,
   "throw-deprecation": true,
   "enable-source-maps": true
 }
