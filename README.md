@@ -249,4 +249,4 @@ complex();
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE.md)
