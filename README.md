@@ -2,7 +2,7 @@
 > A super simple site crawler and broken link checker.
 
 [![npm version](https://img.shields.io/npm/v/linkinator.svg)](https://www.npmjs.org/package/linkinator)
-[![Build Status](https://api.cirrus-ci.com/github/JustinBeckwith/linkinator.svg)](https://cirrus-ci.com/github/JustinBeckwith/linkinator)
+[![Build Status](https://github.com/JustinBeckwith/linkinator/workflows/ci/badge.svg)](https://github.com/JustinBeckwith/linkinator/actions)
 [![codecov](https://codecov.io/gh/JustinBeckwith/linkinator/branch/master/graph/badge.svg)](https://codecov.io/gh/JustinBeckwith/linkinator)
 [![Dependency Status](https://img.shields.io/david/JustinBeckwith/linkinator.svg)](https://david-dm.org/JustinBeckwith/linkinator)
 [![Known Vulnerabilities](https://snyk.io/test/github/JustinBeckwith/linkinator/badge.svg)](https://snyk.io/test/github/JustinBeckwith/linkinator)
@@ -10,11 +10,23 @@
 
 
 Behold my latest inator! The `linkinator` provides an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
-- 🔥Easily perform scans on remote sites or local files
-- 🔥Scan any element that includes links, not just `<a href>`
-- 🔥Supports redirects, absolute links, relative links, all the things
-- 🔥Configure specific regex patterns to skip
-- 🔥Scan markdown files without transpilation
+<style>
+  #features {
+    list-style-type: none;
+  }
+  #features li:before { 
+    content: '\1F525'; 
+    margin-left: -20px; 
+    margin-right: 10px; 
+  }
+</style>
+<ul id="features">
+<li>Easily perform scans on remote sites or local files</li>
+<li>Scan any element that includes links, not just `&lt;a href&gt;`</li>
+<li>Supports redirects, absolute links, relative links, all the things</li>
+<li>Configure specific regex patterns to skip</li>
+<li>Scan markdown files without transpilation</li>
+</ul>
 
 ## Installation
 
@@ -26,7 +38,7 @@ $ npm install linkinator
 
 You can use this as a library, or as a CLI.  Let's see the CLI!
 
-```sh
+```
 $ linkinator LOCATION [ --arguments ]
 
   Positional arguments
