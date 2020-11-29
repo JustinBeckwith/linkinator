@@ -14,6 +14,7 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 - 🔥Scan any element that includes links, not just `<a href>`
 - 🔥Supports redirects, absolute links, relative links, all the things
 - 🔥Configure specific regex patterns to skip
+- 🔥Scan markdown files without transpilation
 
 ## Installation
 
@@ -58,6 +59,9 @@ $ linkinator LOCATION [ --arguments ]
 
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
+    
+    --markdown
+        Automatically parse and scan markdown if scanning from a location on disk.
 
     --help
         Show this command.
@@ -101,6 +105,12 @@ Maybe you're going to pipe the output to another program.  Use the `--format` op
 $ linkinator ./docs --format CSV
 ```
 
+Let's make sure the `README.md` in our repo doesn't have any busted links:
+
+```sh
+$ linkinator ./README.md
+```
+
 ### Configuration file
 You can pass options directly to the `linkinator` CLI, or you can define a config file.  By default, `linkinator` will look for a `linkinator.config.json` file in the current working directory.
 
@@ -113,6 +123,7 @@ All options are optional. It should look like this:
   "silent": true,
   "concurrency": 100,
   "timeout": 0,
+  "markdown": true,
   "skip": "www.googleapis.com"
 }
 ```
@@ -132,6 +143,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
+- `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 
 #### linkinator.LinkChecker()

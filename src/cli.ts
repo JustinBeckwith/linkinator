@@ -22,7 +22,7 @@ const cli = meow(
     Positional arguments
 
       LOCATION
-        Required. Either the URL or the path on disk to check for broken links.
+        Required. Either the URLs or the paths on disk to check for broken links.
 
     Flags
       --config
@@ -46,6 +46,9 @@ const cli = meow(
       --timeout
           Request timeout in ms.  Defaults to 0 (no timeout).
 
+      --markdown
+          Automatically parse and scan markdown if scanning from a location on disk.
+
       --help
           Show this command.
 
@@ -65,6 +68,7 @@ const cli = meow(
       format: {type: 'string', alias: 'f'},
       silent: {type: 'boolean'},
       timeout: {type: 'number'},
+      markdown: {type: 'boolean'},
     },
     booleanDefault: undefined,
   }
@@ -115,6 +119,7 @@ async function main() {
     path: cli.input[0],
     recurse: flags.recurse,
     timeout: Number(flags.timeout),
+    markdown: flags.markdown,
     concurrency: Number(flags.concurrency),
   };
   if (flags.skip) {
