@@ -24,6 +24,7 @@ export interface CheckOptions {
   timeout?: number;
   markdown?: boolean;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
+  serverRoot?: string;
 }
 
 export enum LinkState {
@@ -64,28 +65,20 @@ export class LinkChecker extends EventEmitter {
    * @param options Options to use while checking for 404s
    */
   async check(options: CheckOptions) {
+    this.validateOptions(options);
     options.linksToSkip = options.linksToSkip || [];
     options.path = path.normalize(options.path);
     let server: http.Server | undefined;
     if (!options.path.startsWith('http')) {
-      let localDirectory = options.path;
-      let localFile = '';
-      const s = await stat(options.path);
-      if (s.isFile()) {
-        const pathParts = options.path.split(path.sep);
-        localFile = path.sep + pathParts[pathParts.length - 1];
-        localDirectory = pathParts
-          .slice(0, pathParts.length - 1)
-          .join(path.sep);
-      }
+      const serverOptions = await this.getServerRoot(options);
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
       server = await this.startWebServer(
-        localDirectory,
+        serverOptions.serverRoot,
         port,
         options.markdown
       );
       enableDestroy(server);
-      options.path = `http://localhost:${port}${localFile}`;
+      options.path = `http://localhost:${port}${serverOptions.path}`;
     }
 
     const queue = new PQueue({
@@ -116,6 +109,47 @@ export class LinkChecker extends EventEmitter {
       server.destroy();
     }
     return result;
+  }
+
+  /**
+   * Validate the provided flags all work with each other.
+   * @param options CheckOptions passed in from the CLI (or API)
+   */
+  private validateOptions(options: CheckOptions) {
+    if (options.serverRoot && options.path.startsWith('http')) {
+      throw new Error(
+        "'serverRoot' cannot be defined when the 'path' points to an HTTP endpoint."
+      );
+    }
+  }
+
+  /**
+   * Figure out which directory should be used as the root for the web server,
+   * and how that impacts the path to the file for the first request.
+   * @param options CheckOptions passed in from the CLI or API
+   */
+  private async getServerRoot(options: CheckOptions) {
+    if (options.serverRoot) {
+      const filePath = options.path.startsWith('/')
+        ? options.path
+        : '/' + options.path;
+      return {
+        serverRoot: options.serverRoot,
+        path: filePath,
+      };
+    }
+    let localDirectory = options.path;
+    let localFile = '';
+    const s = await stat(options.path);
+    if (s.isFile()) {
+      const pathParts = options.path.split(path.sep);
+      localFile = path.sep + pathParts[pathParts.length - 1];
+      localDirectory = pathParts.slice(0, pathParts.length - 1).join(path.sep);
+    }
+    return {
+      serverRoot: localDirectory,
+      path: localFile,
+    };
   }
 
   /**

@@ -61,4 +61,15 @@ describe('cli', () => {
     ]);
     assert.strictEqual(res.stdout.indexOf('['), -1);
   });
+
+  it('should accept a server-root', async () => {
+    const res = await execa('npx', [
+      'linkinator',
+      '--markdown',
+      '--server-root',
+      'test/fixtures/markdown',
+      'README.md',
+    ]);
+    assert.ok(res.stdout.includes('Successfully scanned'));
+  });
 });

@@ -2,10 +2,11 @@
 > A super simple site crawler and broken link checker.
 
 [![npm version](https://img.shields.io/npm/v/linkinator.svg)](https://www.npmjs.org/package/linkinator)
-[![Build Status](https://api.cirrus-ci.com/github/JustinBeckwith/linkinator.svg)](https://cirrus-ci.com/github/JustinBeckwith/linkinator)
+[![Build Status](https://github.com/JustinBeckwith/linkinator/workflows/ci/badge.svg)](https://github.com/JustinBeckwith/linkinator/actions)
 [![codecov](https://codecov.io/gh/JustinBeckwith/linkinator/branch/master/graph/badge.svg)](https://codecov.io/gh/JustinBeckwith/linkinator)
 [![Dependency Status](https://img.shields.io/david/JustinBeckwith/linkinator.svg)](https://david-dm.org/JustinBeckwith/linkinator)
 [![Known Vulnerabilities](https://snyk.io/test/github/JustinBeckwith/linkinator/badge.svg)](https://snyk.io/test/github/JustinBeckwith/linkinator)
+[![Code Style: Google](https://img.shields.io/badge/code%20style-google-blueviolet.svg)](https://github.com/google/gts)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 
@@ -26,7 +27,7 @@ $ npm install linkinator
 
 You can use this as a library, or as a CLI.  Let's see the CLI!
 
-```sh
+```
 $ linkinator LOCATION [ --arguments ]
 
   Positional arguments
@@ -36,35 +37,39 @@ $ linkinator LOCATION [ --arguments ]
 
   Flags
 
-    --config
-        Path to the config file to use. Looks for `linkinator.config.json` by default.
-
     --concurrency
           The number of connections to make simultaneously. Defaults to 100.
 
-    --recurse, -r
-        Recursively follow links on the same root domain.
-
-    --skip, -s
-        List of urls in regexy form to not include in the check.
+    --config
+        Path to the config file to use. Looks for `linkinator.config.json` by default.
+    
+    --format, -f
+        Return the data in CSV or JSON format.
+    
+    --help
+        Show this command.
 
     --include, -i
         List of urls in regexy form to include.  The opposite of --skip.
 
-    --format, -f
-        Return the data in CSV or JSON format.
+    --markdown
+        Automatically parse and scan markdown if scanning from a location on disk.
+
+    --recurse, -r
+        Recursively follow links on the same root domain.
+    
+    --server-root
+        When scanning a locally directory, customize the location on disk 
+        where the server is started.  Defaults to the path passed in [LOCATION].
 
     --silent
         Only output broken links.
 
+    --skip, -s
+        List of urls in regexy form to not include in the check.
+
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
-    
-    --markdown
-        Automatically parse and scan markdown if scanning from a location on disk.
-
-    --help
-        Show this command.
 ```
 
 ### Command Examples
@@ -142,6 +147,8 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
+- `serverRoot` (string) - When scanning a locally directory, customize the location on disk 
+where the server is started.  Defaults to the path passed in `path`.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.

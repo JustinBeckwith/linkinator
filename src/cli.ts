@@ -25,32 +25,37 @@ const cli = meow(
         Required. Either the URLs or the paths on disk to check for broken links.
 
     Flags
-      --config
-          Path to the config file to use. Looks for \`linkinator.config.json\` by default.
 
       --concurrency
-          The number of connections to make simultaneously. Defaults to 100.
+        The number of connections to make simultaneously. Defaults to 100.
 
-      --recurse, -r
-          Recursively follow links on the same root domain.
-
-      --skip, -s
-          List of urls in regexy form to not include in the check.
+      --config
+          Path to the config file to use. Looks for \`linkinator.config.json\` by default.
 
       --format, -f
           Return the data in CSV or JSON format.
 
-      --silent
-          Only output broken links
-
-      --timeout
-          Request timeout in ms.  Defaults to 0 (no timeout).
+      --help
+          Show this command.
 
       --markdown
           Automatically parse and scan markdown if scanning from a location on disk.
 
-      --help
-          Show this command.
+      --recurse, -r
+          Recursively follow links on the same root domain.
+
+      --server-root
+          When scanning a locally directory, customize the location on disk 
+          where the server is started.  Defaults to the path passed in [LOCATION].
+
+      --silent
+          Only output broken links
+
+      --skip, -s
+          List of urls in regexy form to not include in the check.  
+
+      --timeout
+          Request timeout in ms.  Defaults to 0 (no timeout).
 
     Examples
       $ linkinator docs/
@@ -69,6 +74,7 @@ const cli = meow(
       silent: {type: 'boolean'},
       timeout: {type: 'number'},
       markdown: {type: 'boolean'},
+      serverRoot: {type: 'string'},
     },
     booleanDefault: undefined,
   }
@@ -121,6 +127,7 @@ async function main() {
     timeout: Number(flags.timeout),
     markdown: flags.markdown,
     concurrency: Number(flags.concurrency),
+    serverRoot: flags.serverRoot,
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
