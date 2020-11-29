@@ -138,14 +138,15 @@ export class LinkChecker extends EventEmitter {
         }
         const ext = path.extname(pathParts[pathParts.length - 1]);
         if (ext.toLowerCase() === '.md') {
-          const data = await readFile(root + req.path, {encoding: 'utf-8'});
+          const filePath = path.join(path.resolve(root), req.path);
+          const data = await readFile(filePath, {encoding: 'utf-8'});
           const result = marked(data, {gfm: true});
           res.send(result).end();
           return;
         }
         return next();
       })
-      .use(express.static(root));
+      .use(express.static(path.resolve(root)));
     const server = await new Promise<http.Server>(resolve => {
       const s = app.listen(port, () => resolve(s));
     });
