@@ -83,7 +83,7 @@ const cli = meow(
 let flags: Flags;
 
 async function main() {
-  if (cli.input.length !== 1) {
+  if (cli.input.length < 1) {
     cli.showHelp();
     return;
   }
@@ -122,7 +122,7 @@ async function main() {
     log(`${state} ${chalk.gray(link.url)}`);
   });
   const opts: CheckOptions = {
-    path: cli.input[0],
+    path: cli.input,
     recurse: flags.recurse,
     timeout: Number(flags.timeout),
     markdown: flags.markdown,

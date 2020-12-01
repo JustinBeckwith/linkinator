@@ -5,13 +5,14 @@ import * as sinon from 'sinon';
 import * as path from 'path';
 import {describe, it, afterEach} from 'mocha';
 
-import {check, LinkState, LinkChecker} from '../src';
+import {check, LinkState, LinkChecker, CheckOptions} from '../src';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
 
 describe('linkinator', () => {
   afterEach(() => {
+    sinon.restore();
     nock.cleanAll();
   });
 
@@ -308,5 +309,85 @@ describe('linkinator', () => {
     });
     assert.strictEqual(results.links.length, 3);
     assert.ok(results.passed);
+  });
+
+  it('should accept multiple filesystem paths', async () => {
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check({
+      path: ['test/fixtures/basic', 'test/fixtures/image'],
+    });
+    assert.strictEqual(results.passed, false);
+    assert.strictEqual(results.links.length, 6);
+    scope.done();
+  });
+
+  it('should not allow mixed local and remote paths', async () => {
+    await assert.rejects(
+      check({
+        path: ['https://jbeckwith.com', 'test/fixtures/basic'],
+      }),
+      /cannot be mixed/
+    );
+  });
+
+  it('should require at least one path', async () => {
+    await assert.rejects(
+      check({
+        path: [],
+      }),
+      /At least one/
+    );
+  });
+
+  it('should not pollute the original options after merge', async () => {
+    const options: CheckOptions = Object.freeze({path: 'test/fixtures/basic'});
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check(options);
+    assert.ok(results.passed);
+    scope.done();
+    assert.strictEqual(options.serverRoot, undefined);
+  });
+
+  it('should accept multiple http paths', async () => {
+    const scopes = [
+      nock('http://fake.local')
+        .get('/')
+        .replyWithFile(200, 'test/fixtures/local/index.html', {
+          'Content-Type': 'text/html; charset=UTF-8',
+        }),
+      nock('http://fake.local')
+        .get('/page2.html')
+        .replyWithFile(200, 'test/fixtures/local/page2.html', {
+          'Content-Type': 'text/html; charset=UTF-8',
+        }),
+      nock('http://fake2.local')
+        .get('/')
+        .replyWithFile(200, 'test/fixtures/local/index.html', {
+          'Content-Type': 'text/html; charset=UTF-8',
+        }),
+      nock('http://fake2.local')
+        .get('/page2.html')
+        .replyWithFile(200, 'test/fixtures/local/page2.html', {
+          'Content-Type': 'text/html; charset=UTF-8',
+        }),
+    ];
+    const results = await check({
+      path: ['http://fake.local', 'http://fake2.local'],
+    });
+    assert.ok(results.passed);
+    scopes.forEach(x => x.done());
+  });
+
+  it('should print debug information when the env var is set', async () => {
+    sinon.stub(process, 'env').value({
+      LINKINATOR_DEBUG: true,
+    });
+    const consoleSpy = sinon.stub(console, 'log');
+    const results = await check({
+      path: 'test/fixtures/markdown/README.md',
+      markdown: true,
+    });
+    assert.ok(results.passed);
+    assert.ok(consoleSpy.calledOnce);
   });
 });

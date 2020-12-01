@@ -19,7 +19,7 @@ const readFile = util.promisify(fs.readFile);
 export interface CheckOptions {
   concurrency?: number;
   port?: number;
-  path: string;
+  path: string | string[];
   recurse?: boolean;
   timeout?: number;
   markdown?: boolean;
@@ -53,6 +53,7 @@ interface CrawlOptions {
   cache: Set<string>;
   checkOptions: CheckOptions;
   queue: PQueue<PriorityQueue, DefaultAddOptions>;
+  rootPath: string;
 }
 
 /**
@@ -64,21 +65,32 @@ export class LinkChecker extends EventEmitter {
    * status codes.
    * @param options Options to use while checking for 404s
    */
-  async check(options: CheckOptions) {
-    this.validateOptions(options);
+  async check(opts: CheckOptions) {
+    const options = await this.processOptions(opts);
+    if (!Array.isArray(options.path)) {
+      options.path = [options.path];
+    }
     options.linksToSkip = options.linksToSkip || [];
-    options.path = path.normalize(options.path);
     let server: http.Server | undefined;
-    if (!options.path.startsWith('http')) {
-      const serverOptions = await this.getServerRoot(options);
+    const hasHttpPaths = options.path.find(x => x.startsWith('http'));
+    if (!hasHttpPaths) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
       server = await this.startWebServer(
-        serverOptions.serverRoot,
+        options.serverRoot!,
         port,
         options.markdown
       );
       enableDestroy(server);
-      options.path = `http://localhost:${port}${serverOptions.path}`;
+      for (let i = 0; i < options.path.length; i++) {
+        if (options.path[i].startsWith('/')) {
+          options.path[i] = options.path[i].slice(1);
+        }
+        options.path[i] = `http://localhost:${port}/${options.path[i]}`;
+      }
+    }
+
+    if (process.env.LINKINATOR_DEBUG) {
+      console.log(options);
     }
 
     const queue = new PQueue({
@@ -86,19 +98,23 @@ export class LinkChecker extends EventEmitter {
     });
 
     const results = new Array<LinkResult>();
-    const url = new URL(options.path);
     const initCache: Set<string> = new Set();
-    initCache.add(url.href);
-    queue.add(async () => {
-      await this.crawl({
-        url: new URL(options.path),
-        crawl: true,
-        checkOptions: options,
-        results,
-        cache: initCache,
-        queue,
+
+    for (const path of options.path) {
+      const url = new URL(path);
+      initCache.add(url.href);
+      queue.add(async () => {
+        await this.crawl({
+          url,
+          crawl: true,
+          checkOptions: options,
+          results,
+          cache: initCache,
+          queue,
+          rootPath: path,
+        });
       });
-    });
+    }
     await queue.onIdle();
 
     const result = {
@@ -115,41 +131,65 @@ export class LinkChecker extends EventEmitter {
    * Validate the provided flags all work with each other.
    * @param options CheckOptions passed in from the CLI (or API)
    */
-  private validateOptions(options: CheckOptions) {
-    if (options.serverRoot && options.path.startsWith('http')) {
+  private async processOptions(opts: CheckOptions): Promise<CheckOptions> {
+    const options = Object.assign({}, opts);
+
+    // ensure at least one path is provided
+    if (options.path.length === 0) {
+      throw new Error('At least one path must be provided');
+    }
+
+    // normalize options.path to an array of strings
+    if (!Array.isArray(options.path)) {
+      options.path = [options.path];
+    }
+
+    // Ensure we do not mix http:// and file system paths.  The paths passed in
+    // must all be filesystem paths, or HTTP paths.
+    let isUrlType: boolean | undefined = undefined;
+    for (const path of options.path) {
+      const innerIsUrlType = path.startsWith('http');
+      if (isUrlType === undefined) {
+        isUrlType = innerIsUrlType;
+      } else if (innerIsUrlType !== isUrlType) {
+        throw new Error(
+          'Paths cannot be mixed between HTTP and local filesystem paths.'
+        );
+      }
+    }
+
+    // if there is a server root, make sure there are no HTTP paths
+    if (options.serverRoot && isUrlType) {
       throw new Error(
         "'serverRoot' cannot be defined when the 'path' points to an HTTP endpoint."
       );
     }
-  }
 
-  /**
-   * Figure out which directory should be used as the root for the web server,
-   * and how that impacts the path to the file for the first request.
-   * @param options CheckOptions passed in from the CLI or API
-   */
-  private async getServerRoot(options: CheckOptions) {
-    if (options.serverRoot) {
-      const filePath = options.path.startsWith('/')
-        ? options.path
-        : '/' + options.path;
-      return {
-        serverRoot: options.serverRoot,
-        path: filePath,
-      };
+    // Figure out which directory should be used as the root for the web server,
+    // and how that impacts the path to the file for the first request.
+    if (!options.serverRoot && !isUrlType) {
+      // if the serverRoot wasn't defined, and there are multiple paths, just
+      // use process.cwd().
+      if (options.path.length > 1) {
+        options.serverRoot = process.cwd();
+      } else {
+        // if there's a single path, try to be smart and figure it out
+        const s = await stat(options.path[0]);
+        options.serverRoot = options.path[0];
+        if (s.isFile()) {
+          const pathParts = options.path[0].split(path.sep);
+          options.path = [path.sep + pathParts[pathParts.length - 1]];
+          options.serverRoot = pathParts
+            .slice(0, pathParts.length - 1)
+            .join(path.sep);
+        } else {
+          options.serverRoot = options.path[0];
+          options.path = '/';
+        }
+      }
     }
-    let localDirectory = options.path;
-    let localFile = '';
-    const s = await stat(options.path);
-    if (s.isFile()) {
-      const pathParts = options.path.split(path.sep);
-      localFile = path.sep + pathParts[pathParts.length - 1];
-      localDirectory = pathParts.slice(0, pathParts.length - 1).join(path.sep);
-    }
-    return {
-      serverRoot: localDirectory,
-      path: localFile,
-    };
+
+    return options;
   }
 
   /**
@@ -167,9 +207,6 @@ export class LinkChecker extends EventEmitter {
           return next();
         }
         const pathParts = req.path.split('/').filter(x => !!x);
-        if (pathParts.length === 0) {
-          return next();
-        }
         const ext = path.extname(pathParts[pathParts.length - 1]);
         if (ext.toLowerCase() === '.md') {
           const filePath = path.join(path.resolve(root), req.path);
@@ -340,13 +377,12 @@ export class LinkChecker extends EventEmitter {
         }
 
         let crawl = (opts.checkOptions.recurse! &&
-          result.url &&
-          result.url.href.startsWith(opts.checkOptions.path)) as boolean;
+          result.url?.href.startsWith(opts.rootPath)) as boolean;
 
         // only crawl links that start with the same host
         if (crawl) {
           try {
-            const pathUrl = new URL(opts.checkOptions.path);
+            const pathUrl = new URL(opts.rootPath);
             crawl = result.url!.host === pathUrl.host;
           } catch {
             // ignore errors
@@ -366,6 +402,7 @@ export class LinkChecker extends EventEmitter {
               checkOptions: opts.checkOptions,
               queue: opts.queue,
               parent: opts.url.href,
+              rootPath: opts.rootPath,
             });
           });
         }

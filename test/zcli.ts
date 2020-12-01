@@ -23,6 +23,16 @@ describe('cli', () => {
     assert.include(res.stdout, 'Successfully scanned');
   });
 
+  it('should allow multiple paths', async () => {
+    const res = await execa('npx', [
+      'linkinator',
+      '--markdown',
+      'README.md',
+      'test/fixtures/markdown/README.md',
+    ]);
+    assert.include(res.stdout, 'Successfully scanned');
+  });
+
   it('should show help if no params are provided', async () => {
     const res = await execa('npx', ['linkinator'], {
       reject: false,
@@ -50,6 +60,17 @@ describe('cli', () => {
       'test/fixtures/markdown/README.md',
     ]);
     assert.include(res.stdout, '/README.md,200,OK,');
+  });
+
+  it('should provide JSON if asked nicely', async () => {
+    const res = await execa('npx', [
+      'linkinator',
+      '--markdown',
+      '--format',
+      'json',
+      'test/fixtures/markdown/README.md',
+    ]);
+    assert.include(res.stdout, '{');
   });
 
   it('should not show links if --silent', async () => {
