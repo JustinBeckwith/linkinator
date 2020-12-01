@@ -254,6 +254,9 @@ async function complex() {
 complex();
 ```
 
+## Using a proxy
+This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment variables.  This [guide](https://www.golinuxcloud.com/set-up-proxy-http-proxy-environment-variable/) provides a nice overview of how to format and set these variables.  
+
 ## License
 
 [MIT](LICENSE.md)
