@@ -390,4 +390,13 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     assert.ok(consoleSpy.calledOnce);
   });
+
+  it('should respect globs', async () => {
+    const results = await check({
+      path: 'test/fixtures/markdown/**/*.md',
+      markdown: true,
+    });
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 6);
+  });
 });

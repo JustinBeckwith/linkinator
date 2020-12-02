@@ -27,12 +27,13 @@ $ npm install linkinator
 You can use this as a library, or as a CLI.  Let's see the CLI!
 
 ```
-$ linkinator LOCATION [ --arguments ]
+$ linkinator LOCATIONS [ --arguments ]
 
   Positional arguments
 
-    LOCATION
-      Required. Either the URL or the path on disk to check for broken links.
+    LOCATIONS
+      Required. Either the URLs or the paths on disk to check for broken links.
+      Supports multiple paths, and globs.
 
   Flags
 
@@ -112,7 +113,13 @@ $ linkinator ./docs --format CSV
 Let's make sure the `README.md` in our repo doesn't have any busted links:
 
 ```sh
-$ linkinator ./README.md
+$ linkinator ./README.md --markdown
+```
+
+You know what, we better check all of the markdown files!
+
+```sh
+$ linkinator "**/*.md" --markdown
 ```
 
 ### Configuration file
@@ -142,7 +149,7 @@ $ linkinator --config /some/path/your-config.json
 
 #### linkinator.check(options)
 Asynchronous method that runs a site wide scan. Options come in the form of an object that includes:
-- `path` (string) - A fully qualified path to the url to be scanned, or the path to the directory on disk that contains files to be scanned. *required*.
+- `path` (string|string[]) - A fully qualified path to the url to be scanned, or the path(s) to the directory on disk that contains files to be scanned. *required*.
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
@@ -253,8 +260,18 @@ async function complex() {
 complex();
 ```
 
-## Using a proxy
+## Notes
+
+### Using a proxy
 This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment variables.  This [guide](https://www.golinuxcloud.com/set-up-proxy-http-proxy-environment-variable/) provides a nice overview of how to format and set these variables.  
+
+### Globbing
+You may have noticed in the example, when using a glob the pattern is encapsulated in quotes:
+```sh
+$ linkinator "**/*.md" --markdown
+```
+
+Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern. 
 
 ## License
 

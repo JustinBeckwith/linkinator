@@ -9,6 +9,7 @@ import * as util from 'util';
 import * as path from 'path';
 import * as marked from 'marked';
 import PQueue, {DefaultAddOptions} from 'p-queue';
+import * as globby from 'glob';
 
 import {getLinks} from './links';
 import {URL} from 'url';
@@ -16,6 +17,7 @@ import PriorityQueue from 'p-queue/dist/priority-queue';
 
 const stat = util.promisify(fs.stat);
 const readFile = util.promisify(fs.readFile);
+const glob = util.promisify(globby);
 
 export interface CheckOptions {
   concurrency?: number;
@@ -164,6 +166,16 @@ export class LinkChecker extends EventEmitter {
       throw new Error(
         "'serverRoot' cannot be defined when the 'path' points to an HTTP endpoint."
       );
+    }
+
+    // expand globs into paths
+    if (!isUrlType) {
+      const paths: string[] = [];
+      for (const path of options.path) {
+        const expandedPaths = await glob(path);
+        paths.push(...expandedPaths);
+      }
+      options.path = paths;
     }
 
     // Figure out which directory should be used as the root for the web server,
