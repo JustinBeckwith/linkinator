@@ -180,9 +180,8 @@ export class LinkChecker extends EventEmitter {
         if (s.isFile()) {
           const pathParts = options.path[0].split(path.sep);
           options.path = [path.sep + pathParts[pathParts.length - 1]];
-          options.serverRoot = pathParts
-            .slice(0, pathParts.length - 1)
-            .join(path.sep);
+          options.serverRoot =
+            pathParts.slice(0, pathParts.length - 1).join(path.sep) || path.sep;
         } else {
           options.serverRoot = options.path[0];
           options.path = '/';
