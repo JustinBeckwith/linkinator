@@ -93,4 +93,14 @@ describe('cli', () => {
     ]);
     assert.ok(res.stdout.includes('Successfully scanned'));
   });
+
+  it('should accept globs', async () => {
+    const res = await execa('npx', [
+      'linkinator',
+      '--markdown',
+      'test/fixtures/markdown/*.md',
+      'test/fixtures/markdown/**/*.md',
+    ]);
+    assert.ok(res.stdout.includes('Successfully scanned'));
+  });
 });
