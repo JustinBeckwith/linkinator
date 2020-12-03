@@ -178,6 +178,15 @@ export class LinkChecker extends EventEmitter {
       options.path = paths;
     }
 
+    // enable markdown if someone passes a flag/glob right at it
+    if (options.markdown === undefined) {
+      for (const p of options.path) {
+        if (path.extname(p).toLowerCase() === '.md') {
+          options.markdown = true;
+        }
+      }
+    }
+
     // Figure out which directory should be used as the root for the web server,
     // and how that impacts the path to the file for the first request.
     if (!options.serverRoot && !isUrlType) {

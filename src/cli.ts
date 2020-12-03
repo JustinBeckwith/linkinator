@@ -116,8 +116,6 @@ async function main() {
       case LinkState.SKIPPED:
         state = `[${chalk.grey('SKP')}]`;
         break;
-      default:
-        throw new Error('Invalid state.');
     }
     log(`${state} ${chalk.gray(link.url)}`);
   });
@@ -177,8 +175,6 @@ async function main() {
           case LinkState.SKIPPED:
             state = `[${chalk.grey('SKP')}]`;
             break;
-          default:
-            throw new Error('Invalid state.');
         }
         log(`  ${state} ${chalk.gray(link.url)}`);
       });
