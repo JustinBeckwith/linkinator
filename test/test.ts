@@ -399,4 +399,12 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 6);
   });
+
+  it('should autoscan markdown if specifically in path', async () => {
+    const results = await check({
+      path: 'test/fixtures/markdown/README.md',
+    });
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 3);
+  });
 });
