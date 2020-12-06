@@ -10,17 +10,19 @@
 
 
 Behold my latest inator! The `linkinator` provides an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
-- 🔥Easily perform scans on remote sites or local files
-- 🔥Scan any element that includes links, not just `<a href>`
-- 🔥Supports redirects, absolute links, relative links, all the things
-- 🔥Configure specific regex patterns to skip
-- 🔥Scan markdown files without transpilation
+- 🔥 Easily perform scans on remote sites or local files
+- 🔥 Scan any element that includes links, not just `<a href>`
+- 🔥 Supports redirects, absolute links, relative links, all the things
+- 🔥 Configure specific regex patterns to skip
+- 🔥 Scan markdown files without transpilation
 
 ## Installation
 
 ```sh
 $ npm install linkinator
 ```
+
+Not into the whole node.js or npm thing?  You can also download a standalone binary that bundles node, linkinator, and anything else you need.  See [releases](https://github.com/JustinBeckwith/linkinator/releases).
 
 ## Command Usage
 
@@ -42,10 +44,10 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --config
         Path to the config file to use. Looks for `linkinator.config.json` by default.
-    
+
     --format, -f
         Return the data in CSV or JSON format.
-    
+
     --help
         Show this command.
 
@@ -57,9 +59,9 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --recurse, -r
         Recursively follow links on the same root domain.
-    
+
     --server-root
-        When scanning a locally directory, customize the location on disk 
+        When scanning a locally directory, customize the location on disk
         where the server is started.  Defaults to the path passed in [LOCATION].
 
     --silent
@@ -153,7 +155,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
-- `serverRoot` (string) - When scanning a locally directory, customize the location on disk 
+- `serverRoot` (string) - When scanning a locally directory, customize the location on disk
 where the server is started.  Defaults to the path passed in `path`.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
@@ -263,7 +265,7 @@ complex();
 ## Notes
 
 ### Using a proxy
-This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment variables.  This [guide](https://www.golinuxcloud.com/set-up-proxy-http-proxy-environment-variable/) provides a nice overview of how to format and set these variables.  
+This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment variables.  This [guide](https://www.golinuxcloud.com/set-up-proxy-http-proxy-environment-variable/) provides a nice overview of how to format and set these variables.
 
 ### Globbing
 You may have noticed in the example, when using a glob the pattern is encapsulated in quotes:
@@ -271,7 +273,7 @@ You may have noticed in the example, when using a glob the pattern is encapsulat
 $ linkinator "**/*.md" --markdown
 ```
 
-Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern. 
+Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern.
 
 ## License
 
