@@ -67,7 +67,6 @@ interface CrawlOptions {
  * Instance class used to perform a crawl job.
  */
 export class LinkChecker extends EventEmitter {
-
   /**
    * Crawl a given url or path, and return a list of visited links along with
    * status codes.
@@ -108,7 +107,7 @@ export class LinkChecker extends EventEmitter {
       concurrency: options.concurrency || 100,
       interval: opts.throttleInterval || 0,
       intervalCap: opts.throttleLimit || 1,
-      carryoverConcurrencyCount: true
+      carryoverConcurrencyCount: true,
     });
 
     const results = new Array<LinkResult>();
@@ -126,7 +125,7 @@ export class LinkChecker extends EventEmitter {
           cache: initCache,
           queue,
           tqueue,
-          rootPath: path
+          rootPath: path,
         });
       });
     }
@@ -432,13 +431,12 @@ export class LinkChecker extends EventEmitter {
 
           let throttle = false;
           if (Array.isArray(opts.checkOptions.linksToThrottle)) {
-            throttle = opts.checkOptions.linksToThrottle
-              .some((element) => {
-                if (result.url?.href) {
-                  return new RegExp(element).test(result.url.href);
-                }
-                return false;
-              });
+            throttle = opts.checkOptions.linksToThrottle.some(element => {
+              if (result.url?.href) {
+                return new RegExp(element).test(result.url.href);
+              }
+              return false;
+            });
           }
 
           const crawlJob = async () => {
@@ -451,9 +449,9 @@ export class LinkChecker extends EventEmitter {
               queue: opts.queue,
               tqueue: opts.tqueue,
               parent: opts.url.href,
-              rootPath: opts.rootPath
+              rootPath: opts.rootPath,
             });
-          }
+          };
 
           if (throttle) {
             opts.tqueue.add(crawlJob);

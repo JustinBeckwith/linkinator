@@ -139,7 +139,7 @@ async function main() {
     concurrency: Number(flags.concurrency),
     serverRoot: flags.serverRoot,
     throttleLimit: Number(flags.throttlelimit),
-    throttleInterval: Number(flags.throttleinterval)
+    throttleInterval: Number(flags.throttleinterval),
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
