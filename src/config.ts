@@ -13,6 +13,9 @@ export interface Flags {
   timeout?: number;
   markdown?: boolean;
   serverRoot?: string;
+  throttle?: string;
+  throttlelimit?: number;
+  throttleinterval?: number;
 }
 
 export async function getConfig(flags: Flags) {

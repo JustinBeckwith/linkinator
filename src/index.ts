@@ -28,6 +28,9 @@ export interface CheckOptions {
   markdown?: boolean;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
   serverRoot?: string;
+  linksToThrottle?: string[] | ((link: string) => Promise<boolean>);
+  throttleLimit?: number;
+  throttleInterval?: number;
 }
 
 export enum LinkState {
@@ -56,6 +59,7 @@ interface CrawlOptions {
   cache: Set<string>;
   checkOptions: CheckOptions;
   queue: PQueue<PriorityQueue, DefaultAddOptions>;
+  tqueue: PQueue<PriorityQueue, DefaultAddOptions>;
   rootPath: string;
 }
 
@@ -63,6 +67,7 @@ interface CrawlOptions {
  * Instance class used to perform a crawl job.
  */
 export class LinkChecker extends EventEmitter {
+
   /**
    * Crawl a given url or path, and return a list of visited links along with
    * status codes.
@@ -99,6 +104,12 @@ export class LinkChecker extends EventEmitter {
     const queue = new PQueue({
       concurrency: options.concurrency || 100,
     });
+    const tqueue = new PQueue({
+      concurrency: options.concurrency || 100,
+      interval: opts.throttleInterval || 0,
+      intervalCap: opts.throttleLimit || 1,
+      carryoverConcurrencyCount: true
+    });
 
     const results = new Array<LinkResult>();
     const initCache: Set<string> = new Set();
@@ -114,11 +125,13 @@ export class LinkChecker extends EventEmitter {
           results,
           cache: initCache,
           queue,
-          rootPath: path,
+          tqueue,
+          rootPath: path
         });
       });
     }
     await queue.onIdle();
+    await tqueue.onIdle();
 
     const result = {
       links: results,
@@ -416,7 +429,19 @@ export class LinkChecker extends EventEmitter {
         // very large queue length and runaway memory consumption
         if (!opts.cache.has(result.url.href)) {
           opts.cache.add(result.url.href);
-          opts.queue.add(async () => {
+
+          let throttle = false;
+          if (Array.isArray(opts.checkOptions.linksToThrottle)) {
+            throttle = opts.checkOptions.linksToThrottle
+              .some((element) => {
+                if (result.url?.href) {
+                  return new RegExp(element).test(result.url.href);
+                }
+                return false;
+              });
+          }
+
+          const crawlJob = async () => {
             await this.crawl({
               url: result.url!,
               crawl,
@@ -424,10 +449,17 @@ export class LinkChecker extends EventEmitter {
               results: opts.results,
               checkOptions: opts.checkOptions,
               queue: opts.queue,
+              tqueue: opts.tqueue,
               parent: opts.url.href,
-              rootPath: opts.rootPath,
+              rootPath: opts.rootPath
             });
-          });
+          }
+
+          if (throttle) {
+            opts.tqueue.add(crawlJob);
+          } else {
+            opts.queue.add(crawlJob);
+          }
         }
       }
     }

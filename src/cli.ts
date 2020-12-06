@@ -45,17 +45,26 @@ const cli = meow(
           Recursively follow links on the same root domain.
 
       --server-root
-          When scanning a locally directory, customize the location on disk 
+          When scanning a locally directory, customize the location on disk
           where the server is started.  Defaults to the path passed in [LOCATION].
 
       --silent
           Only output broken links
 
       --skip, -s
-          List of urls in regexy form to not include in the check.  
+          List of urls in regexy form to not include in the check.
 
       --timeout
           Request timeout in ms.  Defaults to 0 (no timeout).
+
+      --throttle
+      List of urls in regexy form to throttle in the check.
+
+      --throttlelimit
+      Maximum number of calls within an throttle internal.
+
+      --throttleinterval
+      Timespan for throttle limit in milliseconds with throttle urls.
 
     Examples
       $ linkinator docs/
@@ -75,6 +84,9 @@ const cli = meow(
       timeout: {type: 'number'},
       markdown: {type: 'boolean'},
       serverRoot: {type: 'string'},
+      throttle: {type: 'string'},
+      throttlelimit: {type: 'number'},
+      throttleinternal: {type: 'number'},
     },
     booleanDefault: undefined,
   }
@@ -126,12 +138,21 @@ async function main() {
     markdown: flags.markdown,
     concurrency: Number(flags.concurrency),
     serverRoot: flags.serverRoot,
+    throttleLimit: Number(flags.throttlelimit),
+    throttleInterval: Number(flags.throttleinterval)
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
       opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
     } else if (Array.isArray(flags.skip)) {
       opts.linksToSkip = flags.skip;
+    }
+  }
+  if (flags.throttle) {
+    if (typeof flags.throttle === 'string') {
+      opts.linksToThrottle = flags.throttle.split(' ').filter(x => !!x);
+    } else if (Array.isArray(flags.throttle)) {
+      opts.linksToThrottle = flags.throttle;
     }
   }
   const result = await checker.check(opts);
