@@ -17,7 +17,8 @@
     "fix": "gts fix",
     "codecov": "c8 report --reporter=json && codecov -f coverage/*.json",
     "lint": "gts lint",
-    "build-binaries": "pkg . --out-path build/binaries"
+    "build-binaries": "pkg . --out-path build/binaries",
+    "docs-test": "npm link && linkinator ./README.md"
   },
   "dependencies": {
     "chalk": "^4.0.0",
