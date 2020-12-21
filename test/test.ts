@@ -407,4 +407,13 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 3);
   });
+
+  it('should throw if a glob provides no paths to scan', async () => {
+    await assert.rejects(
+      check({
+        path: 'test/fixtures/basic/*.md',
+      }),
+      /returned 0 results/
+    );
+  });
 });
