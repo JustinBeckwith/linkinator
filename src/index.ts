@@ -173,6 +173,11 @@ export class LinkChecker extends EventEmitter {
       const paths: string[] = [];
       for (const path of options.path) {
         const expandedPaths = await glob(path);
+        if (expandedPaths.length === 0) {
+          throw new Error(
+            `The provided glob "${path}" returned 0 results. The current working directory is "${process.cwd()}".`
+          );
+        }
         paths.push(...expandedPaths);
       }
       options.path = paths;
