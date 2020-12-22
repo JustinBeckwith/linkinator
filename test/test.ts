@@ -5,7 +5,7 @@ import * as sinon from 'sinon';
 import * as path from 'path';
 import {describe, it, afterEach} from 'mocha';
 
-import {check, LinkState, LinkChecker, CheckOptions} from '../src';
+import {check, LinkState, LinkChecker, CheckOptions, headers} from '../src';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -415,5 +415,25 @@ describe('linkinator', () => {
       }),
       /returned 0 results/
     );
+  });
+
+  it('should always send a human looking User-Agent', async () => {
+    const scopes = [
+      nock('http://fake.local')
+        .get('/', undefined, {reqheaders: headers})
+        .replyWithFile(200, 'test/fixtures/local/index.html', {
+          'Content-Type': 'text/html; charset=UTF-8',
+        }),
+      nock('http://fake.local')
+        .get('/page2.html', undefined, {reqheaders: headers})
+        .replyWithFile(200, 'test/fixtures/local/page2.html', {
+          'Content-Type': 'text/html; charset=UTF-8',
+        }),
+    ];
+    const results = await check({
+      path: 'http://fake.local',
+    });
+    assert.ok(results.passed);
+    scopes.forEach(x => x.done());
   });
 });

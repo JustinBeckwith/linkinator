@@ -59,6 +59,12 @@ interface CrawlOptions {
   rootPath: string;
 }
 
+// Spoof a normal looking User-Agent to keep the servers happy
+export const headers = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
+};
+
 /**
  * Instance class used to perform a crawl job.
  */
@@ -318,10 +324,7 @@ export class LinkChecker extends EventEmitter {
       res = await gaxios.request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url.href,
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
-        },
+        headers,
         responseType: opts.crawl ? 'text' : 'stream',
         validateStatus: () => true,
         timeout: opts.checkOptions.timeout,
@@ -332,10 +335,7 @@ export class LinkChecker extends EventEmitter {
         res = await gaxios.request<string>({
           method: 'GET',
           url: opts.url.href,
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
-          },
+          headers,
           responseType: 'stream',
           validateStatus: () => true,
           timeout: opts.checkOptions.timeout,
@@ -358,6 +358,7 @@ export class LinkChecker extends EventEmitter {
           url: opts.url.href,
           responseType: 'text',
           validateStatus: () => true,
+          headers,
           timeout: opts.checkOptions.timeout,
         });
       }
