@@ -42,7 +42,7 @@ export class Logger {
   }
 
   error(message?: string) {
-    if (this.level <= LogLevel.ERROR) {
+    if (this.level <= LogLevel.ERROR && this.format === Format.TEXT) {
       console.error(message);
     }
   }

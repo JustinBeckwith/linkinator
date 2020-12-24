@@ -131,10 +131,25 @@ async function main() {
     opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
   }
   const result = await checker.check(opts);
+  const filteredResults = result.links.filter(link => {
+    switch (link.state) {
+      case LinkState.OK:
+        return verbosity <= LogLevel.WARNING;
+      case LinkState.BROKEN:
+        if (verbosity > LogLevel.DEBUG) {
+          link.failureDetails = undefined;
+        }
+        return verbosity <= LogLevel.ERROR;
+      case LinkState.SKIPPED:
+        return verbosity <= LogLevel.INFO;
+    }
+  });
   if (format === Format.JSON) {
+    result.links = filteredResults;
     console.log(JSON.stringify(result, null, 2));
     return;
   } else if (format === Format.CSV) {
+    result.links = filteredResults;
     const csv = await toCSV(result.links);
     console.log(csv);
     return;
