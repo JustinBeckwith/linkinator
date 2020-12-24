@@ -1,6 +1,7 @@
 import {describe, it} from 'mocha';
 import * as execa from 'execa';
 import {assert} from 'chai';
+import {LinkResult, LinkState} from '../src/index';
 
 describe('cli', () => {
   before(async () => {
@@ -53,7 +54,6 @@ describe('cli', () => {
   it('should provide CSV if asked nicely', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
       '--format',
       'csv',
       'test/fixtures/markdown/README.md',
@@ -64,12 +64,12 @@ describe('cli', () => {
   it('should provide JSON if asked nicely', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
       '--format',
       'json',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stdout, /{/);
+    const output = JSON.parse(res.stdout);
+    assert.ok(output.links);
   });
 
   it('should not show links if --silent', async () => {
@@ -79,6 +79,21 @@ describe('cli', () => {
       'test/fixtures/markdown/README.md',
     ]);
     assert.notMatch(res.stdout, /\[/);
+  });
+
+  it('should not show 200 links if verbosity is ERROR with JSON', async () => {
+    const res = await execa('npx', [
+      'linkinator',
+      '--verbosity',
+      'ERROR',
+      '--format',
+      'JSON',
+      'test/fixtures/markdown/README.md',
+    ]);
+    const links = JSON.parse(res.stdout).links as LinkResult[];
+    for (const link of links) {
+      assert.strictEqual(link.state, LinkState.BROKEN);
+    }
   });
 
   it('should accept a server-root', async () => {
