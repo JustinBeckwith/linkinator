@@ -4,7 +4,7 @@ import {assert} from 'chai';
 
 describe('cli', () => {
   before(async () => {
-    //await execa('npm', ['link']);
+    await execa('npm', ['link']);
   });
 
   it('should show output for failures', async () => {
