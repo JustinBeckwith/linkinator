@@ -190,6 +190,7 @@ async function main() {
           case LinkState.BROKEN:
             state = `[${chalk.red(link.status!.toString())}]`;
             logger.error(`  ${state} ${chalk.gray(link.url)}`);
+            logger.debug(JSON.stringify(link.failureDetails, null, 2));
             break;
           case LinkState.OK:
             state = `[${chalk.green(link.status!.toString())}]`;
