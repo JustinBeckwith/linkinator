@@ -167,6 +167,6 @@ describe('cli', () => {
       }
     );
     assert.strictEqual(res.exitCode, 1);
-    assert.match(res.stdout, /reason: getaddrinfo ENOTFOUND fake.local/);
+    assert.match(res.stdout, /reason: getaddrinfo/);
   });
 });
