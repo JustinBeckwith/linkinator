@@ -11,7 +11,7 @@ describe('cli', () => {
     const res = await execa('npx', ['linkinator', 'test/fixtures/basic'], {
       reject: false,
     });
-    assert.include(res.stderr, 'ERROR: Detected 1 broken links');
+    assert.match(res.stderr, /ERROR: Detected 1 broken links/);
   });
 
   it('should pass successful markdown scan', async () => {
@@ -19,7 +19,7 @@ describe('cli', () => {
       'linkinator',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stderr, 'Successfully scanned');
+    assert.match(res.stderr, /Successfully scanned/);
   });
 
   it('should allow multiple paths', async () => {
@@ -28,14 +28,14 @@ describe('cli', () => {
       'test/fixtures/markdown/unlinked.md',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stderr, 'Successfully scanned');
+    assert.match(res.stderr, /Successfully scanned/);
   });
 
   it('should show help if no params are provided', async () => {
     const res = await execa('npx', ['linkinator'], {
       reject: false,
     });
-    assert.include(res.stdout, '$ linkinator LOCATION [ --arguments ]');
+    assert.match(res.stdout, /\$ linkinator LOCATION \[ --arguments \]/);
   });
 
   it('should flag skipped links', async () => {
@@ -47,7 +47,7 @@ describe('cli', () => {
       'LICENSE.md',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, '[SKP]');
+    assert.match(res.stdout, /\[SKP\]/);
   });
 
   it('should provide CSV if asked nicely', async () => {
@@ -58,7 +58,7 @@ describe('cli', () => {
       'csv',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, '/README.md,200,OK,');
+    assert.match(res.stdout, /\/README.md,200,OK,/);
   });
 
   it('should provide JSON if asked nicely', async () => {
@@ -69,7 +69,7 @@ describe('cli', () => {
       'json',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, '{');
+    assert.match(res.stdout, /{/);
   });
 
   it('should not show links if --silent', async () => {
@@ -78,7 +78,7 @@ describe('cli', () => {
       '--silent',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.strictEqual(res.stdout.indexOf('['), -1);
+    assert.notMatch(res.stdout, /\[/);
   });
 
   it('should accept a server-root', async () => {
@@ -89,7 +89,7 @@ describe('cli', () => {
       'test/fixtures/markdown',
       'README.md',
     ]);
-    assert.ok(res.stderr.includes('Successfully scanned'));
+    assert.match(res.stderr, /Successfully scanned/);
   });
 
   it('should accept globs', async () => {
@@ -98,7 +98,7 @@ describe('cli', () => {
       'test/fixtures/markdown/*.md',
       'test/fixtures/markdown/**/*.md',
     ]);
-    assert.ok(res.stderr.includes('Successfully scanned'));
+    assert.match(res.stderr, /Successfully scanned/);
   });
 
   it('should throw on invalid format', async () => {
@@ -109,7 +109,7 @@ describe('cli', () => {
         reject: false,
       }
     );
-    assert.include(res.stderr, 'FORMAT must be');
+    assert.match(res.stderr, /FORMAT must be/);
   });
 
   it('should throw on invalid format', async () => {
@@ -120,7 +120,7 @@ describe('cli', () => {
         reject: false,
       }
     );
-    assert.include(res.stderr, 'FORMAT must be');
+    assert.match(res.stderr, /FORMAT must be/);
   });
 
   it('should throw on invalid verbosity', async () => {
@@ -131,7 +131,7 @@ describe('cli', () => {
         reject: false,
       }
     );
-    assert.include(res.stderr, 'VERBOSITY must be');
+    assert.match(res.stderr, /VERBOSITY must be/);
   });
 
   it('should throw when verbosity and silent are flagged', async () => {
@@ -142,7 +142,7 @@ describe('cli', () => {
         reject: false,
       }
     );
-    assert.include(res.stderr, 'The SILENT and VERBOSITY flags');
+    assert.match(res.stderr, /The SILENT and VERBOSITY flags/);
   });
 
   it('should show no output for verbosity=NONE', async () => {
@@ -167,6 +167,6 @@ describe('cli', () => {
       }
     );
     assert.strictEqual(res.exitCode, 1);
-    assert.ok(/reason: getaddrinfo ENOTFOUND fake.local/.test(res.stdout));
+    assert.match(res.stdout, /reason: getaddrinfo ENOTFOUND fake.local/);
   });
 });
