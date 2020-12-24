@@ -17,20 +17,18 @@ describe('cli', () => {
   it('should pass successful markdown scan', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, 'Successfully scanned');
+    assert.include(res.stderr, 'Successfully scanned');
   });
 
   it('should allow multiple paths', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
-      'README.md',
+      'test/fixtures/markdown/unlinked.md',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, 'Successfully scanned');
+    assert.include(res.stderr, 'Successfully scanned');
   });
 
   it('should show help if no params are provided', async () => {
@@ -43,7 +41,8 @@ describe('cli', () => {
   it('should flag skipped links', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
+      '--verbosity',
+      'INFO',
       '--skip',
       'LICENSE.md',
       'test/fixtures/markdown/README.md',
@@ -76,7 +75,6 @@ describe('cli', () => {
   it('should not show links if --silent', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
       '--silent',
       'test/fixtures/markdown/README.md',
     ]);
@@ -91,16 +89,72 @@ describe('cli', () => {
       'test/fixtures/markdown',
       'README.md',
     ]);
-    assert.ok(res.stdout.includes('Successfully scanned'));
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should accept globs', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
       'test/fixtures/markdown/*.md',
       'test/fixtures/markdown/**/*.md',
     ]);
-    assert.ok(res.stdout.includes('Successfully scanned'));
+    assert.ok(res.stderr.includes('Successfully scanned'));
+  });
+
+  it('should throw on invalid format', async () => {
+    const res = await execa(
+      'npx',
+      ['linkinator', './README.md', '--format', 'LOL'],
+      {
+        reject: false,
+      }
+    );
+    assert.include(res.stderr, 'FORMAT must be');
+  });
+
+  it('should throw on invalid format', async () => {
+    const res = await execa(
+      'npx',
+      ['linkinator', './README.md', '--format', 'LOL'],
+      {
+        reject: false,
+      }
+    );
+    assert.include(res.stderr, 'FORMAT must be');
+  });
+
+  it('should throw on invalid verbosity', async () => {
+    const res = await execa(
+      'npx',
+      ['linkinator', './README.md', '--VERBOSITY', 'LOL'],
+      {
+        reject: false,
+      }
+    );
+    assert.include(res.stderr, 'VERBOSITY must be');
+  });
+
+  it('should throw when verbosity and silent are flagged', async () => {
+    const res = await execa(
+      'npx',
+      ['linkinator', './README.md', '--verbosity', 'DEBUG', '--silent'],
+      {
+        reject: false,
+      }
+    );
+    assert.include(res.stderr, 'The SILENT and VERBOSITY flags');
+  });
+
+  it('should show no output for verbosity=NONE', async () => {
+    const res = await execa(
+      'npx',
+      ['linkinator', 'test/fixtures/basic', '--verbosity', 'NONE'],
+      {
+        reject: false,
+      }
+    );
+    assert.strictEqual(res.exitCode, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, '');
   });
 });
