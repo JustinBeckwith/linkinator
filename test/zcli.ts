@@ -19,7 +19,7 @@ describe('cli', () => {
       'linkinator',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, 'Successfully scanned');
+    assert.include(res.stderr, 'Successfully scanned');
   });
 
   it('should allow multiple paths', async () => {
@@ -28,7 +28,7 @@ describe('cli', () => {
       'test/fixtures/markdown/unlinked.md',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.include(res.stdout, 'Successfully scanned');
+    assert.include(res.stderr, 'Successfully scanned');
   });
 
   it('should show help if no params are provided', async () => {
@@ -89,17 +89,16 @@ describe('cli', () => {
       'test/fixtures/markdown',
       'README.md',
     ]);
-    assert.ok(res.stdout.includes('Successfully scanned'));
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should accept globs', async () => {
     const res = await execa('npx', [
       'linkinator',
-      '--markdown',
       'test/fixtures/markdown/*.md',
       'test/fixtures/markdown/**/*.md',
     ]);
-    assert.ok(res.stdout.includes('Successfully scanned'));
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should throw on invalid format', async () => {
