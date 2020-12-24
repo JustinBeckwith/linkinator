@@ -64,14 +64,15 @@ $ linkinator LOCATIONS [ --arguments ]
         When scanning a locally directory, customize the location on disk
         where the server is started.  Defaults to the path passed in [LOCATION].
 
-    --silent
-        Only output broken links.
-
     --skip, -s
         List of urls in regexy form to not include in the check.
 
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
+
+    --verbosity
+        Override the default verbosity for this command. Available options are
+        'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
 ```
 
 ### Command Examples
