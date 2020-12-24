@@ -436,4 +436,13 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });
+
+  it('should surface call stacks on failures in the API', async () => {
+    const results = await check({
+      path: 'http://fake.local',
+    });
+    assert.ok(!results.passed);
+    const err = results.links[0].failureDetails![0] as Error;
+    assert.ok(/Nock: Disallowed net connect for/.test(err.message));
+  });
 });

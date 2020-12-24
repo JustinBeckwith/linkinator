@@ -4,7 +4,7 @@ import {assert} from 'chai';
 
 describe('cli', () => {
   before(async () => {
-    await execa('npm', ['link']);
+    //await execa('npm', ['link']);
   });
 
   it('should show output for failures', async () => {
@@ -156,5 +156,17 @@ describe('cli', () => {
     assert.strictEqual(res.exitCode, 1);
     assert.strictEqual(res.stdout, '');
     assert.strictEqual(res.stderr, '');
+  });
+
+  it('should show callstacks for verbosity=DEBUG', async () => {
+    const res = await execa(
+      'npx',
+      ['linkinator', 'test/fixtures/basic', '--verbosity', 'DEBUG'],
+      {
+        reject: false,
+      }
+    );
+    assert.strictEqual(res.exitCode, 1);
+    assert.ok(/reason: getaddrinfo ENOTFOUND fake.local/.test(res.stdout));
   });
 });

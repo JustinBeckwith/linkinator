@@ -1,5 +1,5 @@
 import {EventEmitter} from 'events';
-import * as gaxios from 'gaxios';
+import {request, GaxiosResponse} from 'gaxios';
 import * as http from 'http';
 import enableDestroy = require('server-destroy');
 import finalhandler = require('finalhandler');
@@ -41,6 +41,7 @@ export interface LinkResult {
   status?: number;
   state: LinkState;
   parent?: string;
+  failureDetails?: {}[];
 }
 
 export interface CrawlResult {
@@ -319,9 +320,10 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     let shouldRecurse = false;
-    let res: gaxios.GaxiosResponse<string> | undefined = undefined;
+    let res: GaxiosResponse<string> | undefined = undefined;
+    const failures: {}[] = [];
     try {
-      res = await gaxios.request<string>({
+      res = await request<string>({
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url.href,
         headers,
@@ -332,7 +334,7 @@ export class LinkChecker extends EventEmitter {
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
       if (res.status === 405) {
-        res = await gaxios.request<string>({
+        res = await request<string>({
           method: 'GET',
           url: opts.url.href,
           headers,
@@ -345,6 +347,7 @@ export class LinkChecker extends EventEmitter {
       // request failure: invalid domain name, etc.
       // this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
       // for this reason, we also try doing a GET below to see if the link is valid
+      failures.push(err);
     }
 
     try {
@@ -353,7 +356,7 @@ export class LinkChecker extends EventEmitter {
         (res === undefined || res.status < 200 || res.status >= 300) &&
         !opts.crawl
       ) {
-        res = await gaxios.request<string>({
+        res = await request<string>({
           method: 'GET',
           url: opts.url.href,
           responseType: 'text',
@@ -363,6 +366,7 @@ export class LinkChecker extends EventEmitter {
         });
       }
     } catch (ex) {
+      failures.push(ex);
       // catch the next failure
     }
 
@@ -375,6 +379,8 @@ export class LinkChecker extends EventEmitter {
     // Assume any 2xx status is 👌
     if (status >= 200 && status < 300) {
       state = LinkState.OK;
+    } else {
+      failures.push(res!);
     }
 
     const result: LinkResult = {
@@ -382,6 +388,7 @@ export class LinkChecker extends EventEmitter {
       status,
       state,
       parent: opts.parent,
+      failureDetails: failures,
     };
     opts.results.push(result);
     this.emit('link', result);
@@ -455,7 +462,7 @@ export async function check(options: CheckOptions) {
  * @param {object} response Page response.
  * @returns {boolean}
  */
-function isHtml(response: gaxios.GaxiosResponse): boolean {
+function isHtml(response: GaxiosResponse): boolean {
   const contentType = response.headers['content-type'] || '';
   return (
     !!contentType.match(/text\/html/g) ||
