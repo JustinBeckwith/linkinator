@@ -9,6 +9,7 @@ const linksAttr = {
   icon: ['command'],
   longdesc: ['frame', 'iframe'],
   manifest: ['html'],
+  content: ['meta'],
   poster: ['video'],
   pluginspage: ['embed'],
   pluginurl: ['embed'],
@@ -56,6 +57,17 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
       ) {
         return;
       }
+
+      // Only for <meta content=""> tags, only validate the url if
+      // the content actually looks like a url
+      if (element.tagName === 'meta' && element.attribs['content']) {
+        try {
+          new URL(element.attribs['content']);
+        } catch (e) {
+          return;
+        }
+      }
+
       for (const v of values) {
         if (v) {
           const link = parseLink(v, realBaseUrl);
