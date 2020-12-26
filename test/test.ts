@@ -304,7 +304,6 @@ describe('linkinator', () => {
   it('should allow overriding the server root', async () => {
     const results = await check({
       serverRoot: 'test/fixtures/markdown',
-      markdown: true,
       path: 'README.md',
     });
     assert.strictEqual(results.links.length, 3);
@@ -385,7 +384,6 @@ describe('linkinator', () => {
     const consoleSpy = sinon.stub(console, 'log');
     const results = await check({
       path: 'test/fixtures/markdown/README.md',
-      markdown: true,
     });
     assert.ok(results.passed);
     assert.ok(consoleSpy.calledOnce);
@@ -394,7 +392,6 @@ describe('linkinator', () => {
   it('should respect globs', async () => {
     const results = await check({
       path: 'test/fixtures/markdown/**/*.md',
-      markdown: true,
     });
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 6);
@@ -444,6 +441,36 @@ describe('linkinator', () => {
     assert.ok(!results.passed);
     const err = results.links[0].failureDetails![0] as Error;
     assert.ok(/Nock: Disallowed net connect for/.test(err.message));
+  });
+
+  it('should respect server root with globs', async () => {
+    const scope = nock('http://fake.local')
+      .get('/doll1')
+      .reply(200)
+      .get('/doll2')
+      .reply(200);
+    const results = await check({
+      serverRoot: 'test/fixtures/nested',
+      path: '*/*.html',
+    });
+    assert.strictEqual(results.links.length, 4);
+    assert.ok(results.passed);
+    scope.done();
+  });
+
+  it('should respect absolute server root', async () => {
+    const scope = nock('http://fake.local')
+      .get('/doll1')
+      .reply(200)
+      .get('/doll2')
+      .reply(200);
+    const results = await check({
+      serverRoot: path.resolve('test/fixtures/nested'),
+      path: '*/*.html',
+    });
+    assert.strictEqual(results.links.length, 4);
+    assert.ok(results.passed);
+    scope.done();
   });
 
   it('should scan links in <meta content="URL"> tags', async () => {

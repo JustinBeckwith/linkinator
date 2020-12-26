@@ -175,17 +175,40 @@ export class LinkChecker extends EventEmitter {
       );
     }
 
+    if (options.serverRoot) {
+      options.serverRoot = path.normalize(options.serverRoot);
+    }
+
     // expand globs into paths
     if (!isUrlType) {
       const paths: string[] = [];
-      for (const path of options.path) {
-        const expandedPaths = await glob(path);
+      for (const filePath of options.path) {
+        // The glob path provided is relative to the serverRoot. For example,
+        // if the serverRoot is test/fixtures/nested, and the glob is "*/*.html",
+        // The glob needs to be calculated from the serverRoot directory.
+        const fullPath = options.serverRoot
+          ? path.join(options.serverRoot, filePath)
+          : filePath;
+        const expandedPaths = await glob(fullPath);
         if (expandedPaths.length === 0) {
           throw new Error(
-            `The provided glob "${path}" returned 0 results. The current working directory is "${process.cwd()}".`
+            `The provided glob "${filePath}" returned 0 results. The current working directory is "${process.cwd()}".`
           );
         }
-        paths.push(...expandedPaths);
+        // After resolving the globs, the paths need to be returned to their
+        // original form, without the serverRoot included in the path.
+        for (let p of expandedPaths) {
+          p = path.normalize(p);
+          if (options.serverRoot) {
+            const contractedPath = p
+              .split(path.sep)
+              .slice(options.serverRoot.split(path.sep).length)
+              .join(path.sep);
+            paths.push(contractedPath);
+          } else {
+            paths.push(p);
+          }
+        }
       }
       options.path = paths;
     }
