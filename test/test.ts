@@ -304,7 +304,6 @@ describe('linkinator', () => {
   it('should allow overriding the server root', async () => {
     const results = await check({
       serverRoot: 'test/fixtures/markdown',
-      markdown: true,
       path: 'README.md',
     });
     assert.strictEqual(results.links.length, 3);
@@ -473,7 +472,7 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     scope.done();
   });
-  
+
   it('should scan links in <meta content="URL"> tags', async () => {
     const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({path: 'test/fixtures/twittercard'});
