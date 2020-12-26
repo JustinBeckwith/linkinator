@@ -263,7 +263,7 @@ async function complex() {
 complex();
 ```
 
-## Notes
+## Tips & Tricks
 
 ### Using a proxy
 This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment variables.  This [guide](https://www.golinuxcloud.com/set-up-proxy-http-proxy-environment-variable/) provides a nice overview of how to format and set these variables.
@@ -275,6 +275,18 @@ $ linkinator "**/*.md" --markdown
 ```
 
 Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern.
+
+### Debugging
+Oftentimes when a link fails, it's an easy to spot typo, or a clear 404.  Other times ... you may need more details on exactly what went wrong.  To see a full call stack for the HTTP request failure, use `--verbosity DEBUG`:
+```sh
+$ linkinator https://jbeckwith.com --verbosity DEBUG
+```
+
+### Controlling Output
+The `--verbosity` flag offers preset options for controlling the output, but you may want more control.  Using [`jq`](https://stedolan.github.io/jq/) and `--format JSON` - you can do just that!
+```sh
+$ linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
+```
 
 ## License
 
