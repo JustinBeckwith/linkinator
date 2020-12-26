@@ -182,7 +182,7 @@ export class LinkChecker extends EventEmitter {
     // expand globs into paths
     if (!isUrlType) {
       const paths: string[] = [];
-      for (let filePath of options.path) {
+      for (const filePath of options.path) {
         // The glob path provided is relative to the serverRoot. For example,
         // if the serverRoot is test/fixtures/nested, and the glob is "*/*.html",
         // The glob needs to be calculated from the serverRoot directory.
@@ -200,10 +200,10 @@ export class LinkChecker extends EventEmitter {
         for (let p of expandedPaths) {
           p = path.normalize(p);
           if (options.serverRoot) {
-            const contractedPath =  p
-                .split(path.sep)
-                .slice(options.serverRoot.split(path.sep).length)
-                .join(path.sep);
+            const contractedPath = p
+              .split(path.sep)
+              .slice(options.serverRoot.split(path.sep).length)
+              .join(path.sep);
             paths.push(contractedPath);
           } else {
             paths.push(p);
