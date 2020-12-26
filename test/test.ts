@@ -473,4 +473,12 @@ describe('linkinator', () => {
     assert.ok(results.passed);
     scope.done();
   });
+  
+  it('should scan links in <meta content="URL"> tags', async () => {
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check({path: 'test/fixtures/twittercard'});
+    assert.ok(results.passed);
+    scope.done();
+    assert.strictEqual(results.links.length, 2);
+  });
 });
