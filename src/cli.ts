@@ -128,7 +128,11 @@ async function main() {
     serverRoot: flags.serverRoot,
   };
   if (flags.skip) {
-    opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
+    if (typeof flags.skip === 'string') {
+      opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
+    } else if (Array.isArray(flags.skip)) {
+      opts.linksToSkip = flags.skip;
+    }
   }
   const result = await checker.check(opts);
   const filteredResults = result.links.filter(link => {
