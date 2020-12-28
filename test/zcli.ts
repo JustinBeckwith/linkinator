@@ -184,4 +184,14 @@ describe('cli', () => {
     assert.strictEqual(res.exitCode, 1);
     assert.match(res.stdout, /reason: getaddrinfo/);
   });
+
+  it('should allow passing a config', async () => {
+    const res = await execa('npx', [
+      'linkinator',
+      'test/fixtures/basic',
+      '--config',
+      'test/fixtures/config/skip-array-config.json',
+    ]);
+    assert.strictEqual(res.exitCode, 0);
+  });
 });
