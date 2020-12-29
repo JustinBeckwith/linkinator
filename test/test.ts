@@ -485,6 +485,7 @@ describe('linkinator', () => {
     const results = await check({
       path: 'test/fixtures/directoryIndex/README.md',
     });
+    console.log(results);
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 3);
   });
