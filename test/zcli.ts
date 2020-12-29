@@ -45,7 +45,7 @@ describe('cli', () => {
       '--verbosity',
       'INFO',
       '--skip',
-      'LICENSE.md',
+      '"LICENSE.md, unlinked.md"',
       'test/fixtures/markdown/README.md',
     ]);
     assert.match(res.stdout, /\[SKP\]/);

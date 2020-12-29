@@ -135,7 +135,7 @@ async function main() {
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
-      opts.linksToSkip = flags.skip.split(' ').filter(x => !!x);
+      opts.linksToSkip = flags.skip.split(/[\s,]+/).filter(x => !!x);
     } else if (Array.isArray(flags.skip)) {
       opts.linksToSkip = flags.skip;
     }
