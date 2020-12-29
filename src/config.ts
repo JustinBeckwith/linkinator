@@ -13,6 +13,7 @@ export interface Flags {
   timeout?: number;
   markdown?: boolean;
   serverRoot?: string;
+  directoryListing?: boolean;
 }
 
 export async function getConfig(flags: Flags) {

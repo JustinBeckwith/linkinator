@@ -480,4 +480,21 @@ describe('linkinator', () => {
     scope.done();
     assert.strictEqual(results.links.length, 2);
   });
+
+  it('should support directory index', async () => {
+    const results = await check({
+      path: 'test/fixtures/directoryIndex/README.md',
+      directoryListing: true,
+    });
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 3);
+  });
+
+  it('should disabling directory index by default', async () => {
+    const results = await check({
+      path: 'test/fixtures/directoryIndex/README.md',
+    });
+    assert.ok(!results.passed);
+    assert.strictEqual(results.links.length, 3);
+  });
 });

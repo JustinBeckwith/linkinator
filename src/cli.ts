@@ -35,6 +35,10 @@ const cli = meow(
       --config
           Path to the config file to use. Looks for \`linkinator.config.json\` by default.
 
+      --directory-listing
+          Include an automatic directory index file when linking to a directory.
+          Defaults to 'false'.
+
       --format, -f
           Return the data in CSV or JSON format.
 
@@ -80,6 +84,7 @@ const cli = meow(
       markdown: {type: 'boolean'},
       serverRoot: {type: 'string'},
       verbosity: {type: 'string'},
+      directoryListing: {type: 'boolean'},
     },
     booleanDefault: undefined,
   }
@@ -126,6 +131,7 @@ async function main() {
     markdown: flags.markdown,
     concurrency: Number(flags.concurrency),
     serverRoot: flags.serverRoot,
+    directoryListing: flags.directoryListing,
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {

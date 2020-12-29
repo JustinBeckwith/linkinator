@@ -25,6 +25,7 @@ export interface CheckOptions {
   markdown?: boolean;
   linksToSkip?: string[] | ((link: string) => Promise<boolean>);
   serverRoot?: string;
+  directoryListing?: boolean;
 }
 
 export enum LinkState {
@@ -82,11 +83,12 @@ export class LinkChecker extends EventEmitter {
     const hasHttpPaths = options.path.find(x => x.startsWith('http'));
     if (!hasHttpPaths) {
       const port = options.port || 5000 + Math.round(Math.random() * 1000);
-      server = await startWebServer(
-        options.serverRoot!,
+      server = await startWebServer({
+        root: options.serverRoot!,
         port,
-        options.markdown
-      );
+        markdown: options.markdown,
+        directoryListing: options.directoryListing,
+      });
       for (let i = 0; i < options.path.length; i++) {
         if (options.path[i].startsWith('/')) {
           options.path[i] = options.path[i].slice(1);
@@ -148,6 +150,11 @@ export class LinkChecker extends EventEmitter {
     // normalize options.path to an array of strings
     if (!Array.isArray(options.path)) {
       options.path = [options.path];
+    }
+
+    // disable directory listings by default
+    if (options.directoryListing === undefined) {
+      options.directoryListing = false;
     }
 
     // Ensure we do not mix http:// and file system paths.  The paths passed in
