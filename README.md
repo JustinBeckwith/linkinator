@@ -47,7 +47,7 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --directory-listing
         Include an automatic directory index file when linking to a directory.
-        Defaults to 'true'.
+        Defaults to 'false'.
 
     --format, -f
         Return the data in CSV or JSON format.

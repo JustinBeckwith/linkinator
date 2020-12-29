@@ -152,9 +152,9 @@ export class LinkChecker extends EventEmitter {
       options.path = [options.path];
     }
 
-    // enable directory listings by default
+    // disable directory listings by default
     if (options.directoryListing === undefined) {
-      options.directoryListing = true;
+      options.directoryListing = false;
     }
 
     // Ensure we do not mix http:// and file system paths.  The paths passed in
