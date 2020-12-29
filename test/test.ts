@@ -481,7 +481,7 @@ describe('linkinator', () => {
     assert.strictEqual(results.links.length, 2);
   });
 
-  it('should support directory index by default', async () => {
+  it.only('should support directory index by default', async () => {
     const results = await check({
       path: 'test/fixtures/directoryIndex/README.md',
     });
