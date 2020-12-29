@@ -3,5 +3,6 @@
   "recurse": true,
   "silent": true,
   "concurrency": 17,
-  "skip": "🌳"
+  "skip": "🌳",
+  "directoryListing": false
 }
