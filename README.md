@@ -166,7 +166,7 @@ where the server is started.  Defaults to the path passed in `path`.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
-- `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `true`.
+- `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
 
 #### linkinator.LinkChecker()
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:
