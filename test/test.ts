@@ -486,6 +486,9 @@ describe('linkinator', () => {
       path: 'test/fixtures/directoryIndex/README.md',
     });
     console.log(results);
+    for (const link of results.links) {
+      console.log(link.failureDetails);
+    }
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 3);
   });
