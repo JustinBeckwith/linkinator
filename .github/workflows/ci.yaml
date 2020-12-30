@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [10, 12, 14]
+        node: [10, 12, 14, 15]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
@@ -18,6 +18,9 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm install
       - run: npm test
+      - uses: codecov/codecov-action@v1
+        with:
+          name: actions ${{ matrix.node }}
   windows:
     runs-on: windows-latest
     steps:
@@ -45,19 +48,6 @@ jobs:
           node-version: 12
       - run: npm install
       - run: npm run docs-test
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
-        with:
-          node-version: 12
-      - run: npm install
-      - run: npm test
-      - run: npm run codecov
-      - uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
   release:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
