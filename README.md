@@ -153,6 +153,28 @@ To load config settings outside the CWD, you can pass the `--config` flag to the
 $ linkinator --config /some/path/your-config.json
 ```
 
+## GitHub Actions
+You can use `linkinator` as a GitHub Action as well, using [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action):
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+name: ci
+jobs:
+  linkinator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: JustinBeckwith/linkinator-action@v1
+        with:
+          paths: README.md
+```
+
+To see all options or to learn more, visit [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action).
+
 ## API Usage
 
 #### linkinator.check(options)
