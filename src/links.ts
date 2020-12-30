@@ -47,7 +47,11 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
   const attrs = Object.keys(linksAttr);
   for (const attr of attrs) {
     const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
-    $(elements).each((i, element) => {
+    $(elements).each((i, ele) => {
+      const element = ele as cheerio.TagElement;
+      if (!element.attribs) {
+        return;
+      }
       const values = parseAttr(attr, element.attribs[attr]);
       // ignore href properties for link tags where rel is likely to fail
       const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
