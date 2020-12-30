@@ -6,10 +6,9 @@ import * as util from 'util';
 import * as path from 'path';
 
 import {request, GaxiosResponse} from 'gaxios';
-import PQueue, {DefaultAddOptions} from 'p-queue';
-import PriorityQueue from 'p-queue/dist/priority-queue';
 import * as globby from 'glob';
 
+import {Queue} from './queue';
 import {getLinks} from './links';
 import {startWebServer} from './server';
 
@@ -53,8 +52,9 @@ interface CrawlOptions {
   crawl: boolean;
   results: LinkResult[];
   cache: Set<string>;
+  delayCache: Map<string, number>;
   checkOptions: CheckOptions;
-  queue: PQueue<PriorityQueue, DefaultAddOptions>;
+  queue: Queue;
   rootPath: string;
 }
 
@@ -101,12 +101,13 @@ export class LinkChecker extends EventEmitter {
       console.log(options);
     }
 
-    const queue = new PQueue({
+    const queue = new Queue({
       concurrency: options.concurrency || 100,
     });
 
     const results = new Array<LinkResult>();
     const initCache: Set<string> = new Set();
+    const delayCache: Map<string, number> = new Map();
 
     for (const path of options.path) {
       const url = new URL(path);
@@ -118,6 +119,7 @@ export class LinkChecker extends EventEmitter {
           checkOptions: options,
           results,
           cache: initCache,
+          delayCache,
           queue,
           rootPath: path,
         });
@@ -306,6 +308,24 @@ export class LinkChecker extends EventEmitter {
       }
     }
 
+    // Check if this host has been marked for delay due to 429
+    if (opts.delayCache.has(opts.url.host)) {
+      const timeout = opts.delayCache.get(opts.url.host)!;
+      if (timeout > Date.now()) {
+        opts.queue.add(
+          async () => {
+            await this.crawl(opts);
+          },
+          {
+            delay: timeout - Date.now(),
+          }
+        );
+        return;
+      } else {
+        opts.delayCache.delete(opts.url.host);
+      }
+    }
+
     // Perform a HEAD or GET request based on the need to crawl
     let status = 0;
     let state = LinkState.BROKEN;
@@ -322,6 +342,9 @@ export class LinkChecker extends EventEmitter {
         validateStatus: () => true,
         timeout: opts.checkOptions.timeout,
       });
+      if (this.shouldRetryAfter(res, opts)) {
+        return;
+      }
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
       if (res.status === 405) {
@@ -333,6 +356,9 @@ export class LinkChecker extends EventEmitter {
           validateStatus: () => true,
           timeout: opts.checkOptions.timeout,
         });
+        if (this.shouldRetryAfter(res, opts)) {
+          return;
+        }
       }
     } catch (err) {
       // request failure: invalid domain name, etc.
@@ -355,6 +381,9 @@ export class LinkChecker extends EventEmitter {
           headers,
           timeout: opts.checkOptions.timeout,
         });
+        if (this.shouldRetryAfter(res, opts)) {
+          return;
+        }
       }
     } catch (ex) {
       failures.push(ex);
@@ -425,6 +454,7 @@ export class LinkChecker extends EventEmitter {
               url: result.url!,
               crawl,
               cache: opts.cache,
+              delayCache: opts.delayCache,
               results: opts.results,
               checkOptions: opts.checkOptions,
               queue: opts.queue,
@@ -435,6 +465,59 @@ export class LinkChecker extends EventEmitter {
         }
       }
     }
+  }
+  /**
+   * Check the incoming response for a `retry-after` header.  If present,
+   * and if the status was an HTTP 429, calculate the date at which this
+   * request should be retried. Ensure the delayCache knows that we're
+   * going to wait on requests for this entire host.
+   * @param res GaxiosResponse returned from the request
+   * @param opts CrawlOptions used during this request
+   */
+  shouldRetryAfter(res: GaxiosResponse, opts: CrawlOptions): number {
+    if (!res) {
+      return 0;
+    }
+
+    const retryAfterRaw = res.headers['retry-after'];
+    if (res.status !== 429 || !retryAfterRaw) {
+      return 0;
+    }
+
+    // The `retry-after` header can come in either <seconds> or
+    // A specific date to go check.
+    let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
+    if (isNaN(retryAfter)) {
+      try {
+        retryAfter = new Date(retryAfterRaw).getTime();
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    // check to see if there is already a request to wait for this host
+    if (opts.delayCache.has(opts.url.host)) {
+      // use whichever time is higher in the cache
+      const currentTimeout = opts.delayCache.get(opts.url.host)!;
+      if (retryAfter > currentTimeout) {
+        opts.delayCache.set(opts.url.host, retryAfter);
+      }
+    } else {
+      opts.delayCache.set(opts.url.host, retryAfter);
+    }
+
+    if (retryAfter) {
+      opts.queue.add(
+        async () => {
+          await this.crawl(opts);
+        },
+        {
+          delay: retryAfter - Date.now(),
+        }
+      );
+    }
+
+    return retryAfter;
   }
 }
 
