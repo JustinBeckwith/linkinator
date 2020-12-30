@@ -170,13 +170,10 @@ jobs:
       - uses: actions/checkout@v2
       - uses: JustinBeckwith/linkinator-action@v1
         with:
-          paths: test/fixtures/test.md
-          concurrency: 1
-          markdown: true
-          linksToSkip: "http://fake.local, http://fake.local/fake"
+          paths: README.md
 ```
 
-To learn more, visit [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action).
+To see all options or to learn more, visit [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action).
 
 ## API Usage
 
