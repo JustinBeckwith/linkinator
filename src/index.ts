@@ -1,37 +1,26 @@
 import {EventEmitter} from 'events';
 import {URL} from 'url';
 import * as http from 'http';
-import * as fs from 'fs';
-import * as util from 'util';
-import * as path from 'path';
 
 import {request, GaxiosResponse} from 'gaxios';
-import PQueue, {DefaultAddOptions} from 'p-queue';
-import PriorityQueue from 'p-queue/dist/priority-queue';
-import * as globby from 'glob';
 
+import {Queue} from './queue';
 import {getLinks} from './links';
 import {startWebServer} from './server';
+import {CheckOptions, processOptions} from './options';
 
-const stat = util.promisify(fs.stat);
-const glob = util.promisify(globby);
-
-export interface CheckOptions {
-  concurrency?: number;
-  port?: number;
-  path: string | string[];
-  recurse?: boolean;
-  timeout?: number;
-  markdown?: boolean;
-  linksToSkip?: string[] | ((link: string) => Promise<boolean>);
-  serverRoot?: string;
-  directoryListing?: boolean;
-}
+export {CheckOptions};
 
 export enum LinkState {
   OK = 'OK',
   BROKEN = 'BROKEN',
   SKIPPED = 'SKIPPED',
+}
+
+export interface RetryInfo {
+  url: string;
+  secondsUntilRetry: number;
+  status: number;
 }
 
 export interface LinkResult {
@@ -53,9 +42,11 @@ interface CrawlOptions {
   crawl: boolean;
   results: LinkResult[];
   cache: Set<string>;
+  delayCache: Map<string, number>;
   checkOptions: CheckOptions;
-  queue: PQueue<PriorityQueue, DefaultAddOptions>;
+  queue: Queue;
   rootPath: string;
+  retry: boolean;
 }
 
 // Spoof a normal looking User-Agent to keep the servers happy
@@ -63,6 +54,12 @@ export const headers = {
   'User-Agent':
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
 };
+
+export declare interface LinkChecker {
+  on(event: 'link', listener: (result: LinkResult) => void): this;
+  on(event: 'pagestart', listener: (link: string) => void): this;
+  on(event: 'retry', listener: (details: RetryInfo) => void): this;
+}
 
 /**
  * Instance class used to perform a crawl job.
@@ -74,7 +71,7 @@ export class LinkChecker extends EventEmitter {
    * @param options Options to use while checking for 404s
    */
   async check(opts: CheckOptions) {
-    const options = await this.processOptions(opts);
+    const options = await processOptions(opts);
     if (!Array.isArray(options.path)) {
       options.path = [options.path];
     }
@@ -101,12 +98,13 @@ export class LinkChecker extends EventEmitter {
       console.log(options);
     }
 
-    const queue = new PQueue({
+    const queue = new Queue({
       concurrency: options.concurrency || 100,
     });
 
     const results = new Array<LinkResult>();
     const initCache: Set<string> = new Set();
+    const delayCache: Map<string, number> = new Map();
 
     for (const path of options.path) {
       const url = new URL(path);
@@ -118,8 +116,10 @@ export class LinkChecker extends EventEmitter {
           checkOptions: options,
           results,
           cache: initCache,
+          delayCache,
           queue,
           rootPath: path,
+          retry: !!opts.retry,
         });
       });
     }
@@ -136,121 +136,6 @@ export class LinkChecker extends EventEmitter {
   }
 
   /**
-   * Validate the provided flags all work with each other.
-   * @param options CheckOptions passed in from the CLI (or API)
-   */
-  private async processOptions(opts: CheckOptions): Promise<CheckOptions> {
-    const options = Object.assign({}, opts);
-
-    // ensure at least one path is provided
-    if (options.path.length === 0) {
-      throw new Error('At least one path must be provided');
-    }
-
-    // normalize options.path to an array of strings
-    if (!Array.isArray(options.path)) {
-      options.path = [options.path];
-    }
-
-    // disable directory listings by default
-    if (options.directoryListing === undefined) {
-      options.directoryListing = false;
-    }
-
-    // Ensure we do not mix http:// and file system paths.  The paths passed in
-    // must all be filesystem paths, or HTTP paths.
-    let isUrlType: boolean | undefined = undefined;
-    for (const path of options.path) {
-      const innerIsUrlType = path.startsWith('http');
-      if (isUrlType === undefined) {
-        isUrlType = innerIsUrlType;
-      } else if (innerIsUrlType !== isUrlType) {
-        throw new Error(
-          'Paths cannot be mixed between HTTP and local filesystem paths.'
-        );
-      }
-    }
-
-    // if there is a server root, make sure there are no HTTP paths
-    if (options.serverRoot && isUrlType) {
-      throw new Error(
-        "'serverRoot' cannot be defined when the 'path' points to an HTTP endpoint."
-      );
-    }
-
-    if (options.serverRoot) {
-      options.serverRoot = path.normalize(options.serverRoot);
-    }
-
-    // expand globs into paths
-    if (!isUrlType) {
-      const paths: string[] = [];
-      for (const filePath of options.path) {
-        // The glob path provided is relative to the serverRoot. For example,
-        // if the serverRoot is test/fixtures/nested, and the glob is "*/*.html",
-        // The glob needs to be calculated from the serverRoot directory.
-        const fullPath = options.serverRoot
-          ? path.join(options.serverRoot, filePath)
-          : filePath;
-        const expandedPaths = await glob(fullPath);
-        if (expandedPaths.length === 0) {
-          throw new Error(
-            `The provided glob "${filePath}" returned 0 results. The current working directory is "${process.cwd()}".`
-          );
-        }
-        // After resolving the globs, the paths need to be returned to their
-        // original form, without the serverRoot included in the path.
-        for (let p of expandedPaths) {
-          p = path.normalize(p);
-          if (options.serverRoot) {
-            const contractedPath = p
-              .split(path.sep)
-              .slice(options.serverRoot.split(path.sep).length)
-              .join(path.sep);
-            paths.push(contractedPath);
-          } else {
-            paths.push(p);
-          }
-        }
-      }
-      options.path = paths;
-    }
-
-    // enable markdown if someone passes a flag/glob right at it
-    if (options.markdown === undefined) {
-      for (const p of options.path) {
-        if (path.extname(p).toLowerCase() === '.md') {
-          options.markdown = true;
-        }
-      }
-    }
-
-    // Figure out which directory should be used as the root for the web server,
-    // and how that impacts the path to the file for the first request.
-    if (!options.serverRoot && !isUrlType) {
-      // if the serverRoot wasn't defined, and there are multiple paths, just
-      // use process.cwd().
-      if (options.path.length > 1) {
-        options.serverRoot = process.cwd();
-      } else {
-        // if there's a single path, try to be smart and figure it out
-        const s = await stat(options.path[0]);
-        options.serverRoot = options.path[0];
-        if (s.isFile()) {
-          const pathParts = options.path[0].split(path.sep);
-          options.path = [path.sep + pathParts[pathParts.length - 1]];
-          options.serverRoot =
-            pathParts.slice(0, pathParts.length - 1).join(path.sep) || '.';
-        } else {
-          options.serverRoot = options.path[0];
-          options.path = '/';
-        }
-      }
-    }
-    return options;
-  }
-
-  /**
    * Crawl a given url with the provided options.
    * @pram opts List of options used to do the crawl
    * @private
@@ -260,7 +145,7 @@ export class LinkChecker extends EventEmitter {
     // explicitly skip non-http[s] links before making the request
     const proto = opts.url.protocol;
     if (proto !== 'http:' && proto !== 'https:') {
-      const r = {
+      const r: LinkResult = {
         url: opts.url.href,
         status: 0,
         state: LinkState.SKIPPED,
@@ -306,6 +191,22 @@ export class LinkChecker extends EventEmitter {
       }
     }
 
+    // Check if this host has been marked for delay due to 429
+    if (opts.delayCache.has(opts.url.host)) {
+      const timeout = opts.delayCache.get(opts.url.host)!;
+      if (timeout > Date.now()) {
+        opts.queue.add(
+          async () => {
+            await this.crawl(opts);
+          },
+          {
+            delay: timeout - Date.now(),
+          }
+        );
+        return;
+      }
+    }
+
     // Perform a HEAD or GET request based on the need to crawl
     let status = 0;
     let state = LinkState.BROKEN;
@@ -322,6 +223,9 @@ export class LinkChecker extends EventEmitter {
         validateStatus: () => true,
         timeout: opts.checkOptions.timeout,
       });
+      if (this.shouldRetryAfter(res, opts)) {
+        return;
+      }
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
       if (res.status === 405) {
@@ -333,6 +237,9 @@ export class LinkChecker extends EventEmitter {
           validateStatus: () => true,
           timeout: opts.checkOptions.timeout,
         });
+        if (this.shouldRetryAfter(res, opts)) {
+          return;
+        }
       }
     } catch (err) {
       // request failure: invalid domain name, etc.
@@ -355,6 +262,9 @@ export class LinkChecker extends EventEmitter {
           headers,
           timeout: opts.checkOptions.timeout,
         });
+        if (this.shouldRetryAfter(res, opts)) {
+          return;
+        }
       }
     } catch (ex) {
       failures.push(ex);
@@ -425,16 +335,73 @@ export class LinkChecker extends EventEmitter {
               url: result.url!,
               crawl,
               cache: opts.cache,
+              delayCache: opts.delayCache,
               results: opts.results,
               checkOptions: opts.checkOptions,
               queue: opts.queue,
               parent: opts.url.href,
               rootPath: opts.rootPath,
+              retry: opts.retry,
             });
           });
         }
       }
     }
+  }
+  /**
+   * Check the incoming response for a `retry-after` header.  If present,
+   * and if the status was an HTTP 429, calculate the date at which this
+   * request should be retried. Ensure the delayCache knows that we're
+   * going to wait on requests for this entire host.
+   * @param res GaxiosResponse returned from the request
+   * @param opts CrawlOptions used during this request
+   */
+  shouldRetryAfter(res: GaxiosResponse, opts: CrawlOptions): boolean {
+    if (!opts.retry) {
+      return false;
+    }
+
+    const retryAfterRaw = res.headers['retry-after'];
+    if (res.status !== 429 || !retryAfterRaw) {
+      return false;
+    }
+
+    // The `retry-after` header can come in either <seconds> or
+    // A specific date to go check.
+    let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
+    if (isNaN(retryAfter)) {
+      retryAfter = Date.parse(retryAfterRaw);
+      if (isNaN(retryAfter)) {
+        return false;
+      }
+    }
+
+    // check to see if there is already a request to wait for this host
+    if (opts.delayCache.has(opts.url.host)) {
+      // use whichever time is higher in the cache
+      const currentTimeout = opts.delayCache.get(opts.url.host)!;
+      if (retryAfter > currentTimeout) {
+        opts.delayCache.set(opts.url.host, retryAfter);
+      }
+    } else {
+      opts.delayCache.set(opts.url.host, retryAfter);
+    }
+
+    opts.queue.add(
+      async () => {
+        await this.crawl(opts);
+      },
+      {
+        delay: retryAfter - Date.now(),
+      }
+    );
+    const retryDetails: RetryInfo = {
+      url: opts.url.href,
+      status: res.status,
+      secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+    };
+    this.emit('retry', retryDetails);
+    return true;
   }
 }
 

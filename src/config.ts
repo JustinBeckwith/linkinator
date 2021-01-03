@@ -14,6 +14,7 @@ export interface Flags {
   markdown?: boolean;
   serverRoot?: string;
   directoryListing?: boolean;
+  retry?: boolean;
 }
 
 export async function getConfig(flags: Flags) {

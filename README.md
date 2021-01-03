@@ -64,6 +64,10 @@ $ linkinator LOCATIONS [ --arguments ]
     --recurse, -r
         Recursively follow links on the same root domain.
 
+    --retry,
+        Automatically retry requests that return HTTP 429 responses and include
+        a 'retry-after' header. Defaults to false.
+
     --server-root
         When scanning a locally directory, customize the location on disk
         where the server is started.  Defaults to the path passed in [LOCATION].
@@ -183,6 +187,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
+- `retry` (boolean|RetryConfig) - Automatically retry requests that respond with an HTTP 429, and include a `retry-after` header.  The `RetryConfig` option is a placeholder for fine-grained controls to be implemented at a later time, and is only included here to signal forward-compatibility.
 - `serverRoot` (string) - When scanning a locally directory, customize the location on disk
 where the server is started.  Defaults to the path passed in `path`.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
