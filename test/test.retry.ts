@@ -43,7 +43,7 @@ describe('retries', () => {
       retry: true,
     });
     await promise;
-    await clock.tickAsync(10000);
+    await clock.tickAsync(10_000);
     const results = await checkPromise;
     assert.ok(results.passed);
     scope.done();

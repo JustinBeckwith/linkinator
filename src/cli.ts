@@ -118,8 +118,8 @@ async function main() {
   logger.error(`🏊‍♂️ crawling ${cli.input}`);
 
   const checker = new LinkChecker();
-  checker.on('retry', (retryDetails: RetryInfo) => {
-    logger.warn(`Retry: ${retryDetails.url}`);
+  checker.on('retry', (info: RetryInfo) => {
+    logger.warn(`Retrying: ${info.url} in ${info.secondsUntilRetry} seconds.`);
   });
   checker.on('link', (link: LinkResult) => {
     let state = '';

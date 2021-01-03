@@ -39,13 +39,14 @@ export class Queue {
         resolve();
         return;
       }
-      const timer = setInterval(() => {
-        if (this.activeTimers === 0) {
+      const timer = setInterval(async () => {
+        if (this.activeTimers === 0 && this.q.size === 0) {
+          await this.q.onIdle();
           clearInterval(timer);
           resolve();
           return;
         }
-      }, 1000);
+      }, 500);
     });
   }
 }

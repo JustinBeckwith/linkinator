@@ -9,6 +9,10 @@ import {LinkResult, LinkState} from '../src/index';
 describe('cli', () => {
   let server: http.Server;
 
+  if (process.env.LINKINATOR_SKIP_CLI_TESTS) {
+    return;
+  }
+
   before(async () => {
     await execa('npm', ['link']);
   });
@@ -234,6 +238,6 @@ describe('cli', () => {
       'test/fixtures/retryCLI',
     ]);
     assert.strictEqual(res.exitCode, 0);
-    assert.include(res.stdout, `Retry: http://localhost:${port}`);
+    assert.include(res.stdout, `Retrying: http://localhost:${port}`);
   });
 });
