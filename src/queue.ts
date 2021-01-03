@@ -16,13 +16,12 @@ export class Queue {
 
   constructor(options: QueueOptions) {
     this.q = new PQueue({
-      concurrency: options.concurrency || 100,
+      concurrency: options.concurrency,
     });
   }
 
   add(fn: AsyncFunction, options?: QueueItemOptions) {
     if (options?.delay) {
-      console.log(`adding a job with a delay!`);
       setTimeout(() => {
         this.q.add(fn);
         this.activeTimers--;

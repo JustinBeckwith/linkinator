@@ -3,7 +3,13 @@
 import * as meow from 'meow';
 import * as updateNotifier from 'update-notifier';
 import chalk = require('chalk');
-import {LinkChecker, LinkState, LinkResult, CheckOptions} from './index';
+import {
+  LinkChecker,
+  LinkState,
+  LinkResult,
+  CheckOptions,
+  RetryInfo,
+} from './index';
 import {promisify} from 'util';
 import {Flags, getConfig} from './config';
 import {Format, Logger, LogLevel} from './logger';
@@ -51,6 +57,10 @@ const cli = meow(
       --recurse, -r
           Recursively follow links on the same root domain.
 
+      --retry,
+          Automatically retry requests that return HTTP 429 responses and include
+          a 'retry-after' header. Defaults to false.
+
       --server-root
           When scanning a locally directory, customize the location on disk
           where the server is started.  Defaults to the path passed in [LOCATION].
@@ -85,6 +95,7 @@ const cli = meow(
       serverRoot: {type: 'string'},
       verbosity: {type: 'string'},
       directoryListing: {type: 'boolean'},
+      retry: {type: 'boolean'},
     },
     booleanDefault: undefined,
   }
@@ -107,6 +118,9 @@ async function main() {
   logger.error(`🏊‍♂️ crawling ${cli.input}`);
 
   const checker = new LinkChecker();
+  checker.on('retry', (retryDetails: RetryInfo) => {
+    logger.warn(`Retry: ${retryDetails.url}`);
+  });
   checker.on('link', (link: LinkResult) => {
     let state = '';
     switch (link.state) {
@@ -132,6 +146,7 @@ async function main() {
     concurrency: Number(flags.concurrency),
     serverRoot: flags.serverRoot,
     directoryListing: flags.directoryListing,
+    retry: flags.retry,
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {

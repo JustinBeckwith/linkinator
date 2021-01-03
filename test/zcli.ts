@@ -1,11 +1,22 @@
 import {describe, it} from 'mocha';
 import * as execa from 'execa';
 import {assert} from 'chai';
+import * as http from 'http';
+import * as util from 'util';
+import enableDestroy = require('server-destroy');
 import {LinkResult, LinkState} from '../src/index';
 
 describe('cli', () => {
+  let server: http.Server;
+
   before(async () => {
     await execa('npm', ['link']);
+  });
+
+  afterEach(async () => {
+    if (server) {
+      await util.promisify(server.destroy)();
+    }
   });
 
   it('should show output for failures', async () => {
@@ -193,5 +204,36 @@ describe('cli', () => {
       'test/fixtures/config/skip-array-config.json',
     ]);
     assert.strictEqual(res.exitCode, 0);
+  });
+
+  it('should warn on retries', async () => {
+    // start a web server to return the 429
+    let requestCount = 0;
+    let firstRequestTime: number;
+    const port = 3333;
+    const delayMillis = 1000;
+    server = http.createServer((_, res) => {
+      if (requestCount === 0) {
+        res.writeHead(429, {
+          'retry-after': 1,
+        });
+        requestCount++;
+        firstRequestTime = Date.now();
+      } else {
+        assert.isAtLeast(Date.now(), firstRequestTime + delayMillis);
+        res.writeHead(200);
+      }
+      res.end();
+    });
+    enableDestroy(server);
+    await new Promise<void>(r => server.listen(port, r));
+
+    const res = await execa('npx', [
+      'linkinator',
+      '--retry',
+      'test/fixtures/retryCLI',
+    ]);
+    assert.strictEqual(res.exitCode, 0);
+    assert.include(res.stdout, `Retry: http://localhost:${port}`);
   });
 });
