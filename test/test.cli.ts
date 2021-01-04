@@ -9,7 +9,7 @@ import {LinkResult, LinkState} from '../src/index';
 // eslint-disable-next-line prefer-arrow-callback
 describe('cli', function () {
   let server: http.Server;
-  this.timeout(20_000);
+  this.timeout(30_000);
 
   if (process.env.LINKINATOR_SKIP_CLI_TESTS) {
     return;
