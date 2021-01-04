@@ -6,8 +6,10 @@ import * as util from 'util';
 import enableDestroy = require('server-destroy');
 import {LinkResult, LinkState} from '../src/index';
 
-describe('cli', () => {
+// eslint-disable-next-line prefer-arrow-callback
+describe('cli', function () {
   let server: http.Server;
+  this.timeout(20_000);
 
   if (process.env.LINKINATOR_SKIP_CLI_TESTS) {
     return;
@@ -129,17 +131,6 @@ describe('cli', () => {
       'test/fixtures/markdown/**/*.md',
     ]);
     assert.match(res.stderr, /Successfully scanned/);
-  });
-
-  it('should throw on invalid format', async () => {
-    const res = await execa(
-      'npx',
-      ['linkinator', './README.md', '--format', 'LOL'],
-      {
-        reject: false,
-      }
-    );
-    assert.match(res.stderr, /FORMAT must be/);
   });
 
   it('should throw on invalid format', async () => {

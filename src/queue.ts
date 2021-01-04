@@ -40,7 +40,7 @@ export class Queue {
         return;
       }
       const timer = setInterval(async () => {
-        if (this.activeTimers === 0 && this.q.size === 0) {
+        if (this.activeTimers === 0) {
           await this.q.onIdle();
           clearInterval(timer);
           resolve();
