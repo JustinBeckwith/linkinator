@@ -395,6 +395,9 @@ describe('linkinator', () => {
     });
     assert.ok(results.passed);
     assert.strictEqual(results.links.length, 6);
+    const licenseLink = results.links.find(x => x.url.endsWith('LICENSE.md'));
+    assert.ok(licenseLink);
+    assert.strictEqual(licenseLink.url, 'test/fixtures/markdown/LICENSE.md');
   });
 
   it('should autoscan markdown if specifically in path', async () => {
@@ -496,5 +499,28 @@ describe('linkinator', () => {
     });
     assert.ok(!results.passed);
     assert.strictEqual(results.links.length, 3);
+  });
+
+  it('should provide a relative path in the results', async () => {
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check({path: 'test/fixtures/basic'});
+    assert.strictEqual(results.links.length, 2);
+    const [rootLink, fakeLink] = results.links;
+    assert.strictEqual(rootLink.url, 'test/fixtures/basic');
+    assert.strictEqual(fakeLink.url, 'http://fake.local/');
+    scope.done();
+  });
+
+  it('should provide a server root relative path in the results', async () => {
+    const scope = nock('http://fake.local').head('/').reply(200);
+    const results = await check({
+      path: '.',
+      serverRoot: 'test/fixtures/basic',
+    });
+    assert.strictEqual(results.links.length, 2);
+    const [rootLink, fakeLink] = results.links;
+    assert.strictEqual(rootLink.url, `.${path.sep}`);
+    assert.strictEqual(fakeLink.url, 'http://fake.local/');
+    scope.done();
   });
 });
