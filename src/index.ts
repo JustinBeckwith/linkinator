@@ -1,13 +1,14 @@
 import {EventEmitter} from 'events';
 import {URL} from 'url';
 import * as http from 'http';
+import * as path from 'path';
 
 import {request, GaxiosResponse} from 'gaxios';
 
 import {Queue} from './queue';
 import {getLinks} from './links';
 import {startWebServer} from './server';
-import {CheckOptions, processOptions} from './options';
+import {CheckOptions, InternalCheckOptions, processOptions} from './options';
 
 export {CheckOptions};
 
@@ -92,6 +93,7 @@ export class LinkChecker extends EventEmitter {
         }
         options.path[i] = `http://localhost:${port}/${options.path[i]}`;
       }
+      options.staticHttpServerHost = `http://localhost:${port}/`;
     }
 
     if (process.env.LINKINATOR_DEBUG) {
@@ -146,10 +148,10 @@ export class LinkChecker extends EventEmitter {
     const proto = opts.url.protocol;
     if (proto !== 'http:' && proto !== 'https:') {
       const r: LinkResult = {
-        url: opts.url.href,
+        url: mapUrl(opts.url.href, opts.checkOptions),
         status: 0,
         state: LinkState.SKIPPED,
-        parent: opts.parent,
+        parent: mapUrl(opts.parent, opts.checkOptions),
       };
       opts.results.push(r);
       this.emit('link', r);
@@ -162,7 +164,7 @@ export class LinkChecker extends EventEmitter {
       (await opts.checkOptions.linksToSkip(opts.url.href))
     ) {
       const result: LinkResult = {
-        url: opts.url.href,
+        url: mapUrl(opts.url.href, opts.checkOptions),
         state: LinkState.SKIPPED,
         parent: opts.parent,
       };
@@ -181,9 +183,9 @@ export class LinkChecker extends EventEmitter {
 
       if (skips.length > 0) {
         const result: LinkResult = {
-          url: opts.url.href,
+          url: mapUrl(opts.url.href, opts.checkOptions),
           state: LinkState.SKIPPED,
-          parent: opts.parent,
+          parent: mapUrl(opts.parent, opts.checkOptions),
         };
         opts.results.push(result);
         this.emit('link', result);
@@ -285,10 +287,10 @@ export class LinkChecker extends EventEmitter {
     }
 
     const result: LinkResult = {
-      url: opts.url.href,
+      url: mapUrl(opts.url.href, opts.checkOptions),
       status,
       state,
-      parent: opts.parent,
+      parent: mapUrl(opts.parent, opts.checkOptions),
       failureDetails: failures,
     };
     opts.results.push(result);
@@ -303,10 +305,10 @@ export class LinkChecker extends EventEmitter {
         // creating a new URL obj, treat it as a broken link.
         if (!result.url) {
           const r = {
-            url: result.link,
+            url: mapUrl(result.link, opts.checkOptions),
             status: 0,
             state: LinkState.BROKEN,
-            parent: opts.url.href,
+            parent: mapUrl(opts.url.href, opts.checkOptions),
           };
           opts.results.push(r);
           this.emit('link', r);
@@ -426,4 +428,36 @@ function isHtml(response: GaxiosResponse): boolean {
     !!contentType.match(/text\/html/g) ||
     !!contentType.match(/application\/xhtml\+xml/g)
   );
+}
+
+/**
+ * When running a local static web server for the user, translate paths from
+ * the Url generated back to something closer to a local filesystem path.
+ * @example
+ *    http://localhost:0000/test/route/README.md => test/route/README.md
+ * @param url The url that was checked
+ * @param options Original CheckOptions passed into the client
+ */
+function mapUrl(url?: string, options?: InternalCheckOptions): string {
+  if (!url) {
+    return url!;
+  }
+  let newUrl = url;
+
+  // trim the starting http://localhost:0000 if we stood up a local static server
+  if (
+    options?.staticHttpServerHost?.length &&
+    url?.startsWith(options.staticHttpServerHost)
+  ) {
+    newUrl = url.slice(options.staticHttpServerHost.length);
+
+    // add the full filesystem path back if we trimmed it
+    if (options?.syntheticServerRoot?.length) {
+      newUrl = path.join(options.syntheticServerRoot, newUrl);
+    }
+    if (newUrl === '') {
+      newUrl = `.${path.sep}`;
+    }
+  }
+  return newUrl!;
 }

@@ -19,14 +19,19 @@ export interface CheckOptions {
   retry?: boolean;
 }
 
+export interface InternalCheckOptions extends CheckOptions {
+  syntheticServerRoot?: string;
+  staticHttpServerHost?: string;
+}
+
 /**
  * Validate the provided flags all work with each other.
  * @param options CheckOptions passed in from the CLI (or API)
  */
 export async function processOptions(
   opts: CheckOptions
-): Promise<CheckOptions> {
-  const options = Object.assign({}, opts);
+): Promise<InternalCheckOptions> {
+  const options = Object.assign({}, opts) as InternalCheckOptions;
 
   // ensure at least one path is provided
   if (options.path.length === 0) {
@@ -131,6 +136,7 @@ export async function processOptions(
         options.serverRoot = options.path[0];
         options.path = '/';
       }
+      options.syntheticServerRoot = options.serverRoot;
     }
   }
   return options;
