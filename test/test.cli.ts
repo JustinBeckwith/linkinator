@@ -75,7 +75,7 @@ describe('cli', function () {
       'csv',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stdout, /\/README.md,200,OK,/);
+    assert.match(res.stdout, /README.md,200,OK,/);
   });
 
   it('should provide JSON if asked nicely', async () => {

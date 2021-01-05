@@ -506,7 +506,7 @@ describe('linkinator', () => {
     const results = await check({path: 'test/fixtures/basic'});
     assert.strictEqual(results.links.length, 2);
     const [rootLink, fakeLink] = results.links;
-    assert.strictEqual(rootLink.url, 'test/fixtures/basic');
+    assert.strictEqual(rootLink.url, path.join('test', 'fixtures', 'basic'));
     assert.strictEqual(fakeLink.url, 'http://fake.local/');
     scope.done();
   });
