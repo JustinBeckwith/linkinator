@@ -4,6 +4,9 @@ on:
       - master
   pull_request:
 name: ci
+env:
+  #FORCE_COLOR: 2 # Enable this later
+  NODE: 12.x
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,7 +16,7 @@ jobs:
         node: [10, 12, 14, 15]
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
       - run: npm install
@@ -25,27 +28,27 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
-          node-version: 12
+          node-version: ${{ env.NODE }}
       - run: npm install
       - run: npm test
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
-          node-version: 12
+          node-version: ${{ env.NODE }}
       - run: npm install
       - run: npm run lint
   docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
-          node-version: 12
+          node-version: ${{ env.NODE }}
       - run: npm install
       - run: npm run docs-test
   release:
@@ -54,9 +57,9 @@ jobs:
     needs: [test, lint]
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
-          node-version: 12
+          node-version: ${{ env.NODE }}
       - run: npm install
       - run: npm run compile
       - run: npm run build-binaries
