@@ -1,4 +1,5 @@
 # 🐿 linkinator
+
 > A super simple site crawler and broken link checker.
 
 [![npm version](https://img.shields.io/npm/v/linkinator.svg)](https://www.npmjs.org/package/linkinator)
@@ -10,6 +11,7 @@
 
 
 Behold my latest inator! The `linkinator` provides an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
+
 - 🔥 Easily perform scans on remote sites or local files
 - 🔥 Scan any element that includes links, not just `<a href>`
 - 🔥 Supports redirects, absolute links, relative links, all the things
@@ -19,7 +21,7 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 ## Installation
 
 ```sh
-$ npm install linkinator
+npm install linkinator
 ```
 
 Not into the whole node.js or npm thing?  You can also download a standalone binary that bundles node, linkinator, and anything else you need.  See [releases](https://github.com/JustinBeckwith/linkinator/releases).
@@ -28,7 +30,7 @@ Not into the whole node.js or npm thing?  You can also download a standalone bin
 
 You can use this as a library, or as a CLI.  Let's see the CLI!
 
-```
+```text
 $ linkinator LOCATIONS [ --arguments ]
 
   Positional arguments
@@ -88,52 +90,53 @@ $ linkinator LOCATIONS [ --arguments ]
 You can run a shallow scan of a website for busted links:
 
 ```sh
-$ npx linkinator http://jbeckwith.com
+npx linkinator http://jbeckwith.com
 ```
 
 That was fun.  What about local files?  The linkinator will stand up a static web server for yinz:
 
 ```sh
-$ npx linkinator ./docs
+npx linkinator ./docs
 ```
 
 But that only gets the top level of links.  Lets go deeper and do a full recursive scan!
 
 ```sh
-$ npx linkinator ./docs --recurse
+npx linkinator ./docs --recurse
 ```
 
 Aw, snap.  I didn't want that to check *those* links.  Let's skip em:
 
 ```sh
-$ npx linkinator ./docs --skip www.googleapis.com
+npx linkinator ./docs --skip www.googleapis.com
 ```
 
 The `--skip` parameter will accept any regex! You can do more complex matching, or even tell it to only scan links with a given domain:
 
 ```sh
-$ linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
+linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
 ```
 
 Maybe you're going to pipe the output to another program.  Use the `--format` option to get JSON or CSV!
 
 ```sh
-$ linkinator ./docs --format CSV
+linkinator ./docs --format CSV
 ```
 
 Let's make sure the `README.md` in our repo doesn't have any busted links:
 
 ```sh
-$ linkinator ./README.md --markdown
+linkinator ./README.md --markdown
 ```
 
 You know what, we better check all of the markdown files!
 
 ```sh
-$ linkinator "**/*.md" --markdown
+linkinator "**/*.md" --markdown
 ```
 
 ### Configuration file
+
 You can pass options directly to the `linkinator` CLI, or you can define a config file.  By default, `linkinator` will look for a `linkinator.config.json` file in the current working directory.
 
 All options are optional. It should look like this:
@@ -154,10 +157,11 @@ All options are optional. It should look like this:
 To load config settings outside the CWD, you can pass the `--config` flag to the `linkinator` CLI:
 
 ```sh
-$ linkinator --config /some/path/your-config.json
+linkinator --config /some/path/your-config.json
 ```
 
 ## GitHub Actions
+
 You can use `linkinator` as a GitHub Action as well, using [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action):
 
 ```yaml
@@ -181,8 +185,10 @@ To see all options or to learn more, visit [JustinBeckwith/linkinator-action](ht
 
 ## API Usage
 
-#### linkinator.check(options)
+### linkinator.check(options)
+
 Asynchronous method that runs a site wide scan. Options come in the form of an object that includes:
+
 - `path` (string|string[]) - A fully qualified path to the url to be scanned, or the path(s) to the directory on disk that contains files to be scanned. *required*.
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
@@ -195,15 +201,19 @@ where the server is started.  Defaults to the path passed in `path`.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
 
-#### linkinator.LinkChecker()
+### linkinator.LinkChecker()
+
 Constructor method that can be used to create a new `LinkChecker` instance.  This is particularly useful if you want to receive events as the crawler crawls.  Exposes the following events:
+
 - `pagestart` (string) - Provides the url that the crawler has just started to scan.
 - `link` (object) - Provides an object with
   - `url` (string) - The url that was scanned
   - `state` (string) - The result of the scan.  Potential values include `BROKEN`, `OK`, or `SKIPPED`.
   - `status` (number) - The HTTP status code of the request.
 
-### Simple example
+### Examples
+
+#### Simple example
 
 ```js
 const link = require('linkinator');
@@ -239,7 +249,7 @@ async function simple() {
 simple();
 ```
 
-### Complete example
+#### Complete example
 
 In most cases you're going to want to respond to events, as running the check command can kinda take a long time.
 
@@ -299,26 +309,33 @@ complex();
 ## Tips & Tricks
 
 ### Using a proxy
+
 This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment variables.  This [guide](https://www.golinuxcloud.com/set-up-proxy-http-proxy-environment-variable/) provides a nice overview of how to format and set these variables.
 
 ### Globbing
+
 You may have noticed in the example, when using a glob the pattern is encapsulated in quotes:
+
 ```sh
-$ linkinator "**/*.md" --markdown
+linkinator "**/*.md" --markdown
 ```
 
 Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern.
 
 ### Debugging
+
 Oftentimes when a link fails, it's an easy to spot typo, or a clear 404.  Other times ... you may need more details on exactly what went wrong.  To see a full call stack for the HTTP request failure, use `--verbosity DEBUG`:
+
 ```sh
-$ linkinator https://jbeckwith.com --verbosity DEBUG
+linkinator https://jbeckwith.com --verbosity DEBUG
 ```
 
 ### Controlling Output
+
 The `--verbosity` flag offers preset options for controlling the output, but you may want more control.  Using [`jq`](https://stedolan.github.io/jq/) and `--format JSON` - you can do just that!
+
 ```sh
-$ linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
+linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
 ```
 
 ## License
