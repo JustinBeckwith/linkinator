@@ -134,8 +134,7 @@ describe('linkinator', () => {
       },
     ];
 
-    for (let i = 0; i < cases.length; i++) {
-      const {fixture, nonBrokenUrl} = cases[i];
+    for (const {fixture, nonBrokenUrl} of cases) {
       const scope = nock('http://fake.local')
         .get('/pageBase/index')
         .replyWithFile(200, fixture, {
