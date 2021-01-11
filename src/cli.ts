@@ -210,15 +210,11 @@ async function main() {
       if (link.state === LinkState.BROKEN) {
         return true;
       }
-      if (link.state === LinkState.OK) {
-        if (verbosity <= LogLevel.WARNING) {
-          return true;
-        }
+      if (link.state === LinkState.OK && verbosity <= LogLevel.WARNING) {
+        return true;
       }
-      if (link.state === LinkState.SKIPPED) {
-        if (verbosity <= LogLevel.INFO) {
-          return true;
-        }
+      if (link.state === LinkState.SKIPPED && verbosity <= LogLevel.INFO) {
+        return true;
       }
       return false;
     });
