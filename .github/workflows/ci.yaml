@@ -5,8 +5,7 @@ on:
   pull_request:
 name: ci
 env:
-  #FORCE_COLOR: 2 # Enable this later
-  NODE: 12.x
+  NODE: 12
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
-      - run: npm install
+      - run: npm ci
       - run: npm test
       - uses: codecov/codecov-action@v1
         with:
@@ -31,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE }}
-      - run: npm install
+      - run: npm ci
       - run: npm test
   lint:
     runs-on: ubuntu-latest
@@ -40,7 +39,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE }}
-      - run: npm install
+      - run: npm ci
       - run: npm run lint
   docs:
     runs-on: ubuntu-latest
@@ -49,7 +48,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE }}
-      - run: npm install
+      - run: npm ci
       - run: npm run docs-test
   release:
     if: github.repository == 'JustinBeckwith/linkinator' && github.ref == 'refs/heads/master'
@@ -60,7 +59,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE }}
-      - run: npm install
+      - run: npm ci
       - run: npm run compile
       - run: npm run build-binaries
       - run: npx semantic-release
