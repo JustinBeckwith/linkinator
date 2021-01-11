@@ -1,3 +1,17 @@
 {
-  "extends": "./node_modules/gts"
-}
+  "extends": "./node_modules/gts",
+  "rules": {
+    "dot-notation": "error",
+    "no-else-return": [
+      "error",
+      {
+        "allowElseIf": false
+      }
+    ],
+    "no-lonely-if": "error",
+    "no-undef-init": "error",
+    "no-useless-return": "error",
+    "prefer-object-spread": "error",
+    "prefer-spread": "error"
+      }
+    }

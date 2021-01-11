@@ -173,77 +173,78 @@ async function main() {
     result.links = filteredResults;
     console.log(JSON.stringify(result, null, 2));
     return;
-  } else if (format === Format.CSV) {
+  }
+  if (format === Format.CSV) {
     result.links = filteredResults;
     const csv = await toCSV(result.links);
     console.log(csv);
     return;
-  } else {
-    // Build a collection scanned links, collated by the parent link used in
-    // the scan.  For example:
-    // {
-    //   "./README.md": [
-    //     {
-    //       url: "https://img.shields.io/npm/v/linkinator.svg",
-    //       status: 200
-    //       ....
-    //     }
-    //   ],
-    // }
-    const parents = result.links.reduce((acc, curr) => {
-      const parent = curr.parent || '';
-      if (!acc[parent]) {
-        acc[parent] = [];
-      }
-      acc[parent].push(curr);
-      return acc;
-    }, {} as {[index: string]: LinkResult[]});
+  }
 
-    Object.keys(parents).forEach(parent => {
-      // prune links based on verbosity
-      const links = parents[parent].filter(link => {
-        if (verbosity === LogLevel.NONE) {
-          return false;
-        }
-        if (link.state === LinkState.BROKEN) {
+  // Build a collection scanned links, collated by the parent link used in
+  // the scan.  For example:
+  // {
+  //   "./README.md": [
+  //     {
+  //       url: "https://img.shields.io/npm/v/linkinator.svg",
+  //       status: 200
+  //       ....
+  //     }
+  //   ],
+  // }
+  const parents = result.links.reduce((acc, curr) => {
+    const parent = curr.parent || '';
+    if (!acc[parent]) {
+      acc[parent] = [];
+    }
+    acc[parent].push(curr);
+    return acc;
+  }, {} as {[index: string]: LinkResult[]});
+
+  Object.keys(parents).forEach(parent => {
+    // prune links based on verbosity
+    const links = parents[parent].filter(link => {
+      if (verbosity === LogLevel.NONE) {
+        return false;
+      }
+      if (link.state === LinkState.BROKEN) {
+        return true;
+      }
+      if (link.state === LinkState.OK) {
+        if (verbosity <= LogLevel.WARNING) {
           return true;
         }
-        if (link.state === LinkState.OK) {
-          if (verbosity <= LogLevel.WARNING) {
-            return true;
-          }
-        }
-        if (link.state === LinkState.SKIPPED) {
-          if (verbosity <= LogLevel.INFO) {
-            return true;
-          }
-        }
-        return false;
-      });
-      if (links.length === 0) {
-        return;
       }
-      logger.error(chalk.blue(parent));
-      links.forEach(link => {
-        let state = '';
-        switch (link.state) {
-          case LinkState.BROKEN:
-            state = `[${chalk.red(link.status!.toString())}]`;
-            logger.error(`  ${state} ${chalk.gray(link.url)}`);
-            logger.debug(JSON.stringify(link.failureDetails, null, 2));
-            break;
-          case LinkState.OK:
-            state = `[${chalk.green(link.status!.toString())}]`;
-            logger.warn(`  ${state} ${chalk.gray(link.url)}`);
-            break;
-          case LinkState.SKIPPED:
-            state = `[${chalk.grey('SKP')}]`;
-            logger.info(`  ${state} ${chalk.gray(link.url)}`);
-            break;
+      if (link.state === LinkState.SKIPPED) {
+        if (verbosity <= LogLevel.INFO) {
+          return true;
         }
-      });
+      }
+      return false;
     });
-  }
+    if (links.length === 0) {
+      return;
+    }
+    logger.error(chalk.blue(parent));
+    links.forEach(link => {
+      let state = '';
+      switch (link.state) {
+        case LinkState.BROKEN:
+          state = `[${chalk.red(link.status!.toString())}]`;
+          logger.error(`  ${state} ${chalk.gray(link.url)}`);
+          logger.debug(JSON.stringify(link.failureDetails, null, 2));
+          break;
+        case LinkState.OK:
+          state = `[${chalk.green(link.status!.toString())}]`;
+          logger.warn(`  ${state} ${chalk.gray(link.url)}`);
+          break;
+        case LinkState.SKIPPED:
+          state = `[${chalk.grey('SKP')}]`;
+          logger.info(`  ${state} ${chalk.gray(link.url)}`);
+          break;
+      }
+    });
+  });
 
   const total = (Date.now() - start) / 1000;
   const scannedLinks = result.links.filter(x => x.state !== LinkState.SKIPPED);

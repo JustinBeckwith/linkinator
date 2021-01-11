@@ -31,7 +31,7 @@ export interface InternalCheckOptions extends CheckOptions {
 export async function processOptions(
   opts: CheckOptions
 ): Promise<InternalCheckOptions> {
-  const options = Object.assign({}, opts) as InternalCheckOptions;
+  const options = {...opts} as InternalCheckOptions;
 
   // ensure at least one path is provided
   if (options.path.length === 0) {
@@ -50,7 +50,7 @@ export async function processOptions(
 
   // Ensure we do not mix http:// and file system paths.  The paths passed in
   // must all be filesystem paths, or HTTP paths.
-  let isUrlType: boolean | undefined = undefined;
+  let isUrlType: boolean | undefined;
   for (const path of options.path) {
     const innerIsUrlType = path.startsWith('http');
     if (isUrlType === undefined) {

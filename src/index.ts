@@ -214,7 +214,7 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     let shouldRecurse = false;
-    let res: GaxiosResponse<string> | undefined = undefined;
+    let res: GaxiosResponse<string> | undefined;
     const failures: {}[] = [];
     try {
       res = await request<string>({
