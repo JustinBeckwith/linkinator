@@ -19,6 +19,10 @@ describe('cli', function () {
     await execa('npm', ['link']);
   });
 
+  after(async () => {
+    await execa('npm', ['unlink']);
+  });
+
   afterEach(async () => {
     if (server) {
       await util.promisify(server.destroy)();
