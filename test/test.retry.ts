@@ -1,4 +1,4 @@
-import {assert} from 'chai';
+import * as assert from 'assert';
 import * as nock from 'nock';
 import * as sinon from 'sinon';
 import {describe, it, afterEach} from 'mocha';
@@ -104,12 +104,12 @@ describe('retries', () => {
         'retry-after': '3',
       })
       .get('/1', () => {
-        assert.isAtLeast(Date.now(), 3000);
+        assert.ok(Date.now() >= 3000);
         return true;
       })
       .reply(200)
       .get('/2', () => {
-        assert.isAtLeast(Date.now(), 3000);
+        assert.ok(Date.now() >= 3000);
         return true;
       })
       .reply(200)
@@ -118,7 +118,7 @@ describe('retries', () => {
         'retry-after': '3',
       })
       .get('/3', () => {
-        assert.isAtLeast(Date.now(), 3000);
+        assert.ok(Date.now() >= 3000);
         return true;
       })
       .reply(200);
@@ -149,12 +149,12 @@ describe('retries', () => {
         // make sure the /3 route reset it to 9 seconds here. This is common
         // when a flood of requests come through and the retry-after gets
         // extended.
-        assert.isAtLeast(Date.now(), 9000);
+        assert.ok(Date.now() >= 9000);
         return true;
       })
       .reply(200)
       .get('/2', () => {
-        assert.isAtLeast(Date.now(), 9000);
+        assert.ok(Date.now() >= 9000);
         return true;
       })
       .reply(200)
@@ -163,7 +163,7 @@ describe('retries', () => {
         'retry-after': '9',
       })
       .get('/3', () => {
-        assert.isAtLeast(Date.now(), 9000);
+        assert.ok(Date.now() >= 9000);
         return true;
       })
       .reply(200);

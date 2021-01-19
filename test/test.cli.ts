@@ -1,8 +1,8 @@
-import {describe, it} from 'mocha';
-import * as execa from 'execa';
-import {assert} from 'chai';
+import * as assert from 'assert';
 import * as http from 'http';
 import * as util from 'util';
+import * as execa from 'execa';
+import {describe, it} from 'mocha';
 import enableDestroy = require('server-destroy');
 import {LinkResult, LinkState} from '../src/index';
 
@@ -29,12 +29,12 @@ describe('cli', function () {
     const res = await execa('linkinator', ['test/fixtures/basic'], {
       reject: false,
     });
-    assert.match(res.stderr, /ERROR: Detected 1 broken links/);
+    assert.ok(res.stderr.includes('ERROR: Detected 1 broken links'));
   });
 
   it('should pass successful markdown scan', async () => {
     const res = await execa('linkinator', ['test/fixtures/markdown/README.md']);
-    assert.match(res.stderr, /Successfully scanned/);
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should allow multiple paths', async () => {
@@ -42,14 +42,14 @@ describe('cli', function () {
       'test/fixtures/markdown/unlinked.md',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stderr, /Successfully scanned/);
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should show help if no params are provided', async () => {
     const res = await execa('linkinator', {
       reject: false,
     });
-    assert.match(res.stdout, /\$ linkinator LOCATION \[ --arguments \]/);
+    assert.ok(res.stdout.includes('$ linkinator LOCATION [ --arguments ]'));
   });
 
   it('should flag skipped links', async () => {
@@ -60,7 +60,7 @@ describe('cli', function () {
       '"LICENSE.md, unlinked.md"',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stdout, /\[SKP\]/);
+    assert.ok(res.stdout.includes('[SKP]'));
   });
 
   it('should provide CSV if asked nicely', async () => {
@@ -69,7 +69,7 @@ describe('cli', function () {
       'csv',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stdout, /README.md,200,OK,/);
+    assert.ok(res.stdout.includes('README.md,200,OK,'));
   });
 
   it('should provide JSON if asked nicely', async () => {
@@ -87,7 +87,7 @@ describe('cli', function () {
       '--silent',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.notMatch(res.stdout, /\[/);
+    assert.ok(!res.stdout.includes('['));
   });
 
   it('should not show 200 links if verbosity is ERROR with JSON', async () => {
@@ -111,7 +111,7 @@ describe('cli', function () {
       'test/fixtures/markdown',
       'README.md',
     ]);
-    assert.match(res.stderr, /Successfully scanned/);
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should accept globs', async () => {
@@ -119,14 +119,14 @@ describe('cli', function () {
       'test/fixtures/markdown/*.md',
       'test/fixtures/markdown/**/*.md',
     ]);
-    assert.match(res.stderr, /Successfully scanned/);
+    assert.ok(res.stderr.includes('Successfully scanned'));
   });
 
   it('should throw on invalid format', async () => {
     const res = await execa('linkinator', ['./README.md', '--format', 'LOL'], {
       reject: false,
     });
-    assert.match(res.stderr, /FORMAT must be/);
+    assert.ok(res.stderr.includes('FORMAT must be'));
   });
 
   it('should throw on invalid verbosity', async () => {
@@ -137,7 +137,7 @@ describe('cli', function () {
         reject: false,
       }
     );
-    assert.match(res.stderr, /VERBOSITY must be/);
+    assert.ok(res.stderr.includes('VERBOSITY must be'));
   });
 
   it('should throw when verbosity and silent are flagged', async () => {
@@ -148,7 +148,7 @@ describe('cli', function () {
         reject: false,
       }
     );
-    assert.match(res.stderr, /The SILENT and VERBOSITY flags/);
+    assert.ok(res.stderr.includes('The SILENT and VERBOSITY flags'));
   });
 
   it('should show no output for verbosity=NONE', async () => {
@@ -173,7 +173,7 @@ describe('cli', function () {
       }
     );
     assert.strictEqual(res.exitCode, 1);
-    assert.match(res.stdout, /reason: getaddrinfo/);
+    assert.ok(res.stdout.includes('reason: getaddrinfo'));
   });
 
   it('should allow passing a config', async () => {
@@ -199,7 +199,7 @@ describe('cli', function () {
         requestCount++;
         firstRequestTime = Date.now();
       } else {
-        assert.isAtLeast(Date.now(), firstRequestTime + delayMillis);
+        assert.ok(Date.now() >= firstRequestTime + delayMillis);
         res.writeHead(200);
       }
       res.end();
@@ -212,6 +212,6 @@ describe('cli', function () {
       'test/fixtures/retryCLI',
     ]);
     assert.strictEqual(res.exitCode, 0);
-    assert.include(res.stdout, `Retrying: http://localhost:${port}`);
+    assert.ok(res.stdout.includes(`Retrying: http://localhost:${port}`));
   });
 });
