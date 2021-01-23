@@ -6,18 +6,8 @@ import * as util from 'util';
 import enableDestroy = require('server-destroy');
 import {LinkResult, LinkState} from '../src/index';
 
-// eslint-disable-next-line prefer-arrow-callback
-describe('cli', function () {
+describe('cli', () => {
   let server: http.Server;
-  this.timeout(60_000);
-
-  if (process.env.LINKINATOR_SKIP_CLI_TESTS) {
-    return;
-  }
-
-  before(async () => {
-    await execa('npm', ['link']);
-  });
 
   afterEach(async () => {
     if (server) {
@@ -26,19 +16,27 @@ describe('cli', function () {
   });
 
   it('should show output for failures', async () => {
-    const res = await execa('linkinator', ['test/fixtures/basic'], {
-      reject: false,
-    });
+    const res = await execa(
+      'node',
+      ['build/src/cli.js', 'test/fixtures/basic'],
+      {
+        reject: false,
+      }
+    );
     assert.match(res.stderr, /ERROR: Detected 1 broken links/);
   });
 
   it('should pass successful markdown scan', async () => {
-    const res = await execa('linkinator', ['test/fixtures/markdown/README.md']);
+    const res = await execa('node', [
+      'build/src/cli.js',
+      'test/fixtures/markdown/README.md',
+    ]);
     assert.match(res.stderr, /Successfully scanned/);
   });
 
   it('should allow multiple paths', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       'test/fixtures/markdown/unlinked.md',
       'test/fixtures/markdown/README.md',
     ]);
@@ -46,14 +44,15 @@ describe('cli', function () {
   });
 
   it('should show help if no params are provided', async () => {
-    const res = await execa('linkinator', {
+    const res = await execa('node', ['build/src/cli.js'], {
       reject: false,
     });
     assert.match(res.stdout, /\$ linkinator LOCATION \[ --arguments \]/);
   });
 
   it('should flag skipped links', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--verbosity',
       'INFO',
       '--skip',
@@ -64,7 +63,8 @@ describe('cli', function () {
   });
 
   it('should provide CSV if asked nicely', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--format',
       'csv',
       'test/fixtures/markdown/README.md',
@@ -73,7 +73,8 @@ describe('cli', function () {
   });
 
   it('should provide JSON if asked nicely', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--format',
       'json',
       'test/fixtures/markdown/README.md',
@@ -83,7 +84,8 @@ describe('cli', function () {
   });
 
   it('should not show links if --silent', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--silent',
       'test/fixtures/markdown/README.md',
     ]);
@@ -91,7 +93,8 @@ describe('cli', function () {
   });
 
   it('should not show 200 links if verbosity is ERROR with JSON', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--verbosity',
       'ERROR',
       '--format',
@@ -105,7 +108,8 @@ describe('cli', function () {
   });
 
   it('should accept a server-root', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--markdown',
       '--server-root',
       'test/fixtures/markdown',
@@ -115,7 +119,8 @@ describe('cli', function () {
   });
 
   it('should accept globs', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       'test/fixtures/markdown/*.md',
       'test/fixtures/markdown/**/*.md',
     ]);
@@ -123,16 +128,20 @@ describe('cli', function () {
   });
 
   it('should throw on invalid format', async () => {
-    const res = await execa('linkinator', ['./README.md', '--format', 'LOL'], {
-      reject: false,
-    });
+    const res = await execa(
+      'node',
+      ['build/src/cli.js', './README.md', '--format', 'LOL'],
+      {
+        reject: false,
+      }
+    );
     assert.match(res.stderr, /FORMAT must be/);
   });
 
   it('should throw on invalid verbosity', async () => {
     const res = await execa(
-      'linkinator',
-      ['./README.md', '--VERBOSITY', 'LOL'],
+      'node',
+      ['build/src/cli.js', './README.md', '--VERBOSITY', 'LOL'],
       {
         reject: false,
       }
@@ -142,8 +151,8 @@ describe('cli', function () {
 
   it('should throw when verbosity and silent are flagged', async () => {
     const res = await execa(
-      'linkinator',
-      ['./README.md', '--verbosity', 'DEBUG', '--silent'],
+      'node',
+      ['build/src/cli.js', './README.md', '--verbosity', 'DEBUG', '--silent'],
       {
         reject: false,
       }
@@ -153,8 +162,8 @@ describe('cli', function () {
 
   it('should show no output for verbosity=NONE', async () => {
     const res = await execa(
-      'linkinator',
-      ['test/fixtures/basic', '--verbosity', 'NONE'],
+      'node',
+      ['build/src/cli.js', 'test/fixtures/basic', '--verbosity', 'NONE'],
       {
         reject: false,
       }
@@ -166,8 +175,8 @@ describe('cli', function () {
 
   it('should show callstacks for verbosity=DEBUG', async () => {
     const res = await execa(
-      'linkinator',
-      ['test/fixtures/basic', '--verbosity', 'DEBUG'],
+      'node',
+      ['build/src/cli.js', 'test/fixtures/basic', '--verbosity', 'DEBUG'],
       {
         reject: false,
       }
@@ -177,7 +186,8 @@ describe('cli', function () {
   });
 
   it('should allow passing a config', async () => {
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       'test/fixtures/basic',
       '--config',
       'test/fixtures/config/skip-array-config.json',
@@ -207,7 +217,8 @@ describe('cli', function () {
     enableDestroy(server);
     await new Promise<void>(r => server.listen(port, r));
 
-    const res = await execa('linkinator', [
+    const res = await execa('node', [
+      'build/src/cli.js',
       '--retry',
       'test/fixtures/retryCLI',
     ]);
