@@ -130,8 +130,7 @@ export async function processOptions(
       if (s.isFile()) {
         const pathParts = options.path[0].split(path.sep);
         options.path = [path.join('.', pathParts[pathParts.length - 1])];
-        options.serverRoot =
-          pathParts.slice(0, pathParts.length - 1).join(path.sep) || '.';
+        options.serverRoot = pathParts.slice(0, -1).join(path.sep) || '.';
       } else {
         options.serverRoot = options.path[0];
         options.path = '/';
