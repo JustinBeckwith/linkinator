@@ -15,7 +15,6 @@
     "compile": "tsc -p .",
     "test": "c8 mocha build/test",
     "fix": "gts fix",
-    "codecov": "c8 report --reporter=json && codecov -f coverage/*.json",
     "lint": "gts lint",
     "build-binaries": "pkg . --out-path build/binaries",
     "docs-test": "npm link && linkinator ./README.md"
@@ -28,7 +27,6 @@
     "jsonexport": "^3.0.0",
     "marked": "^1.2.5",
     "meow": "^9.0.0",
-    "p-queue": "^6.2.1",
     "serve-handler": "^6.1.3",
     "server-destroy": "^1.0.1",
     "update-notifier": "^5.0.0"

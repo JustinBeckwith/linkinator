@@ -37,11 +37,14 @@ describe('retries', () => {
 
     const {promise, resolve} = invertedPromise();
     const checker = new LinkChecker().on('retry', resolve);
-    const clock = sinon.useFakeTimers();
+    const clock = sinon.useFakeTimers({
+      shouldAdvanceTime: true,
+    });
     const checkPromise = checker.check({
       path: 'test/fixtures/basic',
       retry: true,
     });
+
     await promise;
     await clock.tickAsync(10_000);
     const results = await checkPromise;
@@ -62,7 +65,9 @@ describe('retries', () => {
 
     const {promise, resolve} = invertedPromise();
     const checker = new LinkChecker().on('retry', resolve);
-    const clock = sinon.useFakeTimers();
+    const clock = sinon.useFakeTimers({
+      shouldAdvanceTime: true,
+    });
     const checkPromise = checker.check({
       path: 'test/fixtures/basic',
       retry: true,
@@ -85,7 +90,9 @@ describe('retries', () => {
 
     const {promise, resolve} = invertedPromise();
     const checker = new LinkChecker().on('retry', resolve);
-    const clock = sinon.useFakeTimers();
+    const clock = sinon.useFakeTimers({
+      shouldAdvanceTime: true,
+    });
     const checkPromise = checker.check({
       path: 'test/fixtures/basic',
       retry: true,
@@ -125,7 +132,9 @@ describe('retries', () => {
 
     const {promise, resolve} = invertedPromise();
     const checker = new LinkChecker().on('retry', resolve);
-    const clock = sinon.useFakeTimers();
+    const clock = sinon.useFakeTimers({
+      shouldAdvanceTime: true,
+    });
     const checkPromise = checker.check({
       path: 'test/fixtures/retry',
       recurse: true,
@@ -177,7 +186,9 @@ describe('retries', () => {
         r2();
       }
     });
-    const clock = sinon.useFakeTimers();
+    const clock = sinon.useFakeTimers({
+      shouldAdvanceTime: true,
+    });
     const checkPromise = checker.check({
       path: 'test/fixtures/retry',
       recurse: true,

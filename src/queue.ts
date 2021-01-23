@@ -1,52 +1,75 @@
-import PQueue from 'p-queue';
+import {EventEmitter} from 'events';
 
 export interface QueueOptions {
-  concurrency?: number;
+  concurrency: number;
 }
 
 export interface QueueItemOptions {
   delay?: number;
 }
 
+interface QueueItem {
+  fn: AsyncFunction;
+  timeToRun: number;
+}
+
+export declare interface Queue {
+  on(event: 'done', listener: () => void): this;
+}
+
 export type AsyncFunction = () => Promise<void>;
 
-export class Queue {
-  private q: PQueue;
-  private activeTimers = 0;
+export class Queue extends EventEmitter {
+  private q: Array<QueueItem> = [];
+  private activeFunctions = 0;
+  private concurrency: number;
 
   constructor(options: QueueOptions) {
-    this.q = new PQueue({
-      concurrency: options.concurrency,
-    });
+    super();
+    this.concurrency = options.concurrency;
   }
 
   add(fn: AsyncFunction, options?: QueueItemOptions) {
-    if (options?.delay) {
-      setTimeout(() => {
-        this.q.add(fn);
-        this.activeTimers--;
-      }, options.delay);
-      this.activeTimers++;
-    } else {
-      this.q.add(fn);
+    const delay = options?.delay || 0;
+    const timeToRun = Date.now() + delay;
+    this.q.push({
+      fn,
+      timeToRun,
+    });
+    setTimeout(() => this.tick(), delay);
+  }
+
+  private tick() {
+    // Check if we're complete
+    if (this.activeFunctions === 0 && this.q.length === 0) {
+      this.emit('done');
+      return;
+    }
+
+    for (let i = 0; i < this.q.length; i++) {
+      // Check if we have too many concurrent functions executing
+      if (this.activeFunctions >= this.concurrency) {
+        return;
+      }
+      // grab the element at the front of the array
+      const item = this.q.shift()!;
+      // make sure this element is ready to execute - if not, to the back of the stack
+      if (item.timeToRun > Date.now()) {
+        this.q.push(item);
+      } else {
+        // this function is ready to go!
+        this.activeFunctions++;
+        item.fn().finally(() => {
+          this.activeFunctions--;
+          this.tick();
+        });
+      }
     }
   }
 
   async onIdle() {
-    await this.q.onIdle();
-    await new Promise<void>(resolve => {
-      if (this.activeTimers === 0) {
-        resolve();
-        return;
-      }
-      const timer = setInterval(async () => {
-        if (this.activeTimers === 0) {
-          await this.q.onIdle();
-          clearInterval(timer);
-          resolve();
-          return;
-        }
-      }, 500);
+    return new Promise<void>(resolve => {
+      this.on('done', () => resolve());
     });
   }
 }
