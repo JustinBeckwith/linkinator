@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "repository": "JustinBeckwith/linkinator",
+  "author": "Justin Beckwith",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "bin": {
