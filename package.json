@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "repository": "JustinBeckwith/linkinator",
+  "author": "Justin Beckwith",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "bin": {
@@ -17,7 +18,7 @@
     "fix": "gts fix",
     "lint": "gts lint",
     "build-binaries": "pkg . --out-path build/binaries",
-    "docs-test": "npm link && linkinator ./README.md"
+    "docs-test": "node build/src/cli.js ./README.md"
   },
   "dependencies": {
     "chalk": "^4.0.0",
