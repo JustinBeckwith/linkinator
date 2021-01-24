@@ -5,7 +5,7 @@ on:
   pull_request:
 name: ci
 env:
-  NODE: 12
+  NODE: 14
 jobs:
   test:
     runs-on: ubuntu-latest
