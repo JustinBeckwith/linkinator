@@ -5,6 +5,7 @@ on:
   pull_request:
 name: ci
 env:
+  FORCE_COLOR: 2
   NODE: 12
 jobs:
   test:

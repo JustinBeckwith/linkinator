@@ -3,6 +3,7 @@ import * as execa from 'execa';
 import {assert} from 'chai';
 import * as http from 'http';
 import * as util from 'util';
+import stripAnsi = require('strip-ansi');
 import enableDestroy = require('server-destroy');
 import {LinkResult, LinkState} from '../src/index';
 
@@ -25,7 +26,7 @@ describe('cli', function () {
     const res = await execa(node, [linkinator, 'test/fixtures/basic'], {
       reject: false,
     });
-    assert.match(res.stderr, /ERROR: Detected 1 broken links/);
+    assert.match(stripAnsi(res.stderr), /ERROR: Detected 1 broken links/);
   });
 
   it('should pass successful markdown scan', async () => {
@@ -61,7 +62,7 @@ describe('cli', function () {
       '"LICENSE.md, unlinked.md"',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stdout, /\[SKP\]/);
+    assert.match(stripAnsi(res.stdout), /\[SKP\]/);
   });
 
   it('should provide CSV if asked nicely', async () => {
