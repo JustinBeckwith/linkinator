@@ -91,7 +91,6 @@ jobs:
             ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
             ${{ runner.os }}-node-v${{ env.NODE }}-
       - run: npm ci
-      - run: npm run compile
       - run: npm run build-binaries
       - run: npx semantic-release
         env:
