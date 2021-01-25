@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import {assert as assetChai} from 'chai';
 import * as gaxios from 'gaxios';
 import * as nock from 'nock';
 import * as sinon from 'sinon';
@@ -443,7 +444,7 @@ describe('linkinator', () => {
     });
     assert.ok(!results.passed);
     const err = results.links[0].failureDetails![0] as Error;
-    assert.ok(/Nock: Disallowed net connect for/.test(err.message));
+    assetChai.match(err.message, /Nock: Disallowed net connect for/);
   });
 
   it('should respect server root with globs', async () => {
