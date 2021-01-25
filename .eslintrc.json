@@ -1,7 +1,7 @@
 {
   "extends": "./node_modules/gts",
   "rules": {
-    "dot-notation": "error",
+    "dot-notation": "off",
     "no-else-return": [
       "error",
       {
@@ -13,5 +13,25 @@
     "no-useless-return": "error",
     "prefer-object-spread": "error",
     "prefer-spread": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "project": "./tsconfig.json"
+      },
+      "rules": {
+        "@typescript-eslint/dot-notation": "error",
+        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "@typescript-eslint/prefer-for-of": "error",
+        "@typescript-eslint/prefer-includes": "error",
+        "@typescript-eslint/prefer-readonly": "error",
+        "@typescript-eslint/promise-function-async": "error"
       }
     }
+  ]
+}

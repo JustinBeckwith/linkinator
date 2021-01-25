@@ -315,14 +315,15 @@ export class LinkChecker extends EventEmitter {
           continue;
         }
 
-        let crawl = (opts.checkOptions.recurse! &&
-          result.url?.href.startsWith(opts.rootPath)) as boolean;
+        let crawl =
+          opts.checkOptions.recurse! &&
+          result.url?.href.startsWith(opts.rootPath);
 
         // only crawl links that start with the same host
         if (crawl) {
           try {
             const pathUrl = new URL(opts.rootPath);
-            crawl = result.url!.host === pathUrl.host;
+            crawl = result.url.host === pathUrl.host;
           } catch {
             // ignore errors
           }
@@ -459,5 +460,5 @@ function mapUrl(url?: string, options?: InternalCheckOptions): string {
       newUrl = `.${path.sep}`;
     }
   }
-  return newUrl!;
+  return newUrl;
 }
