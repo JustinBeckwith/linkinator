@@ -28,7 +28,10 @@ jobs:
             ${{ runner.os }}-node-v${{ matrix.node }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
             ${{ runner.os }}-node-v${{ matrix.node }}-
       - run: npm ci
+      - run: npm run mocha
+        if: matrix.node != env.NODE
       - run: npm test
+        if: matrix.node == env.NODE
       - uses: codecov/codecov-action@v1
         if: matrix.node == env.NODE
   windows:
@@ -51,7 +54,7 @@ jobs:
             ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
             ${{ runner.os }}-node-v${{ env.NODE }}-
       - run: npm ci
-      - run: npm test
+      - run: npm run mocha
   lint:
     runs-on: ubuntu-latest
     steps:
