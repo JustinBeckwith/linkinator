@@ -77,6 +77,10 @@
   "c8": {
     "exclude": [
       "build/test"
+    ],
+    "reporter": [
+      "html",
+      "text"
     ]
   }
 }
