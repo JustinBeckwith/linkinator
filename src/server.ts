@@ -26,10 +26,17 @@ export async function startWebServer(options: WebServerOptions) {
   return new Promise<http.Server>((resolve, reject) => {
     const server = http
       .createServer(async (req, res) => {
-        let localPath = path.join(root, req.url!);
-        const originalPath = localPath;
-        if (localPath.endsWith(path.sep)) {
-          localPath = path.join(localPath, 'index.html');
+        const pathParts = req.url?.split('/') || [];
+        const originalPath = path.join(root, ...pathParts);
+        if (req.url?.endsWith('/')) {
+          pathParts.push('index.html');
+        }
+        const localPath = path.join(root, ...pathParts);
+        //console.log(localPath);
+        if (!localPath.startsWith(root)) {
+          res.writeHead(500);
+          res.end();
+          return;
         }
         const maybeListing =
           options.directoryListing && localPath.endsWith('index.html');
