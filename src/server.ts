@@ -28,7 +28,7 @@ export async function startWebServer(options: WebServerOptions) {
       .createServer(async (req, res) => {
         let localPath = path.join(root, req.url!);
         const originalPath = localPath;
-        if (localPath.endsWith('/')) {
+        if (localPath.endsWith(path.sep)) {
           localPath = path.join(localPath, 'index.html');
         }
         const maybeListing =
