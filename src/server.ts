@@ -51,7 +51,7 @@ function handleRequest(
     return;
   }
   const maybeListing =
-    options.directoryListing && localPath.endsWith('/index.html');
+    options.directoryListing && localPath.endsWith(`${path.sep}index.html`);
   fs.stat(localPath, (err, stats) => {
     if (err) {
       if (!maybeListing) {
