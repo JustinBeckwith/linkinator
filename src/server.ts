@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as marked from 'marked';
 import * as mime from 'mime';
+import escape = require('escape-html');
 import enableDestroy = require('server-destroy');
 
 export interface WebServerOptions {
@@ -66,6 +67,7 @@ export async function startWebServer(options: WebServerOptions) {
                     return return404(res, err);
                   }
                   const fileList = files
+                    .filter(f => escape(f))
                     .map(f => `<li><a href="${f}">${f}</a></li>`)
                     .join('\r\n');
                   const data = `<html><body><ul>${fileList}</ul></body></html>`;
