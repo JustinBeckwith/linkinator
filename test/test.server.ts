@@ -1,4 +1,4 @@
-import {assert} from 'chai';
+import * as assert from 'assert';
 import {describe, it, before, after} from 'mocha';
 import {startWebServer} from '../src/server';
 import {Server} from 'http';
@@ -41,5 +41,17 @@ describe('server', () => {
     const res = await request({url});
     const expectedContentType = 'application/javascript';
     assert.strictEqual(res.headers['content-type'], expectedContentType);
+  });
+
+  it('should protect against path escape attacks', async () => {
+    const url = `${rootUrl}/../../etc/passwd`;
+    const res = await request({url, validateStatus: () => true});
+    assert.strictEqual(res.status, 500);
+  });
+
+  it('should return a 404 for missing paths', async () => {
+    const url = `${rootUrl}/does/not/exist`;
+    const res = await request({url, validateStatus: () => true});
+    assert.strictEqual(res.status, 404);
   });
 });
