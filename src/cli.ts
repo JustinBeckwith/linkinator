@@ -111,8 +111,8 @@ async function main() {
   flags = await getConfig(cli.flags);
 
   const start = Date.now();
-  const verbosity = parseVerbosity(cli.flags);
-  const format = parseFormat(cli.flags);
+  const verbosity = parseVerbosity(flags);
+  const format = parseFormat(flags);
   const logger = new Logger(verbosity, format);
 
   logger.error(`🏊‍♂️ crawling ${cli.input}`);
@@ -270,7 +270,7 @@ async function main() {
   );
 }
 
-function parseVerbosity(flags: typeof cli.flags): LogLevel {
+function parseVerbosity(flags: Flags): LogLevel {
   if (flags.silent && flags.verbosity) {
     throw new Error(
       'The SILENT and VERBOSITY flags cannot both be defined. Please consider using VERBOSITY only.'
@@ -292,7 +292,7 @@ function parseVerbosity(flags: typeof cli.flags): LogLevel {
   return LogLevel[verbosity as keyof typeof LogLevel];
 }
 
-function parseFormat(flags: typeof cli.flags): Format {
+function parseFormat(flags: Flags): Format {
   if (!flags.format) {
     return Format.TEXT;
   }

@@ -10,6 +10,7 @@ export interface Flags {
   skip?: string;
   format?: string;
   silent?: boolean;
+  verbosity?: string;
   timeout?: number;
   markdown?: boolean;
   serverRoot?: string;
