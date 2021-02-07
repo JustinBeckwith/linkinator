@@ -54,4 +54,11 @@ describe('server', () => {
     const res = await request({url, validateStatus: () => true});
     assert.strictEqual(res.status, 404);
   });
+
+  it('should work with directories with a .', async () => {
+    const url = `${rootUrl}/5.0/`;
+    const res = await request({url});
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.data, contents);
+  });
 });

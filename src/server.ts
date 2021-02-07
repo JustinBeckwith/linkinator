@@ -1,10 +1,15 @@
 import * as http from 'http';
 import * as path from 'path';
 import * as fs from 'fs';
+import {promisify} from 'util';
 import * as marked from 'marked';
 import * as mime from 'mime';
 import escape = require('escape-html');
 import enableDestroy = require('server-destroy');
+
+const readFile = promisify(fs.readFile);
+const stat = promisify(fs.stat);
+const readdir = promisify(fs.readdir);
 
 export interface WebServerOptions {
   // The local path that should be mounted as a static web server
@@ -33,7 +38,7 @@ export async function startWebServer(options: WebServerOptions) {
   });
 }
 
-function handleRequest(
+async function handleRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   root: string,
@@ -52,61 +57,60 @@ function handleRequest(
   }
   const maybeListing =
     options.directoryListing && localPath.endsWith(`${path.sep}index.html`);
-  fs.stat(localPath, (err, stats) => {
-    if (err) {
-      if (!maybeListing) {
+
+  try {
+    const stats = await stat(localPath);
+    const isDirectory = stats.isDirectory();
+    if (isDirectory) {
+      // this means we got a path with no / at the end!
+      const doc = "<html><body>Redirectin'</body></html>";
+      res.statusCode = 301;
+      res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+      res.setHeader('Content-Length', Buffer.byteLength(doc));
+      res.setHeader('Location', req.url + '/');
+      res.end(doc);
+      return;
+    }
+  } catch (err) {
+    if (!maybeListing) {
+      return return404(res, err);
+    }
+  }
+
+  try {
+    let data = await readFile(localPath, {encoding: 'utf8'});
+    let mimeType = mime.getType(localPath);
+    const isMarkdown = req.url?.toLocaleLowerCase().endsWith('.md');
+    if (isMarkdown && options.markdown) {
+      data = marked(data, {gfm: true});
+      mimeType = 'text/html; charset=UTF-8';
+    }
+    res.setHeader('Content-Type', mimeType!);
+    res.setHeader('Content-Length', Buffer.byteLength(data));
+    res.writeHead(200);
+    res.end(data);
+  } catch (err) {
+    if (maybeListing) {
+      try {
+        const files = await readdir(originalPath);
+        const fileList = files
+          .filter(f => escape(f))
+          .map(f => `<li><a href="${f}">${f}</a></li>`)
+          .join('\r\n');
+        const data = `<html><body><ul>${fileList}</ul></body></html>`;
+        res.writeHead(200);
+        res.end(data);
+        return;
+      } catch (err) {
         return return404(res, err);
       }
     } else {
-      const isDirectory = stats.isDirectory();
-      if (isDirectory) {
-        // this means we got a path with no / at the end!
-        const doc = "<html><body>Redirectin'</body></html>";
-        res.statusCode = 301;
-        res.setHeader('Content-Type', 'text/html; charset=UTF-8');
-        res.setHeader('Content-Length', Buffer.byteLength(doc));
-        res.setHeader('Location', req.url + '/');
-        res.end(doc);
-        return;
-      }
+      return return404(res, err);
     }
-    fs.readFile(localPath, {encoding: 'utf8'}, (err, data) => {
-      if (err) {
-        if (maybeListing) {
-          fs.readdir(originalPath, (err, files) => {
-            if (err) {
-              return return404(res, err);
-            }
-            const fileList = files
-              .filter(f => escape(f))
-              .map(f => `<li><a href="${f}">${f}</a></li>`)
-              .join('\r\n');
-            const data = `<html><body><ul>${fileList}</ul></body></html>`;
-            res.writeHead(200);
-            res.end(data);
-            return;
-          });
-        } else {
-          return return404(res, err);
-        }
-      } else {
-        let mimeType = mime.getType(localPath);
-        const isMarkdown = req.url?.toLocaleLowerCase().endsWith('.md');
-        if (isMarkdown && options.markdown) {
-          data = marked(data, {gfm: true});
-          mimeType = 'text/html; charset=UTF-8';
-        }
-        res.setHeader('Content-Type', mimeType!);
-        res.setHeader('Content-Length', Buffer.byteLength(data));
-        res.writeHead(200);
-        res.end(data);
-      }
-    });
-  });
+  }
 }
 
-function return404(res: http.ServerResponse, err: unknown) {
+function return404(res: http.ServerResponse, err: Error) {
   res.writeHead(404);
   res.end(JSON.stringify(err));
-  return;
 }
