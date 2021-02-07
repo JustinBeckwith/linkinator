@@ -11,6 +11,7 @@ import {startWebServer} from './server';
 import {CheckOptions, InternalCheckOptions, processOptions} from './options';
 
 export {CheckOptions};
+export {Format, LogLevel, Logger} from './logger';
 
 export enum LinkState {
   OK = 'OK',
