@@ -26,7 +26,6 @@ jobs:
           key: ${{ runner.os }}-node-v${{ matrix.node }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-v${{ matrix.node }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
-            ${{ runner.os }}-node-v${{ matrix.node }}-
       - run: npm ci
       - run: npm test
       - uses: codecov/codecov-action@v1
@@ -49,7 +48,6 @@ jobs:
           key: ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
-            ${{ runner.os }}-node-v${{ env.NODE }}-
       - run: npm ci
       - run: npm test
   lint:
@@ -66,7 +64,6 @@ jobs:
           key: ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
-            ${{ runner.os }}-node-v${{ env.NODE }}-
       - run: npm ci
       - run: npm run lint
   docs:
@@ -83,7 +80,6 @@ jobs:
           key: ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
-            ${{ runner.os }}-node-v${{ env.NODE }}-
       - run: npm ci
       - run: npm run docs-test
   release:
@@ -102,7 +98,6 @@ jobs:
           key: ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-v${{ env.NODE }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
-            ${{ runner.os }}-node-v${{ env.NODE }}-
       - run: npm ci
       - run: npm run compile
       - run: npm run build-binaries
