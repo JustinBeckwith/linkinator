@@ -27,7 +27,7 @@
     "gaxios": "^4.0.0",
     "glob": "^7.1.6",
     "jsonexport": "^3.0.0",
-    "marked": "^1.2.5",
+    "marked": "^2.0.0",
     "meow": "^9.0.0",
     "mime": "^2.5.0",
     "server-destroy": "^1.0.1",
