@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import {promisify} from 'util';
 import * as marked from 'marked';
 import * as mime from 'mime';
+import {URL} from 'url';
 import escape = require('escape-html');
 import enableDestroy = require('server-destroy');
 
