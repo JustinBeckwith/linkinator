@@ -44,7 +44,7 @@ async function handleRequest(
   root: string,
   options: WebServerOptions
 ) {
-  const pathParts = req.url?.split('/') || [];
+  const pathParts = new URL(req.url || '', 'http://abc').pathname.split('/');
   const originalPath = path.join(root, ...pathParts);
   if (req.url?.endsWith('/')) {
     pathParts.push('index.html');
