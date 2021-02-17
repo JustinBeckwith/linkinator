@@ -44,9 +44,9 @@ describe('server', () => {
   });
 
   it('should protect against path escape attacks', async () => {
-    const url = `${rootUrl}/../../etc/passwd`;
+    const url = `${rootUrl}/../server/index.html`;
     const res = await request({url, validateStatus: () => true});
-    assert.strictEqual(res.status, 500);
+    assert.strictEqual(res.status, 404);
   });
 
   it('should return a 404 for missing paths', async () => {
@@ -57,6 +57,13 @@ describe('server', () => {
 
   it('should work with directories with a .', async () => {
     const url = `${rootUrl}/5.0/`;
+    const res = await request({url});
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.data, contents);
+  });
+
+  it('should ignore query strings', async () => {
+    const url = `${rootUrl}/index.html?a=b`;
     const res = await request({url});
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.data, contents);

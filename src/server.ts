@@ -51,11 +51,6 @@ async function handleRequest(
     pathParts.push('index.html');
   }
   const localPath = path.join(root, ...pathParts);
-  if (!localPath.startsWith(root)) {
-    res.writeHead(500);
-    res.end();
-    return;
-  }
   const maybeListing =
     options.directoryListing && localPath.endsWith(`${path.sep}index.html`);
 
