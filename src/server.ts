@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import {promisify} from 'util';
 import * as marked from 'marked';
 import * as mime from 'mime';
+import {URL} from 'url';
 import escape = require('escape-html');
 import enableDestroy = require('server-destroy');
 
@@ -44,9 +45,10 @@ async function handleRequest(
   root: string,
   options: WebServerOptions
 ) {
-  const pathParts = req.url?.split('/') || [];
+  const url = new URL(req.url || '/', `http://localhost:${options.port}`);
+  const pathParts = url.pathname.split('/').filter(x => !!x);
   const originalPath = path.join(root, ...pathParts);
-  if (req.url?.endsWith('/')) {
+  if (url.pathname.endsWith('/')) {
     pathParts.push('index.html');
   }
   const localPath = path.join(root, ...pathParts);
