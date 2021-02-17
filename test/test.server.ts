@@ -68,4 +68,11 @@ describe('server', () => {
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.data, contents);
   });
+
+  it('should ignore query strings in a directory', async () => {
+    const url = `${rootUrl}/?a=b`;
+    const res = await request({url});
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.data, contents);
+  });
 });

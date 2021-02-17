@@ -45,10 +45,11 @@ async function handleRequest(
   root: string,
   options: WebServerOptions
 ) {
-  const pathParts = new URL(req.url || '', 'http://abc').pathname.split('/');
+  const url = new URL(req.url || '/', `http://localhost:${options.port}`);
+  const pathParts = url.pathname.split('/');
   const originalPath = path.join(root, ...pathParts);
-  if (req.url?.endsWith('/')) {
-    pathParts.push('index.html');
+  if (pathParts[pathParts.length - 1] == '') {
+    pathParts[pathParts.length - 1] = 'index.html';
   }
   const localPath = path.join(root, ...pathParts);
   const maybeListing =
