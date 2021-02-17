@@ -48,7 +48,7 @@ async function handleRequest(
   const url = new URL(req.url || '/', `http://localhost:${options.port}`);
   const pathParts = url.pathname.split('/');
   const originalPath = path.join(root, ...pathParts);
-  if (pathParts[pathParts.length - 1] == '') {
+  if (pathParts[pathParts.length - 1] === '') {
     pathParts[pathParts.length - 1] = 'index.html';
   }
   const localPath = path.join(root, ...pathParts);
