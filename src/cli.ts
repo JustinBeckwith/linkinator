@@ -246,7 +246,7 @@ async function main() {
   }
 
   const total = (Date.now() - start) / 1000;
-
+  const scannedLinks = result.links.filter(x => x.state !== LinkState.SKIPPED);
   if (!result.passed) {
     const borked = result.links.filter(x => x.state === LinkState.BROKEN);
     logger.error(
@@ -254,7 +254,7 @@ async function main() {
         `${chalk.red('ERROR')}: Detected ${
           borked.length
         } broken links. Scanned ${chalk.yellow(
-          result.links.length.toString()
+          scannedLinks.length.toString()
         )} links in ${chalk.cyan(total.toString())} seconds.`
       )
     );
@@ -264,7 +264,7 @@ async function main() {
   logger.error(
     chalk.bold(
       `🤖 Successfully scanned ${chalk.green(
-        result.links.length.toString()
+        scannedLinks.length.toString()
       )} links in ${chalk.cyan(total.toString())} seconds.`
     )
   );

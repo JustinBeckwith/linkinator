@@ -62,7 +62,11 @@ describe('cli', function () {
       '"LICENSE.md, unlinked.md"',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(stripAnsi(res.stdout), /\[SKP\]/);
+    const stdout = stripAnsi(res.stdout);
+    const stderr = stripAnsi(res.stderr);
+    assert.match(stdout, /\[SKP\]/);
+    // make sure we don't report skipped links in the count
+    assert.match(stderr, /scanned 2 links/);
   });
 
   it('should provide CSV if asked nicely', async () => {
