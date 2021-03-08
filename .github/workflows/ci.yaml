@@ -28,7 +28,7 @@ jobs:
             ${{ runner.os }}-node-v${{ matrix.node }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: npm test
-      - uses: codecov/codecov-action@v1
+      - run: npm run codecov
         if: matrix.node == env.NODE
   windows:
     runs-on: windows-latest
