@@ -35,7 +35,7 @@
     "update-notifier": "^5.0.0"
   },
   "devDependencies": {
-    "@types/chai": "^4.2.7",
+    "@types/chai": "^4.2.14",
     "@types/cheerio": "0.22.28",
     "@types/escape-html": "^1.0.0",
     "@types/glob": "^7.1.3",
