@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "chalk": "^4.0.0",
-    "cheerio": "^1.0.0-rc.5",
+    "cheerio": "^1.0.0-rc.10",
     "escape-html": "^1.0.3",
     "gaxios": "^4.0.0",
     "glob": "^7.1.6",
