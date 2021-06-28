@@ -80,6 +80,12 @@ $ linkinator LOCATIONS [ --arguments ]
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
 
+    --url-rewrite-search
+        Pattern to search for in urls.  Must be used with --url-rewrite-replace.
+
+    --url-rewrite-replace
+        Expression used to replace search content.  Must be used with --url-rewrite-search.
+
     --verbosity
         Override the default verbosity for this command. Available options are
         'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
@@ -200,6 +206,7 @@ where the server is started.  Defaults to the path passed in `path`.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
+- `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement.
 
 ### linkinator.LinkChecker()
 

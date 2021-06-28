@@ -144,6 +144,16 @@ export class LinkChecker extends EventEmitter {
    * @returns A list of crawl results consisting of urls and status codes
    */
   async crawl(opts: CrawlOptions): Promise<void> {
+    // apply any regex url replacements
+    if (opts.checkOptions.urlRewriteExpressions) {
+      for (const exp of opts.checkOptions.urlRewriteExpressions) {
+        const newUrl = opts.url.href.replace(exp.pattern, exp.replacement);
+        if (opts.url.href !== newUrl) {
+          opts.url.href = newUrl;
+        }
+      }
+    }
+
     // explicitly skip non-http[s] links before making the request
     const proto = opts.url.protocol;
     if (proto !== 'http:' && proto !== 'https:') {

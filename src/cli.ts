@@ -71,6 +71,12 @@ const cli = meow(
       --timeout
           Request timeout in ms.  Defaults to 0 (no timeout).
 
+      --url-rewrite-search
+          Pattern to search for in urls.  Must be used with --url-rewrite-replace.
+
+      --url-rewrite-replace
+          Expression used to replace search content.  Must be used with --url-rewrite-search.
+
       --verbosity
           Override the default verbosity for this command. Available options are
           'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
@@ -96,6 +102,8 @@ const cli = meow(
       verbosity: {type: 'string'},
       directoryListing: {type: 'boolean'},
       retry: {type: 'boolean'},
+      urlRewriteSearch: {type: 'string'},
+      urlReWriteReplace: {type: 'string'},
     },
     booleanDefault: undefined,
   }
@@ -109,6 +117,14 @@ async function main() {
     return;
   }
   flags = await getConfig(cli.flags);
+  if (
+    (flags.urlRewriteReplace && !flags.urlRewriteSearch) ||
+    (flags.urlRewriteSearch && !flags.urlRewriteReplace)
+  ) {
+    throw new Error(
+      'The url-rewrite-replace flag must be used with the url-rewrite-search flag.'
+    );
+  }
 
   const start = Date.now();
   const verbosity = parseVerbosity(flags);
@@ -154,6 +170,14 @@ async function main() {
     } else if (Array.isArray(flags.skip)) {
       opts.linksToSkip = flags.skip;
     }
+  }
+  if (flags.urlRewriteSearch && flags.urlRewriteReplace) {
+    opts.urlRewriteExpressions = [
+      {
+        pattern: new RegExp(flags.urlRewriteSearch),
+        replacement: flags.urlRewriteReplace,
+      },
+    ];
   }
   const result = await checker.check(opts);
   const filteredResults = result.links.filter(link => {

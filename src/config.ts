@@ -16,6 +16,8 @@ export interface Flags {
   serverRoot?: string;
   directoryListing?: boolean;
   retry?: boolean;
+  urlRewriteSearch?: string;
+  urlRewriteReplace?: string;
 }
 
 export async function getConfig(flags: Flags) {
