@@ -524,4 +524,17 @@ describe('linkinator', () => {
     assert.strictEqual(fakeLink.url, 'http://fake.local/');
     scope.done();
   });
+
+  it('should rewrite urls', async () => {
+    const results = await check({
+      path: 'test/fixtures/rewrite/README.md',
+      urlRewriteExpressions: [
+        {
+          pattern: /NOTLICENSE\.[a-z]+/,
+          replacement: 'LICENSE.md',
+        },
+      ],
+    });
+    assert.ok(results.passed);
+  });
 });

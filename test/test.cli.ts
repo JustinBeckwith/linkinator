@@ -202,6 +202,42 @@ describe('cli', function () {
     assert.strictEqual(res.exitCode, 0);
   });
 
+  it('should fail if a url search is provided without a replacement', async () => {
+    const res = await execa(
+      node,
+      [linkinator, '--url-rewrite-search', 'boop', 'test/fixtures/basic'],
+      {
+        reject: false,
+      }
+    );
+    assert.strictEqual(res.exitCode, 1);
+    assert.match(res.stderr, /flag must be used/);
+  });
+
+  it('should fail if a url replacement is provided without a search', async () => {
+    const res = await execa(
+      node,
+      [linkinator, '--url-rewrite-replace', 'beep', 'test/fixtures/basic'],
+      {
+        reject: false,
+      }
+    );
+    assert.strictEqual(res.exitCode, 1);
+    assert.match(res.stderr, /flag must be used/);
+  });
+
+  it('should respect url rewrites', async () => {
+    const res = await execa(node, [
+      linkinator,
+      '--url-rewrite-search',
+      'NOTLICENSE.md',
+      '--url-rewrite-replace',
+      'LICENSE.md',
+      'test/fixtures/rewrite/README.md',
+    ]);
+    assert.match(res.stderr, /Successfully scanned/);
+  });
+
   it('should warn on retries', async () => {
     // start a web server to return the 429
     let requestCount = 0;

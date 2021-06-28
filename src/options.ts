@@ -6,6 +6,11 @@ import * as globby from 'glob';
 const stat = util.promisify(fs.stat);
 const glob = util.promisify(globby);
 
+export interface UrlRewriteExpression {
+  pattern: RegExp;
+  replacement: string;
+}
+
 export interface CheckOptions {
   concurrency?: number;
   port?: number;
@@ -17,6 +22,7 @@ export interface CheckOptions {
   serverRoot?: string;
   directoryListing?: boolean;
   retry?: boolean;
+  urlRewriteExpressions?: UrlRewriteExpression[];
 }
 
 export interface InternalCheckOptions extends CheckOptions {
