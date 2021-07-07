@@ -20,9 +20,9 @@ export declare interface Queue {
 export type AsyncFunction = () => Promise<void>;
 
 export class Queue extends EventEmitter {
-  private q: Array<QueueItem> = [];
+  private readonly q: Array<QueueItem> = [];
   private activeFunctions = 0;
-  private concurrency: number;
+  private readonly concurrency: number;
 
   constructor(options: QueueOptions) {
     super();

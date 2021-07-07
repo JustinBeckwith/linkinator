@@ -224,7 +224,7 @@ export class LinkChecker extends EventEmitter {
     let state = LinkState.BROKEN;
     let data = '';
     let shouldRecurse = false;
-    let res: GaxiosResponse<string> | undefined = undefined;
+    let res: GaxiosResponse<string> | undefined;
     const failures: {}[] = [];
     try {
       res = await request<string>({
@@ -325,14 +325,15 @@ export class LinkChecker extends EventEmitter {
           continue;
         }
 
-        let crawl = (opts.checkOptions.recurse! &&
-          result.url?.href.startsWith(opts.rootPath)) as boolean;
+        let crawl =
+          opts.checkOptions.recurse! &&
+          result.url?.href.startsWith(opts.rootPath);
 
         // only crawl links that start with the same host
         if (crawl) {
           try {
             const pathUrl = new URL(opts.rootPath);
-            crawl = result.url!.host === pathUrl.host;
+            crawl = result.url.host === pathUrl.host;
           } catch {
             // ignore errors
           }
@@ -381,9 +382,9 @@ export class LinkChecker extends EventEmitter {
     // The `retry-after` header can come in either <seconds> or
     // A specific date to go check.
     let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
-    if (isNaN(retryAfter)) {
+    if (Number.isNaN(retryAfter)) {
       retryAfter = Date.parse(retryAfterRaw);
-      if (isNaN(retryAfter)) {
+      if (Number.isNaN(retryAfter)) {
         return false;
       }
     }
@@ -469,5 +470,5 @@ function mapUrl(url?: string, options?: InternalCheckOptions): string {
       newUrl = `.${path.sep}`;
     }
   }
-  return newUrl!;
+  return newUrl;
 }
