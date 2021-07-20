@@ -1,22 +1,23 @@
 import * as assert from 'assert';
 import {describe, it, before, after} from 'mocha';
 import {startWebServer} from '../src/server';
+import {AddressInfo} from 'net';
 import {Server} from 'http';
 import {request} from 'gaxios';
 import * as fs from 'fs';
 
 describe('server', () => {
   let server: Server;
-  const port = 5000 + Math.round(Math.random() * 1000);
-  const rootUrl = `http://localhost:${port}`;
+  let rootUrl: string;
   const contents = fs.readFileSync('test/fixtures/server/index.html', 'utf-8');
   before(async () => {
     server = await startWebServer({
-      port,
       directoryListing: true,
       markdown: true,
       root: 'test/fixtures/server',
     });
+    const addr = server.address() as AddressInfo;
+    rootUrl = `http://localhost:${addr.port}`;
   });
   after(() => server.destroy());
 
