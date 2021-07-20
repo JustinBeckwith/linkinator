@@ -1,3 +1,4 @@
+import {AddressInfo} from 'net';
 import * as http from 'http';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -16,7 +17,7 @@ export interface WebServerOptions {
   // The local path that should be mounted as a static web server
   root: string;
   // The port on which to start the local web server
-  port: number;
+  port?: number;
   // If markdown should be automatically compiled and served
   markdown?: boolean;
   // Should directories automatically serve an inde page
@@ -33,8 +34,12 @@ export async function startWebServer(options: WebServerOptions) {
   return new Promise<http.Server>((resolve, reject) => {
     const server = http
       .createServer((req, res) => handleRequest(req, res, root, options))
-      .listen(options.port, () => resolve(server))
+      .listen(options.port || 0, () => resolve(server))
       .on('error', reject);
+    if (!options.port) {
+      const addr = server.address() as AddressInfo;
+      options.port = addr.port;
+    }
     enableDestroy(server);
   });
 }
