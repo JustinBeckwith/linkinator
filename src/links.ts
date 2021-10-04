@@ -104,17 +104,6 @@ function isAbsoluteUrl(url: string): boolean {
   return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
 }
 
-function parseAttr(name: string, value: string): string[] {
-  switch (name) {
-    case 'srcset':
-      return value
-        .split(',')
-        .map((pair: string) => pair.trim().split(/\s+/)[0]);
-    default:
-      return [value];
-  }
-}
-
 function parseLink(link: string, baseUrl: string): ParsedUrl {
   try {
     const url = new URL(link, baseUrl);
