@@ -10,7 +10,7 @@ import {LinkResult, LinkState} from '../src/index';
 // eslint-disable-next-line prefer-arrow-callback
 describe('cli', function () {
   let server: http.Server;
-  this.timeout(10_000);
+  this.timeout(20_000);
 
   const pkg = require('../../package.json');
   const linkinator = pkg.bin.linkinator;
