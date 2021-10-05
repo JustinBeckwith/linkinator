@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import {URL} from 'url';
+import {AddressInfo} from 'net';
 import * as http from 'http';
 import * as path from 'path';
 import {Readable} from 'stream';
@@ -81,13 +82,17 @@ export class LinkChecker extends EventEmitter {
     let server: http.Server | undefined;
     const hasHttpPaths = options.path.find(x => x.startsWith('http'));
     if (!hasHttpPaths) {
-      const port = options.port || 5000 + Math.round(Math.random() * 1000);
+      let port = options.port;
       server = await startWebServer({
         root: options.serverRoot!,
         port,
         markdown: options.markdown,
         directoryListing: options.directoryListing,
       });
+      if (port === undefined) {
+        const addr = server.address() as AddressInfo;
+        port = addr.port;
+      }
       for (let i = 0; i < options.path.length; i++) {
         if (options.path[i].startsWith('/')) {
           options.path[i] = options.path[i].slice(1);
