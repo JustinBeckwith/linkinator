@@ -59,7 +59,7 @@ describe('linkinator', () => {
     const scope = nock('https://good.com').head('/').reply(200);
     const results = await check({
       path: 'test/fixtures/filter',
-      linksToSkip: link => Promise.resolve(link.includes('filterme')),
+      linksToSkip: async link => Promise.resolve(link.includes('filterme')),
     });
     assert.ok(results.passed);
     assert.strictEqual(
@@ -134,8 +134,7 @@ describe('linkinator', () => {
       },
     ];
 
-    for (let i = 0; i < cases.length; i++) {
-      const {fixture, nonBrokenUrl} = cases[i];
+    for (const {fixture, nonBrokenUrl} of cases) {
       const scope = nock('http://fake.local')
         .get('/pageBase/index')
         .replyWithFile(200, fixture, {

@@ -33,7 +33,7 @@ export async function startWebServer(options: WebServerOptions) {
   const root = path.resolve(options.root);
   return new Promise<http.Server>((resolve, reject) => {
     const server = http
-      .createServer((req, res) => handleRequest(req, res, root, options))
+      .createServer(async (req, res) => handleRequest(req, res, root, options))
       .listen(options.port || 0, () => resolve(server))
       .on('error', reject);
     if (!options.port) {

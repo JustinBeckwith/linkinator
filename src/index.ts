@@ -229,7 +229,7 @@ export class LinkChecker extends EventEmitter {
     let status = 0;
     let state = LinkState.BROKEN;
     let shouldRecurse = false;
-    let res: GaxiosResponse<Readable> | undefined = undefined;
+    let res: GaxiosResponse<Readable> | undefined;
     const failures: {}[] = [];
     try {
       res = await request<Readable>({
@@ -331,14 +331,15 @@ export class LinkChecker extends EventEmitter {
           continue;
         }
 
-        let crawl = (opts.checkOptions.recurse! &&
-          result.url?.href.startsWith(opts.rootPath)) as boolean;
+        let crawl =
+          opts.checkOptions.recurse! &&
+          result.url?.href.startsWith(opts.rootPath);
 
         // only crawl links that start with the same host
         if (crawl) {
           try {
             const pathUrl = new URL(opts.rootPath);
-            crawl = result.url!.host === pathUrl.host;
+            crawl = result.url.host === pathUrl.host;
           } catch {
             // ignore errors
           }
@@ -475,5 +476,5 @@ function mapUrl(url?: string, options?: InternalCheckOptions): string {
       newUrl = `.${path.sep}`;
     }
   }
-  return newUrl!;
+  return newUrl;
 }

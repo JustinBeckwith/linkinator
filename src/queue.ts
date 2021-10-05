@@ -20,9 +20,9 @@ export declare interface Queue {
 export type AsyncFunction = () => Promise<void>;
 
 export class Queue extends EventEmitter {
-  private q: Array<QueueItem> = [];
+  private readonly q: Array<QueueItem> = [];
   private activeFunctions = 0;
-  private concurrency: number;
+  private readonly concurrency: number;
 
   constructor(options: QueueOptions) {
     super();
@@ -46,6 +46,7 @@ export class Queue extends EventEmitter {
       return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let i = 0; i < this.q.length; i++) {
       // Check if we have too many concurrent functions executing
       if (this.activeFunctions >= this.concurrency) {

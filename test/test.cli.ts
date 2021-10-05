@@ -258,7 +258,9 @@ describe('cli', function () {
       res.end();
     });
     enableDestroy(server);
-    await new Promise<void>(r => server.listen(port, r));
+    await new Promise<void>(r => {
+      server.listen(port, r);
+    });
 
     const res = await execa(node, [
       linkinator,
