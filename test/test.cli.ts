@@ -1,15 +1,15 @@
 import {describe, it} from 'mocha';
 import * as execa from 'execa';
 import {assert} from 'chai';
-import * as http from 'http';
-import * as util from 'util';
+import {Server, createServer} from 'http';
+import {promisify} from 'util';
 import stripAnsi = require('strip-ansi');
 import enableDestroy = require('server-destroy');
 import {LinkResult, LinkState} from '../src/index';
 
 // eslint-disable-next-line prefer-arrow-callback
 describe('cli', function () {
-  let server: http.Server;
+  let server: Server;
   this.timeout(20_000);
 
   const pkg = require('../../package.json');
@@ -18,7 +18,7 @@ describe('cli', function () {
 
   afterEach(async () => {
     if (server) {
-      await util.promisify(server.destroy)();
+      await promisify(server.destroy)();
     }
   });
 
@@ -244,7 +244,7 @@ describe('cli', function () {
     let firstRequestTime: number;
     const port = 3333;
     const delayMillis = 1000;
-    server = http.createServer((_, res) => {
+    server = createServer((_, res) => {
       if (requestCount === 0) {
         res.writeHead(429, {
           'retry-after': 1,
