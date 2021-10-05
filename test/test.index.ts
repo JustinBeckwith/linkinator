@@ -537,4 +537,18 @@ describe('linkinator', () => {
     });
     assert.ok(results.passed);
   });
+
+  it('should report malformed links as broken', async () => {
+    const results = await check({path: 'test/fixtures/malformed'});
+    assert.ok(!results.passed);
+    assert.strictEqual(
+      results.links.filter(x => x.state === LinkState.BROKEN).length,
+      1
+    );
+  });
+
+  it('should handle comma separated srcset', async () => {
+    const results = await check({path: 'test/fixtures/srcset'});
+    assert.ok(results.passed);
+  });
 });
