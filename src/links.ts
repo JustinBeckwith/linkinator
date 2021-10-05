@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio';
+import * as htmlParser from 'htmlparser2';
 import {URL} from 'url';
 
 const linksAttr = {
@@ -27,6 +27,14 @@ const linksAttr = {
   ],
   srcset: ['img', 'source'],
 } as {[index: string]: string[]};
+// Create lookup table for tag name to attribute that contains URL:
+const tagAttr: {[index: string]: string[]} = {};
+Object.keys(linksAttr).forEach(attr => {
+  for (const tag of linksAttr[attr]) {
+    if (!tagAttr[tag]) tagAttr[tag] = [];
+    tagAttr[tag].push(attr);
+  }
+});
 
 export interface ParsedUrl {
   link: string;
@@ -35,51 +43,44 @@ export interface ParsedUrl {
 }
 
 export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
-  const $ = cheerio.load(source);
   let realBaseUrl = baseUrl;
-  const base = $('base[href]');
-  if (base.length) {
-    // only first <base by specification
-    const htmlBaseUrl = base.first().attr('href')!;
-    realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
-  }
+  let baseSet = false;
   const links = new Array<ParsedUrl>();
-  const attrs = Object.keys(linksAttr);
-  for (const attr of attrs) {
-    const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
-    $(elements).each((i, ele) => {
-      const element = ele as cheerio.TagElement;
-      if (!element.attribs) {
-        return;
+  const parser = new htmlParser.Parser({
+    onopentag(tag: string, attributes: {[s: string]: string}) {
+      // Allow alternate base URL to be specified in tag:
+      if (tag === 'base' && !baseSet) {
+        realBaseUrl = getBaseUrl(attributes.href, baseUrl);
+        baseSet = true;
       }
-      const values = parseAttr(attr, element.attribs[attr]);
+
       // ignore href properties for link tags where rel is likely to fail
       const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
-      if (
-        element.tagName === 'link' &&
-        relValuesToIgnore.includes(element.attribs['rel'])
-      ) {
+      if (tag === 'link' && relValuesToIgnore.includes(attributes.rel)) {
         return;
       }
 
       // Only for <meta content=""> tags, only validate the url if
       // the content actually looks like a url
-      if (element.tagName === 'meta' && element.attribs['content']) {
+      if (tag === 'meta' && attributes.content) {
         try {
-          new URL(element.attribs['content']);
+          new URL(attributes.content);
         } catch (e) {
           return;
         }
       }
 
-      for (const v of values) {
-        if (v) {
-          const link = parseLink(v, realBaseUrl);
-          links.push(link);
+      if (tagAttr[tag]) {
+        for (const attr of tagAttr[tag]) {
+          if (attributes[attr]) {
+            links.push(parseLink(attributes[attr], realBaseUrl));
+          }
         }
       }
-    });
-  }
+    },
+  });
+  parser.write(source);
+  parser.end();
   return links;
 }
 
@@ -101,17 +102,6 @@ function isAbsoluteUrl(url: string): boolean {
   // Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
   // Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
   return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
-}
-
-function parseAttr(name: string, value: string): string[] {
-  switch (name) {
-    case 'srcset':
-      return value
-        .split(',')
-        .map((pair: string) => pair.trim().split(/\s+/)[0]);
-    default:
-      return [value];
-  }
 }
 
 function parseLink(link: string, baseUrl: string): ParsedUrl {
