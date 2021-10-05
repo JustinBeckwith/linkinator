@@ -1,4 +1,5 @@
-import * as cheerio from 'cheerio';
+import * as htmlParser from 'htmlparser2/lib/WritableStream';
+import {Readable} from 'stream';
 import {URL} from 'url';
 
 const linksAttr = {
@@ -27,6 +28,14 @@ const linksAttr = {
   ],
   srcset: ['img', 'source'],
 } as {[index: string]: string[]};
+// Create lookup table for tag name to attribute that contains URL:
+const tagAttr: {[index: string]: string[]} = {};
+Object.keys(linksAttr).forEach(attr => {
+  for (const tag of linksAttr[attr]) {
+    if (!tagAttr[tag]) tagAttr[tag] = [];
+    tagAttr[tag].push(attr);
+  }
+});
 
 export interface ParsedUrl {
   link: string;
@@ -34,52 +43,52 @@ export interface ParsedUrl {
   url?: URL;
 }
 
-export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
-  const $ = cheerio.load(source);
+export async function getLinks(
+  source: Readable,
+  baseUrl: string
+): Promise<ParsedUrl[]> {
   let realBaseUrl = baseUrl;
-  const base = $('base[href]');
-  if (base.length) {
-    // only first <base by specification
-    const htmlBaseUrl = base.first().attr('href')!;
-    realBaseUrl = getBaseUrl(htmlBaseUrl, baseUrl);
-  }
+  let baseSet = false;
   const links = new Array<ParsedUrl>();
-  const attrs = Object.keys(linksAttr);
-  for (const attr of attrs) {
-    const elements = linksAttr[attr].map(tag => `${tag}[${attr}]`).join(',');
-    $(elements).each((i, ele) => {
-      const element = ele as cheerio.TagElement;
-      if (!element.attribs) {
-        return;
+  const parser = new htmlParser.WritableStream({
+    onopentag(tag: string, attributes: {[s: string]: string}) {
+      // Allow alternate base URL to be specified in tag:
+      if (tag === 'base' && !baseSet) {
+        realBaseUrl = getBaseUrl(attributes.href, baseUrl);
+        baseSet = true;
       }
-      const values = parseAttr(attr, element.attribs[attr]);
+
       // ignore href properties for link tags where rel is likely to fail
       const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
-      if (
-        element.tagName === 'link' &&
-        relValuesToIgnore.includes(element.attribs['rel'])
-      ) {
+      if (tag === 'link' && relValuesToIgnore.includes(attributes.rel)) {
         return;
       }
 
       // Only for <meta content=""> tags, only validate the url if
       // the content actually looks like a url
-      if (element.tagName === 'meta' && element.attribs['content']) {
+      if (tag === 'meta' && attributes.content) {
         try {
-          new URL(element.attribs['content']);
+          new URL(attributes.content);
         } catch (e) {
           return;
         }
       }
 
-      for (const v of values) {
-        if (v) {
-          const link = parseLink(v, realBaseUrl);
-          links.push(link);
+      if (tagAttr[tag]) {
+        for (const attr of tagAttr[tag]) {
+          const linkStr = attributes[attr];
+          if (linkStr) {
+            for (const link of parseAttr(attr, linkStr)) {
+              links.push(parseLink(link, realBaseUrl));
+            }
+          }
         }
       }
-    });
-  }
+    },
+  });
+  await new Promise((resolve, reject) => {
+    source.pipe(parser).on('finish', resolve).on('error', reject);
+  });
   return links;
 }
 
@@ -120,6 +129,6 @@ function parseLink(link: string, baseUrl: string): ParsedUrl {
     url.hash = '';
     return {link, url};
   } catch (error) {
-    return {link, error};
+    return {link, error: error as Error};
   }
 }

@@ -3,6 +3,7 @@ import {URL} from 'url';
 import {AddressInfo} from 'net';
 import * as http from 'http';
 import * as path from 'path';
+import {Readable} from 'stream';
 
 import {request, GaxiosResponse} from 'gaxios';
 
@@ -227,16 +228,15 @@ export class LinkChecker extends EventEmitter {
     // Perform a HEAD or GET request based on the need to crawl
     let status = 0;
     let state = LinkState.BROKEN;
-    let data = '';
     let shouldRecurse = false;
-    let res: GaxiosResponse<string> | undefined = undefined;
+    let res: GaxiosResponse<Readable> | undefined = undefined;
     const failures: {}[] = [];
     try {
-      res = await request<string>({
+      res = await request<Readable>({
         method: opts.crawl ? 'GET' : 'HEAD',
         url: opts.url.href,
         headers,
-        responseType: opts.crawl ? 'text' : 'stream',
+        responseType: 'stream',
         validateStatus: () => true,
         timeout: opts.checkOptions.timeout,
       });
@@ -246,7 +246,7 @@ export class LinkChecker extends EventEmitter {
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
       if (res.status === 405) {
-        res = await request<string>({
+        res = await request<Readable>({
           method: 'GET',
           url: opts.url.href,
           headers,
@@ -262,7 +262,7 @@ export class LinkChecker extends EventEmitter {
       // request failure: invalid domain name, etc.
       // this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
       // for this reason, we also try doing a GET below to see if the link is valid
-      failures.push(err);
+      failures.push(err as Error);
     }
 
     try {
@@ -271,10 +271,10 @@ export class LinkChecker extends EventEmitter {
         (res === undefined || res.status < 200 || res.status >= 300) &&
         !opts.crawl
       ) {
-        res = await request<string>({
+        res = await request<Readable>({
           method: 'GET',
           url: opts.url.href,
-          responseType: 'text',
+          responseType: 'stream',
           validateStatus: () => true,
           headers,
           timeout: opts.checkOptions.timeout,
@@ -284,13 +284,12 @@ export class LinkChecker extends EventEmitter {
         }
       }
     } catch (ex) {
-      failures.push(ex);
+      failures.push(ex as Error);
       // catch the next failure
     }
 
     if (res !== undefined) {
       status = res.status;
-      data = res.data;
       shouldRecurse = isHtml(res);
     }
 
@@ -314,7 +313,9 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urlResults = getLinks(data, opts.url.href);
+      const urlResults = res?.data
+        ? await getLinks(res.data, opts.url.href)
+        : [];
       for (const result of urlResults) {
         // if there was some sort of problem parsing the link while
         // creating a new URL obj, treat it as a broken link.
