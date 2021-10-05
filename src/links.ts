@@ -76,8 +76,11 @@ export async function getLinks(
 
       if (tagAttr[tag]) {
         for (const attr of tagAttr[tag]) {
-          if (attributes[attr]) {
-            links.push(parseLink(attributes[attr], realBaseUrl));
+          const linkStr = attributes[attr];
+          if (linkStr) {
+            for (const link of parseAttr(attr, linkStr)) {
+              links.push(parseLink(link, realBaseUrl));
+            }
           }
         }
       }
@@ -107,6 +110,17 @@ function isAbsoluteUrl(url: string): boolean {
   // Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
   // Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
   return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
+}
+
+function parseAttr(name: string, value: string): string[] {
+  switch (name) {
+    case 'srcset':
+      return value
+        .split(',')
+        .map((pair: string) => pair.trim().split(/\s+/)[0]);
+    default:
+      return [value];
+  }
 }
 
 function parseLink(link: string, baseUrl: string): ParsedUrl {
