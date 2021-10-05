@@ -1,4 +1,5 @@
-import * as htmlParser from 'htmlparser2';
+import * as htmlParser from 'htmlparser2/lib/WritableStream';
+import {Readable} from 'stream';
 import {URL} from 'url';
 
 const linksAttr = {
@@ -42,11 +43,14 @@ export interface ParsedUrl {
   url?: URL;
 }
 
-export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
+export async function getLinks(
+  source: Readable,
+  baseUrl: string
+): Promise<ParsedUrl[]> {
   let realBaseUrl = baseUrl;
   let baseSet = false;
   const links = new Array<ParsedUrl>();
-  const parser = new htmlParser.Parser({
+  const parser = new htmlParser.WritableStream({
     onopentag(tag: string, attributes: {[s: string]: string}) {
       // Allow alternate base URL to be specified in tag:
       if (tag === 'base' && !baseSet) {
@@ -79,8 +83,9 @@ export function getLinks(source: string, baseUrl: string): ParsedUrl[] {
       }
     },
   });
-  parser.write(source);
-  parser.end();
+  await new Promise((resolve, reject) => {
+    source.pipe(parser).on('finish', resolve).on('error', reject);
+  });
   return links;
 }
 
@@ -110,6 +115,6 @@ function parseLink(link: string, baseUrl: string): ParsedUrl {
     url.hash = '';
     return {link, url};
   } catch (error) {
-    return {link, error};
+    return {link, error: error as Error};
   }
 }
