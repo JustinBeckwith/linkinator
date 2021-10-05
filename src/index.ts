@@ -127,7 +127,7 @@ export class LinkChecker extends EventEmitter {
           delayCache,
           queue,
           rootPath: path,
-          retry: !!opts.retry,
+          retry: Boolean(opts.retry),
         });
       });
     }
@@ -195,7 +195,7 @@ export class LinkChecker extends EventEmitter {
         .map(linkToSkip => {
           return new RegExp(linkToSkip).test(opts.url.href);
         })
-        .filter(match => !!match);
+        .filter(match => Boolean(match));
 
       if (skips.length > 0) {
         const result: LinkResult = {
@@ -442,8 +442,8 @@ export async function check(options: CheckOptions) {
 function isHtml(response: GaxiosResponse): boolean {
   const contentType = response.headers['content-type'] || '';
   return (
-    !!contentType.match(/text\/html/g) ||
-    !!contentType.match(/application\/xhtml\+xml/g)
+    Boolean(contentType.match(/text\/html/g)) ||
+    Boolean(contentType.match(/application\/xhtml\+xml/g))
   );
 }
 

@@ -8,6 +8,7 @@
         "allowElseIf": false
       }
     ],
+    "no-implicit-coercion": "error",
     "no-lonely-if": "error",
     "no-promise-executor-return": "error",
     "no-undef-init": "error",
