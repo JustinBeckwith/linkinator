@@ -104,7 +104,8 @@ describe('retries', () => {
     scope.done();
   });
 
-  it('should detect requests to wait on the same host', async () => {
+  it('should detect requests to wait on the same host', async function () {
+    this.timeout(10_000);
     const scope = nock('http://fake.local')
       .get('/1')
       .reply(429, undefined, {
