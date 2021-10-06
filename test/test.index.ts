@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import {strict as assert} from 'assert';
 import {assert as assetChai} from 'chai';
 import * as gaxios from 'gaxios';
 import * as nock from 'nock';
@@ -28,7 +28,7 @@ describe('linkinator', () => {
     const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({path: 'test/fixtures/twice'});
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
     scope.done();
   });
 
@@ -38,8 +38,8 @@ describe('linkinator', () => {
     const checkerSpy = sinon.spy(checker, 'crawl');
     const results = await checker.check({path: 'test/fixtures/twice'});
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 2);
-    assert.strictEqual(checkerSpy.callCount, 2);
+    assert.equal(results.links.length, 2);
+    assert.equal(checkerSpy.callCount, 2);
     scope.done();
   });
 
@@ -49,7 +49,7 @@ describe('linkinator', () => {
       linksToSkip: ['http://very.bad'],
     });
     assert.ok(results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.SKIPPED).length,
       1
     );
@@ -62,7 +62,7 @@ describe('linkinator', () => {
       linksToSkip: link => Promise.resolve(link.includes('filterme')),
     });
     assert.ok(results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.SKIPPED).length,
       2
     );
@@ -73,7 +73,7 @@ describe('linkinator', () => {
     const scope = nock('http://fake.local').head('/').reply(404);
     const results = await check({path: 'test/fixtures/broke'});
     assert.ok(!results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       1
     );
@@ -86,7 +86,7 @@ describe('linkinator', () => {
       recurse: true,
     });
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 4);
+    assert.equal(results.links.length, 4);
   });
 
   it('should handle fetch exceptions', async () => {
@@ -94,7 +94,7 @@ describe('linkinator', () => {
     requestStub.throws('Fetch error');
     const results = await check({path: 'test/fixtures/basic'});
     assert.ok(!results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       1
     );
@@ -104,7 +104,7 @@ describe('linkinator', () => {
   it('should report malformed links as broken', async () => {
     const results = await check({path: 'test/fixtures/malformed'});
     assert.ok(!results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       1
     );
@@ -148,8 +148,8 @@ describe('linkinator', () => {
         path: 'http://fake.local/pageBase/index',
       });
 
-      assert.strictEqual(results.links.length, 3);
-      assert.strictEqual(
+      assert.equal(results.links.length, 3);
+      assert.equal(
         results.links.filter(x => x.state === LinkState.BROKEN).length,
         1
       );
@@ -172,8 +172,8 @@ describe('linkinator', () => {
       path: 'http://fake.local/pageBase/index',
     });
 
-    assert.strictEqual(results.links.length, 3);
-    assert.strictEqual(
+    assert.equal(results.links.length, 3);
+    assert.equal(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       1
     );
@@ -183,14 +183,11 @@ describe('linkinator', () => {
 
   it('should detect broken image links', async () => {
     const results = await check({path: 'test/fixtures/image'});
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       2
     );
-    assert.strictEqual(
-      results.links.filter(x => x.state === LinkState.OK).length,
-      2
-    );
+    assert.equal(results.links.filter(x => x.state === LinkState.OK).length, 2);
   });
 
   it('should perform a recursive scan', async () => {
@@ -201,7 +198,7 @@ describe('linkinator', () => {
       path: 'test/fixtures/recurse',
       recurse: true,
     });
-    assert.strictEqual(results.links.length, 4);
+    assert.equal(results.links.length, 4);
     scope.done();
   });
 
@@ -210,14 +207,14 @@ describe('linkinator', () => {
       path: 'test/fixtures/scripts',
       recurse: true,
     });
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
   });
 
   it('should not follow non-http[s] links', async () => {
     // includes mailto, data urls, and irc
     const results = await check({path: 'test/fixtures/protocols'});
     assert.ok(results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.SKIPPED).length,
       3
     );
@@ -225,7 +222,7 @@ describe('linkinator', () => {
 
   it('should not recurse by default', async () => {
     const results = await check({path: 'test/fixtures/recurse'});
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
   });
 
   it('should retry with a GET after a HEAD', async () => {
@@ -251,7 +248,7 @@ describe('linkinator', () => {
       path: 'http://fake.local',
       recurse: true,
     });
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
     assert.ok(results.passed);
     scopes.forEach(x => x.done());
   });
@@ -261,7 +258,7 @@ describe('linkinator', () => {
     const results = await check({path: 'test/fixtures/prefetch'});
     scope.done();
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
   });
 
   it('should attempt a GET request if a HEAD request fails on external links', async () => {
@@ -288,7 +285,7 @@ describe('linkinator', () => {
       path: 'test/fixtures/markdown/README.md',
       markdown: true,
     });
-    assert.strictEqual(results.links.length, 3);
+    assert.equal(results.links.length, 3);
     assert.ok(results.passed);
   });
 
@@ -307,7 +304,7 @@ describe('linkinator', () => {
       serverRoot: 'test/fixtures/markdown',
       path: 'README.md',
     });
-    assert.strictEqual(results.links.length, 3);
+    assert.equal(results.links.length, 3);
     assert.ok(results.passed);
   });
 
@@ -316,8 +313,8 @@ describe('linkinator', () => {
     const results = await check({
       path: ['test/fixtures/basic', 'test/fixtures/image'],
     });
-    assert.strictEqual(results.passed, false);
-    assert.strictEqual(results.links.length, 6);
+    assert.equal(results.passed, false);
+    assert.equal(results.links.length, 6);
     scope.done();
   });
 
@@ -345,7 +342,7 @@ describe('linkinator', () => {
     const results = await check(options);
     assert.ok(results.passed);
     scope.done();
-    assert.strictEqual(options.serverRoot, undefined);
+    assert.equal(options.serverRoot, undefined);
   });
 
   it('should accept multiple http paths', async () => {
@@ -395,10 +392,10 @@ describe('linkinator', () => {
       path: 'test/fixtures/markdown/**/*.md',
     });
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 6);
+    assert.equal(results.links.length, 6);
     const licenseLink = results.links.find(x => x.url.endsWith('LICENSE.md'));
     assert.ok(licenseLink);
-    assert.strictEqual(licenseLink.url, 'test/fixtures/markdown/LICENSE.md');
+    assert.equal(licenseLink.url, 'test/fixtures/markdown/LICENSE.md');
   });
 
   it('should autoscan markdown if specifically in path', async () => {
@@ -406,7 +403,7 @@ describe('linkinator', () => {
       path: 'test/fixtures/markdown/README.md',
     });
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 3);
+    assert.equal(results.links.length, 3);
   });
 
   it('should throw if a glob provides no paths to scan', async () => {
@@ -457,7 +454,7 @@ describe('linkinator', () => {
       serverRoot: 'test/fixtures/nested',
       path: '*/*.html',
     });
-    assert.strictEqual(results.links.length, 4);
+    assert.equal(results.links.length, 4);
     assert.ok(results.passed);
     scope.done();
   });
@@ -472,7 +469,7 @@ describe('linkinator', () => {
       serverRoot: path.resolve('test/fixtures/nested'),
       path: '*/*.html',
     });
-    assert.strictEqual(results.links.length, 4);
+    assert.equal(results.links.length, 4);
     assert.ok(results.passed);
     scope.done();
   });
@@ -482,7 +479,7 @@ describe('linkinator', () => {
     const results = await check({path: 'test/fixtures/twittercard'});
     assert.ok(results.passed);
     scope.done();
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
   });
 
   it('should support directory index', async () => {
@@ -491,7 +488,7 @@ describe('linkinator', () => {
       directoryListing: true,
     });
     assert.ok(results.passed);
-    assert.strictEqual(results.links.length, 3);
+    assert.equal(results.links.length, 3);
   });
 
   it('should disabling directory index by default', async () => {
@@ -499,16 +496,16 @@ describe('linkinator', () => {
       path: 'test/fixtures/directoryIndex/README.md',
     });
     assert.ok(!results.passed);
-    assert.strictEqual(results.links.length, 3);
+    assert.equal(results.links.length, 3);
   });
 
   it('should provide a relative path in the results', async () => {
     const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({path: 'test/fixtures/basic'});
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
     const [rootLink, fakeLink] = results.links;
-    assert.strictEqual(rootLink.url, path.join('test', 'fixtures', 'basic'));
-    assert.strictEqual(fakeLink.url, 'http://fake.local/');
+    assert.equal(rootLink.url, path.join('test', 'fixtures', 'basic'));
+    assert.equal(fakeLink.url, 'http://fake.local/');
     scope.done();
   });
 
@@ -518,10 +515,10 @@ describe('linkinator', () => {
       path: '.',
       serverRoot: 'test/fixtures/basic',
     });
-    assert.strictEqual(results.links.length, 2);
+    assert.equal(results.links.length, 2);
     const [rootLink, fakeLink] = results.links;
-    assert.strictEqual(rootLink.url, `.${path.sep}`);
-    assert.strictEqual(fakeLink.url, 'http://fake.local/');
+    assert.equal(rootLink.url, `.${path.sep}`);
+    assert.equal(fakeLink.url, 'http://fake.local/');
     scope.done();
   });
 
@@ -541,7 +538,7 @@ describe('linkinator', () => {
   it('should report malformed links as broken', async () => {
     const results = await check({path: 'test/fixtures/malformed'});
     assert.ok(!results.passed);
-    assert.strictEqual(
+    assert.equal(
       results.links.filter(x => x.state === LinkState.BROKEN).length,
       1
     );

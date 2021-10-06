@@ -110,7 +110,7 @@ describe('cli', function () {
     ]);
     const links = JSON.parse(res.stdout).links as LinkResult[];
     for (const link of links) {
-      assert.strictEqual(link.state, LinkState.BROKEN);
+      assert.equal(link.state, LinkState.BROKEN);
     }
   });
 
@@ -175,9 +175,9 @@ describe('cli', function () {
         reject: false,
       }
     );
-    assert.strictEqual(res.exitCode, 1);
-    assert.strictEqual(res.stdout, '');
-    assert.strictEqual(res.stderr, '');
+    assert.equal(res.exitCode, 1);
+    assert.equal(res.stdout, '');
+    assert.equal(res.stderr, '');
   });
 
   it('should show callstacks for verbosity=DEBUG', async () => {
@@ -188,7 +188,7 @@ describe('cli', function () {
         reject: false,
       }
     );
-    assert.strictEqual(res.exitCode, 1);
+    assert.equal(res.exitCode, 1);
     assert.match(res.stdout, /reason: getaddrinfo/);
   });
 
@@ -199,7 +199,7 @@ describe('cli', function () {
       '--config',
       'test/fixtures/config/skip-array-config.json',
     ]);
-    assert.strictEqual(res.exitCode, 0);
+    assert.equal(res.exitCode, 0);
   });
 
   it('should fail if a url search is provided without a replacement', async () => {
@@ -210,7 +210,7 @@ describe('cli', function () {
         reject: false,
       }
     );
-    assert.strictEqual(res.exitCode, 1);
+    assert.equal(res.exitCode, 1);
     assert.match(res.stderr, /flag must be used/);
   });
 
@@ -222,7 +222,7 @@ describe('cli', function () {
         reject: false,
       }
     );
-    assert.strictEqual(res.exitCode, 1);
+    assert.equal(res.exitCode, 1);
     assert.match(res.stderr, /flag must be used/);
   });
 
@@ -265,7 +265,7 @@ describe('cli', function () {
       '--retry',
       'test/fixtures/retryCLI',
     ]);
-    assert.strictEqual(res.exitCode, 0);
+    assert.equal(res.exitCode, 0);
     assert.include(res.stdout, `Retrying: http://localhost:${port}`);
   });
 });
