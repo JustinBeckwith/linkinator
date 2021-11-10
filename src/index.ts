@@ -46,10 +46,14 @@ interface CrawlOptions {
   results: LinkResult[];
   cache: Set<string>;
   delayCache: Map<string, number>;
+  retryErrorsCache: Map<string, number>;
   checkOptions: CheckOptions;
   queue: Queue;
   rootPath: string;
   retry: boolean;
+  retryErrors: boolean;
+  retryErrorsCount: number;
+  retryErrorsJitter: number;
 }
 
 // Spoof a normal looking User-Agent to keep the servers happy
@@ -113,6 +117,7 @@ export class LinkChecker extends EventEmitter {
     const results = new Array<LinkResult>();
     const initCache: Set<string> = new Set();
     const delayCache: Map<string, number> = new Map();
+    const retryErrorsCache: Map<string, number> = new Map();
 
     for (const path of options.path) {
       const url = new URL(path);
@@ -125,9 +130,13 @@ export class LinkChecker extends EventEmitter {
           results,
           cache: initCache,
           delayCache,
+          retryErrorsCache,
           queue,
           rootPath: path,
           retry: !!opts.retry,
+          retryErrors: !!opts.retryErrors,
+          retryErrorsCount: opts.retryErrorsCount ?? 3,
+          retryErrorsJitter: opts.retryErrorsJitter ?? 3000,
         });
       });
     }
@@ -293,6 +302,12 @@ export class LinkChecker extends EventEmitter {
       shouldRecurse = isHtml(res);
     }
 
+    // If retryErrors is enabled, retry 5xx and 0 status (which indicates
+    // a network error likely occurred):
+    if (this.shouldRetryOnError(status, opts)) {
+      return;
+    }
+
     // Assume any 2xx status is 👌
     if (status >= 200 && status < 300) {
       state = LinkState.OK;
@@ -354,12 +369,16 @@ export class LinkChecker extends EventEmitter {
               crawl,
               cache: opts.cache,
               delayCache: opts.delayCache,
+              retryErrorsCache: opts.retryErrorsCache,
               results: opts.results,
               checkOptions: opts.checkOptions,
               queue: opts.queue,
               parent: opts.url.href,
               rootPath: opts.rootPath,
               retry: opts.retry,
+              retryErrors: opts.retryErrors,
+              retryErrorsCount: opts.retryErrorsCount,
+              retryErrorsJitter: opts.retryErrorsJitter,
             });
           });
         }
@@ -404,7 +423,6 @@ export class LinkChecker extends EventEmitter {
     } else {
       opts.delayCache.set(opts.url.host, retryAfter);
     }
-
     opts.queue.add(
       async () => {
         await this.crawl(opts);
@@ -417,6 +435,50 @@ export class LinkChecker extends EventEmitter {
       url: opts.url.href,
       status: res.status,
       secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+    };
+    this.emit('retry', retryDetails);
+    return true;
+  }
+  /**
+   * If the response is a 5xx or synthetic 0 response retry N times.
+   * @param status Status returned by request or 0 if request threw.
+   * @param opts CrawlOptions used during this request
+   */
+  shouldRetryOnError(status: number, opts: CrawlOptions): boolean {
+    const maxRetries = opts.retryErrorsCount;
+    const retryAfter = opts.retryErrorsJitter;
+
+    if (!opts.retryErrors) {
+      return false;
+    }
+
+    // Only retry 0 and >5xx status codes:
+    if (status > 0 && status < 500) {
+      return false;
+    }
+
+    // check to see if there is already a request to wait for this host
+    if (opts.retryErrorsCache.has(opts.url.host)) {
+      // use whichever time is higher in the cache
+      const currentRetries = opts.retryErrorsCache.get(opts.url.host)!;
+      if (currentRetries > maxRetries) return false;
+      opts.retryErrorsCache.set(opts.url.host, currentRetries + 1);
+    } else {
+      opts.retryErrorsCache.set(opts.url.host, 1);
+    }
+
+    opts.queue.add(
+      async () => {
+        await this.crawl(opts);
+      },
+      {
+        delay: retryAfter,
+      }
+    );
+    const retryDetails: RetryInfo = {
+      url: opts.url.href,
+      status: status,
+      secondsUntilRetry: Math.round(retryAfter / 1000),
     };
     this.emit('retry', retryDetails);
     return true;

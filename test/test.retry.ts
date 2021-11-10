@@ -210,4 +210,52 @@ describe('retries', () => {
     });
     return {promise, resolve, reject};
   }
+
+  describe('retry-errors', () => {
+    it('should retry 5xx status code', async () => {
+      const scope = nock('http://fake.local')
+        .get('/')
+        .reply(522)
+        .get('/')
+        .reply(200);
+
+      const {promise, resolve} = invertedPromise();
+      const checker = new LinkChecker().on('retry', resolve);
+      const clock = sinon.useFakeTimers({
+        shouldAdvanceTime: true,
+      });
+      const checkPromise = checker.check({
+        path: 'test/fixtures/basic',
+        retryErrors: true,
+      });
+      await promise;
+      await clock.tickAsync(5000);
+      const results = await checkPromise;
+      assert.ok(results.passed);
+      scope.done();
+    });
+
+    it('should retry 0 status code', async () => {
+      const scope = nock('http://fake.local')
+        .get('/')
+        .replyWithError({code: 'ETIMEDOUT'})
+        .get('/')
+        .reply(200);
+
+      const {promise, resolve} = invertedPromise();
+      const checker = new LinkChecker().on('retry', resolve);
+      const clock = sinon.useFakeTimers({
+        shouldAdvanceTime: true,
+      });
+      const checkPromise = checker.check({
+        path: 'test/fixtures/basic',
+        retryErrors: true,
+      });
+      await promise;
+      await clock.tickAsync(5000);
+      const results = await checkPromise;
+      assert.ok(results.passed);
+      scope.done();
+    });
+  });
 });

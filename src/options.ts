@@ -22,6 +22,9 @@ export interface CheckOptions {
   serverRoot?: string;
   directoryListing?: boolean;
   retry?: boolean;
+  retryErrors?: boolean;
+  retryErrorsCount?: number;
+  retryErrorsJitter?: number;
   urlRewriteExpressions?: UrlRewriteExpression[];
 }
 
@@ -145,5 +148,6 @@ export async function processOptions(
       options.syntheticServerRoot = options.serverRoot;
     }
   }
+
   return options;
 }
