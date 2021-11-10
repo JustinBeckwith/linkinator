@@ -61,6 +61,15 @@ const cli = meow(
           Automatically retry requests that return HTTP 429 responses and include
           a 'retry-after' header. Defaults to false.
 
+      --retry-errors,
+          Automatically retry requests that return 5xx or unknown response.
+
+      --retry-errors-count,
+          How many times should an error be retried?
+
+      --retry-errors-jitter,
+          Random jitter applied to error retry.
+
       --server-root
           When scanning a locally directory, customize the location on disk
           where the server is started.  Defaults to the path passed in [LOCATION].
@@ -102,6 +111,9 @@ const cli = meow(
       verbosity: {type: 'string'},
       directoryListing: {type: 'boolean'},
       retry: {type: 'boolean'},
+      retryErrors: {type: 'boolean'},
+      retryErrorsCount: {type: 'number', default: 3},
+      retryErrorsJitter: {type: 'number', default: 3000},
       urlRewriteSearch: {type: 'string'},
       urlReWriteReplace: {type: 'string'},
     },
@@ -163,6 +175,9 @@ async function main() {
     serverRoot: flags.serverRoot,
     directoryListing: flags.directoryListing,
     retry: flags.retry,
+    retryErrors: flags.retryErrors,
+    retryErrorsCount: Number(flags.retryErrorsCount),
+    retryErrorsJitter: Number(flags.retryErrorsJitter),
   };
   if (flags.skip) {
     if (typeof flags.skip === 'string') {
