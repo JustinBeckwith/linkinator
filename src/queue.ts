@@ -53,16 +53,23 @@ export class Queue extends EventEmitter {
       }
       // grab the element at the front of the array
       const item = this.q.shift()!;
+      // Depending on CPU load and other factors setTimeout() is not guranteed to run exactly
+      // when scheduled. This causes problems if there is only one item in the queue, as
+      // there's a chance it will never be processed. Allow for a small delta to address this:
+      const delta = 150;
+      const readyToExecute =
+        Math.abs(item.timeToRun - Date.now()) < delta ||
+        item.timeToRun < Date.now();
       // make sure this element is ready to execute - if not, to the back of the stack
-      if (item.timeToRun > Date.now()) {
-        this.q.push(item);
-      } else {
+      if (readyToExecute) {
         // this function is ready to go!
         this.activeFunctions++;
         item.fn().finally(() => {
           this.activeFunctions--;
           this.tick();
         });
+      } else {
+        this.q.push(item);
       }
     }
   }

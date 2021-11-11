@@ -257,5 +257,28 @@ describe('retries', () => {
       assert.ok(results.passed);
       scope.done();
     });
+
+    it('should eventually stop retrying', async () => {
+      const scope = nock('http://fake.local')
+        .get('/')
+        .replyWithError({code: 'ETIMEDOUT'});
+
+      const {promise, resolve} = invertedPromise();
+      const checker = new LinkChecker().on('retry', resolve);
+      const clock = sinon.useFakeTimers({
+        shouldAdvanceTime: true,
+      });
+      const checkPromise = checker.check({
+        path: 'test/fixtures/basic',
+        retryErrors: true,
+        retryErrorsCount: 1,
+        retryErrorsJitter: 1000,
+      });
+      await promise;
+      await clock.tickAsync(5000);
+      const results = await checkPromise;
+      assert.ok(!results.passed);
+      scope.done();
+    });
   });
 });

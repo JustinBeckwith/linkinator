@@ -112,7 +112,7 @@ const cli = meow(
       directoryListing: {type: 'boolean'},
       retry: {type: 'boolean'},
       retryErrors: {type: 'boolean'},
-      retryErrorsCount: {type: 'number', default: 3},
+      retryErrorsCount: {type: 'number', default: 5},
       retryErrorsJitter: {type: 'number', default: 3000},
       urlRewriteSearch: {type: 'string'},
       urlReWriteReplace: {type: 'string'},
