@@ -135,7 +135,7 @@ export class LinkChecker extends EventEmitter {
           rootPath: path,
           retry: !!opts.retry,
           retryErrors: !!opts.retryErrors,
-          retryErrorsCount: opts.retryErrorsCount ?? 3,
+          retryErrorsCount: opts.retryErrorsCount ?? 5,
           retryErrorsJitter: opts.retryErrorsJitter ?? 3000,
         });
       });
@@ -446,7 +446,6 @@ export class LinkChecker extends EventEmitter {
    */
   shouldRetryOnError(status: number, opts: CrawlOptions): boolean {
     const maxRetries = opts.retryErrorsCount;
-    const retryAfter = opts.retryErrorsJitter;
 
     if (!opts.retryErrors) {
       return false;
@@ -458,14 +457,19 @@ export class LinkChecker extends EventEmitter {
     }
 
     // check to see if there is already a request to wait for this host
+    let currentRetries = 1;
     if (opts.retryErrorsCache.has(opts.url.host)) {
       // use whichever time is higher in the cache
-      const currentRetries = opts.retryErrorsCache.get(opts.url.host)!;
+      currentRetries = opts.retryErrorsCache.get(opts.url.host)!;
       if (currentRetries > maxRetries) return false;
       opts.retryErrorsCache.set(opts.url.host, currentRetries + 1);
     } else {
       opts.retryErrorsCache.set(opts.url.host, 1);
     }
+    // Use exponential backoff algorithm to take pressure off upstream service:
+    const retryAfter =
+      Math.pow(2, currentRetries) * 1000 +
+      Math.random() * opts.retryErrorsJitter;
 
     opts.queue.add(
       async () => {
