@@ -15,7 +15,7 @@
     "prepare": "npm run compile",
     "codecov": "c8 report --reporter=json && codecov -f coverage/*.json",
     "compile": "tsc -p .",
-    "test": "c8 mocha build/test",
+    "test": "c8 mocha --timeout=50000 build/test",
     "fix": "gts fix",
     "lint": "gts lint",
     "build-binaries": "pkg . --out-path build/binaries",
