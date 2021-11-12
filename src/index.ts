@@ -456,15 +456,15 @@ export class LinkChecker extends EventEmitter {
       return false;
     }
 
-    // check to see if there is already a request to wait for this host
+    // check to see if there is already a request to wait for this URL:
     let currentRetries = 1;
-    if (opts.retryErrorsCache.has(opts.url.host)) {
+    if (opts.retryErrorsCache.has(opts.url.href)) {
       // use whichever time is higher in the cache
-      currentRetries = opts.retryErrorsCache.get(opts.url.host)!;
+      currentRetries = opts.retryErrorsCache.get(opts.url.href)!;
       if (currentRetries > maxRetries) return false;
-      opts.retryErrorsCache.set(opts.url.host, currentRetries + 1);
+      opts.retryErrorsCache.set(opts.url.href, currentRetries + 1);
     } else {
-      opts.retryErrorsCache.set(opts.url.host, 1);
+      opts.retryErrorsCache.set(opts.url.href, 1);
     }
     // Use exponential backoff algorithm to take pressure off upstream service:
     const retryAfter =
