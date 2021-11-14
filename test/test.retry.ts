@@ -250,6 +250,7 @@ describe('retries', () => {
       const checkPromise = checker.check({
         path: 'test/fixtures/basic',
         retryErrors: true,
+        retryErrorsJitter: 10,
       });
       await promise;
       await clock.tickAsync(5000);
@@ -272,7 +273,7 @@ describe('retries', () => {
         path: 'test/fixtures/basic',
         retryErrors: true,
         retryErrorsCount: 1,
-        retryErrorsJitter: 1000,
+        retryErrorsJitter: 10,
       });
       await promise;
       await clock.tickAsync(5000);
