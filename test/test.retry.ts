@@ -1,9 +1,9 @@
 import {assert} from 'chai';
-import * as nock from 'nock';
-import * as sinon from 'sinon';
+import nock from 'nock';
+import sinon from 'sinon';
 import {describe, it, afterEach} from 'mocha';
 
-import {check, LinkChecker} from '../src';
+import {check, LinkChecker} from '../src/index.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');

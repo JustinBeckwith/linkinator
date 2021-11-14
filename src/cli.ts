@@ -1,24 +1,23 @@
 #!/usr/bin/env node
 
-import * as meow from 'meow';
-import * as updateNotifier from 'update-notifier';
-import chalk = require('chalk');
+import meow from 'meow';
+import updateNotifier from 'update-notifier';
+import chalk from 'chalk';
+import jsonexport from 'jsonexport';
+import fs from 'fs';
+import {URL} from 'url';
+import {Flags, getConfig} from './config.js';
+import {Format, Logger, LogLevel} from './logger.js';
 import {
   LinkChecker,
   LinkState,
   LinkResult,
   CheckOptions,
   RetryInfo,
-} from './index';
-import {promisify} from 'util';
-import {Flags, getConfig} from './config';
-import {Format, Logger, LogLevel} from './logger';
+} from './index.js';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const toCSV = promisify(require('jsonexport'));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pkg = require('../../package.json');
+const pkg = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 updateNotifier({pkg}).notify();
 
 /* eslint-disable no-process-exit */
@@ -98,6 +97,7 @@ const cli = meow(
       $ linkinator . --format CSV
 `,
   {
+    importMeta: import.meta,
     flags: {
       config: {type: 'string'},
       concurrency: {type: 'number'},
@@ -214,7 +214,7 @@ async function main() {
     return;
   } else if (format === Format.CSV) {
     result.links = filteredResults;
-    const csv = await toCSV(result.links);
+    const csv = await jsonexport(result.links);
     console.log(csv);
     return;
   } else {

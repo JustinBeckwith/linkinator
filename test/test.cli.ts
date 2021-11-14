@@ -1,18 +1,20 @@
 import {describe, it} from 'mocha';
-import * as execa from 'execa';
+import execa from 'execa';
 import {assert} from 'chai';
-import * as http from 'http';
-import * as util from 'util';
-import stripAnsi = require('strip-ansi');
-import enableDestroy = require('server-destroy');
-import {LinkResult, LinkState} from '../src/index';
+import http from 'http';
+import util from 'util';
+import {URL} from 'url';
+import fs from 'fs';
+import stripAnsi from 'strip-ansi';
+import enableDestroy from 'server-destroy';
+import {LinkResult, LinkState} from '../src/index.js';
 
 // eslint-disable-next-line prefer-arrow-callback
 describe('cli', function () {
   let server: http.Server;
   this.timeout(20_000);
 
-  const pkg = require('../../package.json');
+  const pkg = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
   const linkinator = pkg.bin.linkinator;
   const node = 'node';
 

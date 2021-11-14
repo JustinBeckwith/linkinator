@@ -7,10 +7,10 @@ import {Readable} from 'stream';
 
 import {request, GaxiosResponse} from 'gaxios';
 
-import {Queue} from './queue';
-import {getLinks} from './links';
-import {startWebServer} from './server';
-import {CheckOptions, InternalCheckOptions, processOptions} from './options';
+import {Queue} from './queue.js';
+import {getLinks} from './links.js';
+import {startWebServer} from './server.js';
+import {CheckOptions, InternalCheckOptions, processOptions} from './options.js';
 
 export {CheckOptions};
 

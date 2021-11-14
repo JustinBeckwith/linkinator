@@ -3,7 +3,10 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "build",
-    "target": "es2018"
+    "target": "es2020",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "src/*.ts",

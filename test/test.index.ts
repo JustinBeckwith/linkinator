@@ -1,12 +1,17 @@
-import * as assert from 'assert';
-import {assert as assetChai} from 'chai';
-import * as gaxios from 'gaxios';
-import * as nock from 'nock';
-import * as sinon from 'sinon';
-import * as path from 'path';
+import assert from 'assert';
+import gaxios from 'gaxios';
+import nock from 'nock';
+import sinon from 'sinon';
+import path from 'path';
 import {describe, it, afterEach} from 'mocha';
 
-import {check, LinkState, LinkChecker, CheckOptions, headers} from '../src';
+import {
+  check,
+  LinkState,
+  LinkChecker,
+  CheckOptions,
+  headers,
+} from '../src/index.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -444,7 +449,7 @@ describe('linkinator', () => {
     });
     assert.ok(!results.passed);
     const err = results.links[0].failureDetails![0] as Error;
-    assetChai.match(err.message, /Nock: Disallowed net connect for/);
+    assert.match(err.message, /Nock: Disallowed net connect for/);
   });
 
   it('should respect server root with globs', async () => {

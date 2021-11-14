@@ -1,7 +1,8 @@
-import * as assert from 'assert';
-import * as path from 'path';
+import assert from 'assert';
+import path from 'path';
+import fs from 'fs/promises';
 import {describe, it} from 'mocha';
-import {getConfig, Flags} from '../src/config';
+import {getConfig, Flags} from '../src/config.js';
 
 describe('config', () => {
   it('should allow passing no config', async () => {
@@ -28,8 +29,7 @@ describe('config', () => {
     const configPath = path.resolve(
       'test/fixtures/config/linkinator.config.json'
     );
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const expected = require(configPath);
+    const expected = JSON.parse(await fs.readFile(configPath, 'utf-8'));
     const config = await getConfig({config: configPath});
     delete config.config;
     assert.deepStrictEqual(config, expected);
@@ -39,8 +39,7 @@ describe('config', () => {
     const configPath = path.resolve(
       'test/fixtures/config/linkinator.config.json'
     );
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const expected = require(configPath);
+    const expected = JSON.parse(await fs.readFile(configPath, 'utf-8'));
     expected.skip = 'loo';
     const config = await getConfig({
       config: configPath,
