@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import fs from 'fs/promises';
+import {promises as fs} from 'fs';
 import {describe, it} from 'mocha';
 import {getConfig, Flags} from '../src/config.js';
 
