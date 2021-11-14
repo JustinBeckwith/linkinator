@@ -16,8 +16,9 @@ import {
   RetryInfo,
 } from './index.js';
 
-
-const pkg = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
+const pkg = JSON.parse(
+  fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+);
 updateNotifier({pkg}).notify();
 
 /* eslint-disable no-process-exit */

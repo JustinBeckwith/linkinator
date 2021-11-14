@@ -14,7 +14,9 @@ describe('cli', function () {
   let server: http.Server;
   this.timeout(20_000);
 
-  const pkg = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
+  const pkg = JSON.parse(
+    fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+  );
   const linkinator = pkg.bin.linkinator;
   const node = 'node';
 
