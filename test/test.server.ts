@@ -1,10 +1,10 @@
-import * as assert from 'assert';
+import assert from 'assert';
 import {describe, it, before, after} from 'mocha';
-import {startWebServer} from '../src/server';
+import {startWebServer} from '../src/server.js';
 import {AddressInfo} from 'net';
 import {Server} from 'http';
 import {request} from 'gaxios';
-import * as fs from 'fs';
+import fs from 'fs';
 
 describe('server', () => {
   let server: Server;

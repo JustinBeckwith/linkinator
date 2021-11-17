@@ -1,9 +1,8 @@
-import * as fs from 'fs';
-import * as util from 'util';
-import * as path from 'path';
-import * as globby from 'glob';
+import {promises as fs} from 'fs';
+import util from 'util';
+import path from 'path';
+import globby from 'glob';
 
-const stat = util.promisify(fs.stat);
 const glob = util.promisify(globby);
 
 export interface UrlRewriteExpression {
@@ -134,7 +133,7 @@ export async function processOptions(
       options.serverRoot = process.cwd();
     } else {
       // if there's a single path, try to be smart and figure it out
-      const s = await stat(options.path[0]);
+      const s = await fs.stat(options.path[0]);
       options.serverRoot = options.path[0];
       if (s.isFile()) {
         const pathParts = options.path[0].split(path.sep);

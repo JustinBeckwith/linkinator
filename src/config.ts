@@ -1,7 +1,4 @@
-import * as fs from 'fs';
-import {promisify} from 'util';
-
-const readFile = promisify(fs.readFile);
+import {promises as fs} from 'fs';
 
 export interface Flags {
   concurrency?: number;
@@ -28,7 +25,7 @@ export async function getConfig(flags: Flags) {
   const configPath = flags.config || 'linkinator.config.json';
   let configData: string | undefined;
   try {
-    configData = await readFile(configPath, {encoding: 'utf8'});
+    configData = await fs.readFile(configPath, {encoding: 'utf8'});
   } catch (e) {
     if (flags.config) {
       console.error(`Unable to find config file ${flags.config}`);

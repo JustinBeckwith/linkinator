@@ -1,4 +1,4 @@
-import * as htmlParser from 'htmlparser2/lib/WritableStream';
+import {WritableStream} from 'htmlparser2/lib/WritableStream.js';
 import {Readable} from 'stream';
 import {URL} from 'url';
 
@@ -50,7 +50,7 @@ export async function getLinks(
   let realBaseUrl = baseUrl;
   let baseSet = false;
   const links = new Array<ParsedUrl>();
-  const parser = new htmlParser.WritableStream({
+  const parser = new WritableStream({
     onopentag(tag: string, attributes: {[s: string]: string}) {
       // Allow alternate base URL to be specified in tag:
       if (tag === 'base' && !baseSet) {
