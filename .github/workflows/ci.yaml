@@ -67,7 +67,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run compile
-      - run: npm run build-binaries
+# disabed due to https://github.com/vercel/pkg/issues/1291
+#     - run: npm run build-binaries
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
