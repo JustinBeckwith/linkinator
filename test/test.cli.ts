@@ -1,5 +1,5 @@
 import {describe, it} from 'mocha';
-import execa from 'execa';
+import {execa} from 'execa';
 import {assert} from 'chai';
 import http from 'http';
 import util from 'util';
