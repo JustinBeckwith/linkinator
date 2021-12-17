@@ -158,14 +158,23 @@ All options are optional. It should look like this:
 
 ```json
 {
-  "format": "json",
-  "recurse": true,
-  "silent": true,
   "concurrency": 100,
+  "config": "string",
+  "recurse": true,
+  "skip": "www.googleapis.com",
+  "format": "json",
+  "silent": true,
+  "verbosity": "error",
   "timeout": 0,
   "markdown": true,
+  "serverRoot": "./",
   "directoryListing": true,
-  "skip": "www.googleapis.com"
+  "retry": true,
+  "retryErrors": true,
+  "retryErrorsCount": 3,
+  "retryErrorsJitter": 5,
+  "urlRewriteSearch": "/pattern/",
+  "urlRewriteReplace": "replacement",
 }
 ```
 
