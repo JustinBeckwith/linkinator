@@ -556,4 +556,12 @@ describe('linkinator', () => {
     const results = await check({path: 'test/fixtures/srcset'});
     assert.ok(results.passed);
   });
+
+  it('should handle encoded urls', async () => {
+    const results = await check({
+      serverRoot: 'test/fixtures/urlpatterns',
+      path: 'index.html',
+    });
+    assert.ok(results.passed);
+  });
 });
