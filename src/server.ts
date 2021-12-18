@@ -46,7 +46,7 @@ async function handleRequest(
   options: WebServerOptions
 ) {
   const url = new URL(req.url || '/', `http://localhost:${options.port}`);
-  const pathParts = url.pathname.split('/').filter(x => !!x);
+  const pathParts = url.pathname.split('/').filter(x => !!x).map(decodeURIComponent);
   const originalPath = path.join(root, ...pathParts);
   if (url.pathname.endsWith('/')) {
     pathParts.push('index.html');
