@@ -104,7 +104,8 @@ export async function processOptions(
         if (options.serverRoot) {
           const contractedPath = p
             .split(path.sep)
-            .slice(options.serverRoot.split(path.sep).length)
+            .filter(x => !!x)
+            .slice(options.serverRoot.split(path.sep).filter(x => !!x).length)
             .join(path.sep);
           paths.push(contractedPath);
         } else {
