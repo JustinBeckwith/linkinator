@@ -316,6 +316,15 @@ describe('linkinator', () => {
     assert.ok(results.passed);
   });
 
+  it('should allow overriding the server root with a trailing slash', async () => {
+    const results = await check({
+      serverRoot: 'test/fixtures/markdown/',
+      path: 'README.md',
+    });
+    assert.strictEqual(results.links.length, 3);
+    assert.ok(results.passed);
+  });
+
   it('should accept multiple filesystem paths', async () => {
     const scope = nock('http://fake.local').head('/').reply(200);
     const results = await check({
