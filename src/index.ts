@@ -13,6 +13,7 @@ import {startWebServer} from './server.js';
 import {CheckOptions, InternalCheckOptions, processOptions} from './options.js';
 
 export {CheckOptions};
+export {getConfig} from './config.js';
 
 export enum LinkState {
   OK = 'OK',
