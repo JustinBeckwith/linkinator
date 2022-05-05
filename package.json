@@ -25,7 +25,7 @@
   "dependencies": {
     "chalk": "^5.0.0",
     "escape-html": "^1.0.3",
-    "gaxios": "^4.3.2",
+    "gaxios": "^5.0.0",
     "glob": "^7.2.0",
     "htmlparser2": "^7.2.0",
     "jsonexport": "^3.2.0",
