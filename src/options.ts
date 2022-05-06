@@ -88,9 +88,12 @@ export async function processOptions(
       // The glob path provided is relative to the serverRoot. For example,
       // if the serverRoot is test/fixtures/nested, and the glob is "*/*.html",
       // The glob needs to be calculated from the serverRoot directory.
-      const fullPath = options.serverRoot
+      let fullPath = options.serverRoot
         ? path.join(options.serverRoot, filePath)
         : filePath;
+
+      // node-glob only accepts unix style path separators as of 8.x
+      fullPath = fullPath.split(path.sep).join('/');
       const expandedPaths = await glob(fullPath);
       if (expandedPaths.length === 0) {
         throw new Error(
