@@ -1,4 +1,4 @@
-import {WritableStream} from 'htmlparser2/lib/WritableStream.js';
+import {WritableStream} from 'htmlparser2/lib/WritableStream';
 import {Readable} from 'stream';
 import {URL} from 'url';
 
