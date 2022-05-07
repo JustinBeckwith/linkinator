@@ -103,7 +103,7 @@ const cli = meow(
       config: {type: 'string'},
       concurrency: {type: 'number'},
       recurse: {type: 'boolean', alias: 'r'},
-      skip: {type: 'string', alias: 's'},
+      skip: {type: 'string', alias: 's', isMultiple: true},
       format: {type: 'string', alias: 'f'},
       silent: {type: 'boolean'},
       timeout: {type: 'number'},
@@ -184,7 +184,14 @@ async function main() {
     if (typeof flags.skip === 'string') {
       opts.linksToSkip = flags.skip.split(/[\s,]+/).filter(x => !!x);
     } else if (Array.isArray(flags.skip)) {
-      opts.linksToSkip = flags.skip;
+      // with `isMultiple` enabled in meow, a comma delimeted list will still
+      // be passed as an array, but with a single element that still needs to
+      // be split.
+      opts.linksToSkip = [];
+      for (const skip of flags.skip) {
+        const rules = skip.split(/[\s,]+/).filter(x => !!x);
+        opts.linksToSkip.push(...rules);
+      }
     }
   }
   if (flags.urlRewriteSearch && flags.urlRewriteReplace) {

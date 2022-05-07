@@ -73,6 +73,24 @@ describe('cli', function () {
     assert.match(stderr, /scanned 2 links/);
   });
 
+  it('should allow --skip multiple times', async () => {
+    const res = await execa(node, [
+      linkinator,
+      '--verbosity',
+      'INFO',
+      '--skip',
+      'LICENSE.md',
+      '--skip',
+      'unlinked.md',
+      'test/fixtures/markdown/README.md',
+    ]);
+    const stdout = stripAnsi(res.stdout);
+    const stderr = stripAnsi(res.stderr);
+    assert.match(stdout, /\[SKP\]/);
+    // make sure we don't report skipped links in the count
+    assert.match(stderr, /scanned 2 links/);
+  });
+
   it('should provide CSV if asked nicely', async () => {
     const res = await execa(node, [
       linkinator,

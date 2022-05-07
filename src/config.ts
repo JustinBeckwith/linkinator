@@ -4,7 +4,7 @@ export interface Flags {
   concurrency?: number;
   config?: string;
   recurse?: boolean;
-  skip?: string;
+  skip?: string | string[];
   format?: string;
   silent?: boolean;
   verbosity?: string;
@@ -42,7 +42,10 @@ export async function getConfig(flags: Flags) {
   // doesn't blast away config level settings.
   const strippedFlags = Object.assign({}, flags);
   Object.entries(strippedFlags).forEach(([key, value]) => {
-    if (typeof value === 'undefined') {
+    if (
+      typeof value === 'undefined' ||
+      (Array.isArray(value) && value.length === 0)
+    ) {
       delete (strippedFlags as {[index: string]: {}})[key];
     }
   });
