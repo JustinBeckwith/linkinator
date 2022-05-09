@@ -1,6 +1,0 @@
-{
-  "skip": [
-    "fake.local",
-    "fake2.local"
-  ]
-}
