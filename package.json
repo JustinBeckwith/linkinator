@@ -33,7 +33,7 @@
     "meow": "^10.1.1",
     "mime": "^3.0.0",
     "server-destroy": "^1.0.1",
-    "update-notifier": "^5.1.0"
+    "update-notifier": "^6.0.0"
   },
   "devDependencies": {
     "@types/chai": "^4.2.22",
@@ -51,7 +51,7 @@
     "chai": "^4.3.4",
     "codecov": "^3.8.2",
     "execa": "^6.0.0",
-    "gts": "^3.1.0",
+    "gts": "^4.0.0",
     "mocha": "^10.0.0",
     "nock": "^13.2.1",
     "pkg": "^5.4.1",
