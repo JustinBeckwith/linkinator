@@ -1,6 +1,6 @@
 import {describe, it} from 'mocha';
 import {execa} from 'execa';
-import {assert} from 'chai';
+import assert from 'assert';
 import http from 'http';
 import util from 'util';
 import {URL} from 'url';
@@ -98,7 +98,7 @@ describe('cli', function () {
       'csv',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.match(res.stdout, /README.md,200,OK,/);
+    assert.match(res.stdout, /README.md",200,OK,/);
   });
 
   it('should provide JSON if asked nicely', async () => {
@@ -118,7 +118,7 @@ describe('cli', function () {
       '--silent',
       'test/fixtures/markdown/README.md',
     ]);
-    assert.notMatch(res.stdout, /\[/);
+    assert.doesNotMatch(res.stdout, /\[/);
   });
 
   it('should not show 200 links if verbosity is ERROR with JSON', async () => {
@@ -274,7 +274,7 @@ describe('cli', function () {
         requestCount++;
         firstRequestTime = Date.now();
       } else {
-        assert.isAtLeast(Date.now(), firstRequestTime + delayMillis);
+        assert.ok(Date.now() >= firstRequestTime + delayMillis);
         res.writeHead(200);
       }
       res.end();
@@ -288,6 +288,6 @@ describe('cli', function () {
       'test/fixtures/retryCLI',
     ]);
     assert.strictEqual(res.exitCode, 0);
-    assert.include(res.stdout, `Retrying: http://localhost:${port}`);
+    assert.match(res.stdout, new RegExp(`Retrying: http://localhost:${port}/`));
   });
 });
