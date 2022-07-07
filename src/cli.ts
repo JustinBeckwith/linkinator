@@ -3,7 +3,6 @@
 import meow from 'meow';
 import updateNotifier from 'update-notifier';
 import chalk from 'chalk';
-import jsonexport from 'jsonexport';
 import fs from 'fs';
 import {URL} from 'url';
 import {Flags, getConfig} from './config.js';
@@ -147,6 +146,10 @@ async function main() {
   logger.error(`🏊‍♂️ crawling ${cli.input}`);
 
   const checker = new LinkChecker();
+  if (format === Format.CSV) {
+    const header = 'url,status,state,parent,failureDetails';
+    console.log(header);
+  }
   checker.on('retry', (info: RetryInfo) => {
     logger.warn(`Retrying: ${info.url} in ${info.secondsUntilRetry} seconds.`);
   });
@@ -165,6 +168,16 @@ async function main() {
         state = `[${chalk.grey('SKP')}]`;
         logger.info(`${state} ${chalk.gray(link.url)}`);
         break;
+    }
+    if (format === Format.CSV) {
+      const showIt = shouldShowResult(link, verbosity);
+      if (showIt) {
+        console.log(
+          `"${link.url}",${link.status},${link.state},"${link.parent || ''}","${
+            link.failureDetails || ''
+          }"`
+        );
+      }
     }
   });
   const opts: CheckOptions = {
@@ -203,27 +216,14 @@ async function main() {
     ];
   }
   const result = await checker.check(opts);
-  const filteredResults = result.links.filter(link => {
-    switch (link.state) {
-      case LinkState.OK:
-        return verbosity <= LogLevel.WARNING;
-      case LinkState.BROKEN:
-        if (verbosity > LogLevel.DEBUG) {
-          link.failureDetails = undefined;
-        }
-        return verbosity <= LogLevel.ERROR;
-      case LinkState.SKIPPED:
-        return verbosity <= LogLevel.INFO;
-    }
-  });
+  const filteredResults = result.links.filter(link =>
+    shouldShowResult(link, verbosity)
+  );
   if (format === Format.JSON) {
     result.links = filteredResults;
     console.log(JSON.stringify(result, null, 2));
     return;
   } else if (format === Format.CSV) {
-    result.links = filteredResults;
-    const csv = await jsonexport(result.links);
-    console.log(csv);
     return;
   } else {
     // Build a collection scanned links, collated by the parent link used in
@@ -349,6 +349,20 @@ function parseFormat(flags: Flags): Format {
     throw new Error("Invalid flag: FORMAT must be 'TEXT', 'JSON', or 'CSV'.");
   }
   return Format[flags.format as keyof typeof Format];
+}
+
+function shouldShowResult(link: LinkResult, verbosity: LogLevel) {
+  switch (link.state) {
+    case LinkState.OK:
+      return verbosity <= LogLevel.WARNING;
+    case LinkState.BROKEN:
+      if (verbosity > LogLevel.DEBUG) {
+        link.failureDetails = undefined;
+      }
+      return verbosity <= LogLevel.ERROR;
+    case LinkState.SKIPPED:
+      return verbosity <= LogLevel.INFO;
+  }
 }
 
 main();
