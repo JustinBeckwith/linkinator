@@ -105,7 +105,7 @@ $ linkinator LOCATIONS [ --arguments ]
 You can run a shallow scan of a website for busted links:
 
 ```sh
-npx linkinator http://jbeckwith.com
+npx linkinator https://jbeckwith.com
 ```
 
 That was fun.  What about local files?  The linkinator will stand up a static web server for yinz:
