@@ -1,6 +1,7 @@
 import {WritableStream} from 'htmlparser2/lib/WritableStream';
 import {Readable} from 'stream';
 import {URL} from 'url';
+import {parseSrcset} from 'srcset';
 
 const linksAttr = {
   background: ['body'],
@@ -115,9 +116,7 @@ function isAbsoluteUrl(url: string): boolean {
 function parseAttr(name: string, value: string): string[] {
   switch (name) {
     case 'srcset':
-      return value
-        .split(',')
-        .map((pair: string) => pair.trim().split(/\s+/)[0]);
+      return parseSrcset(value).map(p => p.url);
     default:
       return [value];
   }
