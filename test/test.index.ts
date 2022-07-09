@@ -228,6 +228,12 @@ describe('linkinator', () => {
     );
   });
 
+  it('should work with picture elements', async () => {
+    const results = await check({path: 'test/fixtures/picture'});
+    assert.ok(results.passed);
+    assert.strictEqual(results.links.length, 4);
+  });
+
   it('should not recurse by default', async () => {
     const results = await check({path: 'test/fixtures/recurse'});
     assert.strictEqual(results.links.length, 2);
