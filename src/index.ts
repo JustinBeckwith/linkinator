@@ -3,14 +3,14 @@ import {URL} from 'url';
 import {AddressInfo} from 'net';
 import * as http from 'http';
 import * as path from 'path';
-import {Readable} from 'stream';
 
-import {request, GaxiosResponse} from 'gaxios';
+import {request} from 'undici';
 
 import {Queue} from './queue.js';
 import {getLinks} from './links.js';
 import {startWebServer} from './server.js';
 import {CheckOptions, InternalCheckOptions, processOptions} from './options.js';
+import {ResponseData} from 'undici/types/dispatcher';
 
 export {CheckOptions};
 export {getConfig} from './config.js';
@@ -239,30 +239,24 @@ export class LinkChecker extends EventEmitter {
     let status = 0;
     let state = LinkState.BROKEN;
     let shouldRecurse = false;
-    let res: GaxiosResponse<Readable> | undefined = undefined;
+    let res: ResponseData | undefined;
     const failures: {}[] = [];
     try {
-      res = await request<Readable>({
+      res = await request(opts.url.href, {
         method: opts.crawl ? 'GET' : 'HEAD',
-        url: opts.url.href,
         headers,
-        responseType: 'stream',
-        validateStatus: () => true,
-        timeout: opts.checkOptions.timeout,
+        bodyTimeout: opts.checkOptions.timeout,
       });
       if (this.shouldRetryAfter(res, opts)) {
         return;
       }
 
       // If we got an HTTP 405, the server may not like HEAD. GET instead!
-      if (res.status === 405) {
-        res = await request<Readable>({
+      if (res.statusCode === 405) {
+        res = await request(opts.url.href, {
           method: 'GET',
-          url: opts.url.href,
           headers,
-          responseType: 'stream',
-          validateStatus: () => true,
-          timeout: opts.checkOptions.timeout,
+          bodyTimeout: opts.checkOptions.timeout,
         });
         if (this.shouldRetryAfter(res, opts)) {
           return;
@@ -278,16 +272,13 @@ export class LinkChecker extends EventEmitter {
     try {
       //some sites don't respond to a stream response type correctly, especially with a HEAD. Try a GET with a text response type
       if (
-        (res === undefined || res.status < 200 || res.status >= 300) &&
+        (res === undefined || res.statusCode < 200 || res.statusCode >= 300) &&
         !opts.crawl
       ) {
-        res = await request<Readable>({
+        res = await request(opts.url.href, {
           method: 'GET',
-          url: opts.url.href,
-          responseType: 'stream',
-          validateStatus: () => true,
           headers,
-          timeout: opts.checkOptions.timeout,
+          bodyTimeout: opts.checkOptions.timeout,
         });
         if (this.shouldRetryAfter(res, opts)) {
           return;
@@ -299,7 +290,7 @@ export class LinkChecker extends EventEmitter {
     }
 
     if (res !== undefined) {
-      status = res.status;
+      status = res.statusCode;
       shouldRecurse = isHtml(res);
     }
 
@@ -329,8 +320,8 @@ export class LinkChecker extends EventEmitter {
     // If we need to go deeper, scan the next level of depth for links and crawl
     if (opts.crawl && shouldRecurse) {
       this.emit('pagestart', opts.url);
-      const urlResults = res?.data
-        ? await getLinks(res.data, opts.url.href)
+      const urlResults = res?.body
+        ? await getLinks(res.body, opts.url.href)
         : [];
       for (const result of urlResults) {
         // if there was some sort of problem parsing the link while
@@ -391,16 +382,16 @@ export class LinkChecker extends EventEmitter {
    * and if the status was an HTTP 429, calculate the date at which this
    * request should be retried. Ensure the delayCache knows that we're
    * going to wait on requests for this entire host.
-   * @param res GaxiosResponse returned from the request
+   * @param res ResponseData returned from the request
    * @param opts CrawlOptions used during this request
    */
-  shouldRetryAfter(res: GaxiosResponse, opts: CrawlOptions): boolean {
+  shouldRetryAfter(res: ResponseData, opts: CrawlOptions): boolean {
     if (!opts.retry) {
       return false;
     }
 
     const retryAfterRaw = res.headers['retry-after'];
-    if (res.status !== 429 || !retryAfterRaw) {
+    if (res.statusCode !== 429 || !retryAfterRaw) {
       return false;
     }
 
@@ -434,7 +425,7 @@ export class LinkChecker extends EventEmitter {
     );
     const retryDetails: RetryInfo = {
       url: opts.url.href,
-      status: res.status,
+      status: res.statusCode,
       secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
     };
     this.emit('retry', retryDetails);
@@ -505,7 +496,7 @@ export async function check(options: CheckOptions) {
  * @param {object} response Page response.
  * @returns {boolean}
  */
-function isHtml(response: GaxiosResponse): boolean {
+function isHtml(response: ResponseData): boolean {
   const contentType = response.headers['content-type'] || '';
   return (
     !!contentType.match(/text\/html/g) ||
