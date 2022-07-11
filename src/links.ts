@@ -115,8 +115,13 @@ function isAbsoluteUrl(url: string): boolean {
 
 function parseAttr(name: string, value: string): string[] {
   switch (name) {
-    case 'srcset':
-      return parseSrcset(value).map(p => p.url);
+    case 'srcset': {
+      // The swapping of any multiple spaces into a single space is here to
+      // work around this bug:
+      // https://github.com/sindresorhus/srcset/issues/14
+      const strippedValue = value.replace(/\s+/, ' ');
+      return parseSrcset(strippedValue).map(p => p.url);
+    }
     default:
       return [value];
   }
