@@ -48,4 +48,51 @@ describe('config', () => {
     delete config.config;
     assert.deepStrictEqual(config, expected);
   });
+  it('should parse config file on passing .js config file', async () => {
+    const configPath = path.resolve(
+      'test/fixtures/config/linkinator.config.js'
+    );
+    const actualConfig = await getConfig({config: configPath});
+    const expectedConfig = {
+      format: 'json',
+      recurse: true,
+      silent: true,
+      concurrency: 17,
+      skip: '🌳',
+      directoryListing: false,
+    };
+    assert.deepStrictEqual(actualConfig, expectedConfig);
+  });
+
+  it('should parse config file on passing .mjs config file', async () => {
+    const configPath = path.resolve(
+      'test/fixtures/config/linkinator.config.mjs'
+    );
+    const actualConfig = await getConfig({config: configPath});
+    const expectedConfig = {
+      format: 'json',
+      recurse: true,
+      silent: true,
+      concurrency: 17,
+      skip: '🌳',
+      directoryListing: false,
+    };
+    assert.deepStrictEqual(actualConfig, expectedConfig);
+  });
+
+  it('should parse config file on passing .cjs config file', async () => {
+    const configPath = path.resolve(
+      'test/fixtures/config/linkinator.config.cjs'
+    );
+    const actualConfig = await getConfig({config: configPath});
+    const expectedConfig = {
+      format: 'json',
+      recurse: true,
+      silent: true,
+      concurrency: 17,
+      skip: '🌳',
+      directoryListing: false,
+    };
+    assert.deepStrictEqual(actualConfig, expectedConfig);
+  });
 });
