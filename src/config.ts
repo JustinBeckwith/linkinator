@@ -86,13 +86,9 @@ async function importConfigFile(configPath: string): Promise<Flags> {
 }
 
 async function readJsonConfigFile(configPath: string): Promise<Flags> {
-  try {
-    const configFileContents: string = await fs.readFile(configPath, {
-      encoding: 'utf-8',
-    });
-    return JSON.parse(configFileContents);
-  } catch (e) {
-    console.error(`Unable to read or parse the JSON config file ${configPath}`);
-    throw e;
-  }
+  const configFileContents: string = await fs.readFile(configPath, {
+    encoding: 'utf-8',
+  });
+
+  return JSON.parse(configFileContents);
 }

@@ -72,6 +72,11 @@ describe('config', () => {
 
       assert.deepStrictEqual(config, expected);
     });
+
+    it('should throw with reasonable message if json file is in invalid format ', async () => {
+      const configPath = 'test/fixtures/config/linkinator.config.invalid.json';
+      assert.rejects(getConfig({config: configPath}), /SyntaxError:.+in JSON/);
+    });
   });
 
   describe('js config file', () => {
