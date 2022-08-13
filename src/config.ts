@@ -45,18 +45,18 @@ export async function getConfig(flags: Flags) {
   return config;
 }
 
-const validConfigExtensions = ['js', 'mjs', 'cjs', 'json'];
+const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
 type ConfigExtensions = typeof validConfigExtensions[number];
 
 async function parseConfigFile(configPath: string): Promise<Flags> {
   const typeOfConfig = getTypeOfConfig(configPath);
 
   switch (typeOfConfig) {
-    case 'json':
+    case '.json':
       return readJsonConfigFile(configPath);
-    case 'js':
-    case 'mjs':
-    case 'cjs':
+    case '.js':
+    case '.mjs':
+    case '.cjs':
       return importConfigFile(configPath);
   }
 
@@ -64,24 +64,24 @@ async function parseConfigFile(configPath: string): Promise<Flags> {
 }
 
 function getTypeOfConfig(configPath: string): ConfigExtensions {
-  const lastDotIndex = configPath.lastIndexOf('.');
-
   // Returning json in case file doesn't have an extension for backward compatibility
-  if (lastDotIndex === -1) return 'json';
+  const configExtension = path.extname(configPath) || '.json';
 
-  const configFileExtension: string = configPath.slice(lastDotIndex + 1);
-
-  if (validConfigExtensions.includes(configFileExtension)) {
-    return configFileExtension as ConfigExtensions;
+  if (validConfigExtensions.includes(configExtension)) {
+    return configExtension as ConfigExtensions;
   }
 
   throw new Error(
-    `Config file should be either of ${validConfigExtensions.join(',')}`
+    `Config file should be either of extensions ${validConfigExtensions.join(
+      ','
+    )}`
   );
 }
 
 async function importConfigFile(configPath: string): Promise<Flags> {
-  const config = (await import(path.join(process.cwd(), configPath))).default;
+  const config = (await import(path.resolve(process.cwd(), configPath)))
+    .default;
+
   return config;
 }
 
