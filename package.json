@@ -32,8 +32,7 @@
     "meow": "^10.1.1",
     "mime": "^3.0.0",
     "server-destroy": "^1.0.1",
-    "srcset": "^5.0.0",
-    "update-notifier": "^6.0.0"
+    "srcset": "^5.0.0"
   },
   "devDependencies": {
     "@types/escape-html": "^1.0.1",
@@ -44,7 +43,6 @@
     "@types/node": "^16.11.7",
     "@types/server-destroy": "^1.0.1",
     "@types/sinon": "^10.0.6",
-    "@types/update-notifier": "^6.0.0",
     "c8": "^7.10.0",
     "codecov": "^3.8.2",
     "execa": "^6.0.0",
