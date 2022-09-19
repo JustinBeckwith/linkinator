@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
 import meow from 'meow';
-import updateNotifier from 'update-notifier';
 import chalk from 'chalk';
-import fs from 'fs';
 import {URL} from 'url';
 import {Flags, getConfig} from './config.js';
 import {Format, Logger, LogLevel} from './logger.js';
@@ -14,11 +12,6 @@ import {
   CheckOptions,
   RetryInfo,
 } from './index.js';
-
-const pkg = JSON.parse(
-  fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
-);
-updateNotifier({pkg}).notify();
 
 /* eslint-disable no-process-exit */
 
