@@ -29,6 +29,10 @@ export async function getConfig(flags: Flags) {
   if (flags.config) {
     config = await parseConfigFile(configPath);
   }
+
+  // `meow` is set up to pass boolean flags as `undefined` if not passed.
+  // copy the struct, and delete properties that are `undefined` so the merge
+  // doesn't blast away config level settings.
   const strippedFlags = Object.assign({}, flags);
   Object.entries(strippedFlags).forEach(([key, value]) => {
     if (
@@ -86,7 +90,7 @@ async function importConfigFile(configPath: string): Promise<Flags> {
 }
 
 async function readJsonConfigFile(configPath: string): Promise<Flags> {
-  const configFileContents: string = await fs.readFile(configPath, {
+  const configFileContents = await fs.readFile(configPath, {
     encoding: 'utf-8',
   });
 
