@@ -1,4 +1,5 @@
 import {promises as fs} from 'fs';
+import path from 'path';
 
 export interface Flags {
   concurrency?: number;
@@ -23,20 +24,12 @@ export interface Flags {
 export async function getConfig(flags: Flags) {
   // check to see if a config file path was passed
   const configPath = flags.config || 'linkinator.config.json';
-  let configData: string | undefined;
-  try {
-    configData = await fs.readFile(configPath, {encoding: 'utf8'});
-  } catch (e) {
-    if (flags.config) {
-      console.error(`Unable to find config file ${flags.config}`);
-      throw e;
-    }
+  let config: Flags = {};
+
+  if (flags.config) {
+    config = await parseConfigFile(configPath);
   }
 
-  let config: Flags = {};
-  if (configData) {
-    config = JSON.parse(configData);
-  }
   // `meow` is set up to pass boolean flags as `undefined` if not passed.
   // copy the struct, and delete properties that are `undefined` so the merge
   // doesn't blast away config level settings.
@@ -54,4 +47,53 @@ export async function getConfig(flags: Flags) {
   // with CLI flags getting precedence
   config = Object.assign({}, config, strippedFlags);
   return config;
+}
+
+const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
+type ConfigExtensions = typeof validConfigExtensions[number];
+
+async function parseConfigFile(configPath: string): Promise<Flags> {
+  const typeOfConfig = getTypeOfConfig(configPath);
+
+  switch (typeOfConfig) {
+    case '.json':
+      return readJsonConfigFile(configPath);
+    case '.js':
+    case '.mjs':
+    case '.cjs':
+      return importConfigFile(configPath);
+  }
+
+  throw new Error(`Config file ${configPath} is invalid`);
+}
+
+function getTypeOfConfig(configPath: string): ConfigExtensions {
+  // Returning json in case file doesn't have an extension for backward compatibility
+  const configExtension = path.extname(configPath) || '.json';
+
+  if (validConfigExtensions.includes(configExtension)) {
+    return configExtension as ConfigExtensions;
+  }
+
+  throw new Error(
+    `Config file should be either of extensions ${validConfigExtensions.join(
+      ','
+    )}`
+  );
+}
+
+async function importConfigFile(configPath: string): Promise<Flags> {
+  const config = (
+    await import(`file://${path.resolve(process.cwd(), configPath)}`)
+  ).default;
+
+  return config;
+}
+
+async function readJsonConfigFile(configPath: string): Promise<Flags> {
+  const configFileContents = await fs.readFile(configPath, {
+    encoding: 'utf-8',
+  });
+
+  return JSON.parse(configFileContents);
 }
