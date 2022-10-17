@@ -83,8 +83,9 @@ function getTypeOfConfig(configPath: string): ConfigExtensions {
 }
 
 async function importConfigFile(configPath: string): Promise<Flags> {
-  const config = (await import(path.resolve(process.cwd(), configPath)))
-    .default;
+  const config = (
+    await import(`file://${path.resolve(process.cwd(), configPath)}`)
+  ).default;
 
   return config;
 }
