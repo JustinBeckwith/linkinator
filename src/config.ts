@@ -83,8 +83,13 @@ function getTypeOfConfig(configPath: string): ConfigExtensions {
 }
 
 async function importConfigFile(configPath: string): Promise<Flags> {
-  const config = (await import(path.relative(process.cwd(), configPath)))
-    .default;
+  // Use a filthy hack to prevent ncc / webpack from trying to process
+  // the runtime dynamic import.  This hurt me more than it disgusts
+  // whoever is reading the code.
+  const _import = new Function('p', 'return import(p)');
+  const config = (
+    await _import(`file://${path.resolve(process.cwd(), configPath)}`)
+  ).default;
   return config;
 }
 
