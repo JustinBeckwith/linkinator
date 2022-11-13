@@ -2,7 +2,6 @@
 
 import meow from 'meow';
 import chalk from 'chalk';
-import {URL} from 'url';
 import {Flags, getConfig} from './config.js';
 import {Format, Logger, LogLevel} from './logger.js';
 import {
