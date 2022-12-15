@@ -63,8 +63,8 @@ describe('cli', function () {
       '--verbosity',
       'INFO',
       '--skip',
-      '"LICENSE.md, unlinked.md"',
-      'test/fixtures/markdown/README.md',
+      'LICENSE.md, unlinked.md',
+      'test/fixtures/markdown/*.md',
     ]);
     const stdout = stripAnsi(res.stdout);
     const stderr = stripAnsi(res.stderr);
