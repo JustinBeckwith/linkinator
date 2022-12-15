@@ -29,7 +29,7 @@
     "glob": "^8.0.1",
     "htmlparser2": "^8.0.1",
     "marked": "^4.0.3",
-    "meow": "^10.1.1",
+    "meow": "^11.0.0",
     "mime": "^3.0.0",
     "server-destroy": "^1.0.1",
     "srcset": "^5.0.0"
