@@ -1,9 +1,6 @@
 import {promises as fs} from 'fs';
-import util from 'util';
 import path from 'path';
-import globby from 'glob';
-
-const glob = util.promisify(globby);
+import glob from 'glob';
 
 export interface UrlRewriteExpression {
   pattern: RegExp;
