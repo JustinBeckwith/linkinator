@@ -50,7 +50,7 @@
     "mocha": "^10.0.0",
     "nock": "^13.2.1",
     "pkg": "^5.4.1",
-    "semantic-release": "^20.0.0",
+    "semantic-release": "^21.0.0",
     "sinon": "^15.0.0",
     "strip-ansi": "^7.0.1",
     "typescript": "^5.0.0"
