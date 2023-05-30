@@ -27,7 +27,7 @@
     "escape-html": "^1.0.3",
     "gaxios": "^5.0.0",
     "glob": "^9.3.2",
-    "htmlparser2": "^8.0.1",
+    "htmlparser2": "^9.0.0",
     "marked": "^4.0.3",
     "meow": "^12.0.1",
     "mime": "^3.0.0",
@@ -55,7 +55,7 @@
     "typescript": "^5.0.0"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "files": [
     "build/src"

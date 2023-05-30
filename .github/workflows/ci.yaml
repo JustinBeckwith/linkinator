@@ -6,14 +6,14 @@ on:
 name: ci
 env:
   FORCE_COLOR: 2
-  NODE: 16
+  NODE: 18
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: [14, 16, 18]
+        node: [16, 18, 20]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -67,8 +67,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run compile
-# disabed due to https://github.com/vercel/pkg/issues/1291
-#     - run: npm run build-binaries
+      # disabed due to https://github.com/vercel/pkg/issues/1291
+      #     - run: npm run build-binaries
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
