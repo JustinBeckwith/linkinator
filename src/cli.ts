@@ -93,9 +93,9 @@ const cli = meow(
     flags: {
       config: {type: 'string'},
       concurrency: {type: 'number'},
-      recurse: {type: 'boolean', alias: 'r'},
-      skip: {type: 'string', alias: 's', isMultiple: true},
-      format: {type: 'string', alias: 'f'},
+      recurse: {type: 'boolean', shortFlag: 'r'},
+      skip: {type: 'string', shortFlag: 's', isMultiple: true},
+      format: {type: 'string', shortFlag: 'f'},
       silent: {type: 'boolean'},
       timeout: {type: 'number'},
       markdown: {type: 'boolean'},
