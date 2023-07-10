@@ -406,18 +406,23 @@ export class LinkChecker extends EventEmitter {
 
     // The `retry-after` header can come in either <seconds> or
     // A specific date to go check.
-    let retryAfter = Number(
-      // handle invalid response ending in `s`
-      retryAfterRaw.replace(/^(\d+)s$/,'$1')
-    ) * 1000 + Date.now();
+    let retryAfter =
+      Number(
+        // handle invalid response ending in `s`
+        retryAfterRaw.replace(/^(\d+)s$/, '$1')
+      ) *
+        1000 +
+      Date.now();
     if (isNaN(retryAfter)) {
       retryAfter = Date.parse(retryAfterRaw);
       if (isNaN(retryAfter)) {
+        // handle invalid response in format `1m30s`
         if (/^\d+m\d+s$/.test(retryAfterRaw)) {
           const retryAfterMatches = retryAfterRaw.match(/^(\d+)m(\d+)s$/);
-          retryAfter = (
-            Number(retryAfterMatches[1]) * 60 + Number(retryAfterMatches[2])
-          ) * 1000 + Date.now();
+          retryAfter =
+            (Number(retryAfterMatches[1]) * 60 + Number(retryAfterMatches[2])) *
+              1000 +
+            Date.now();
         } else {
           return false;
         }
