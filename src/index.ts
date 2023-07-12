@@ -386,6 +386,8 @@ export class LinkChecker extends EventEmitter {
       }
     }
   }
+  // The `retry-after` header can come in either <seconds> or
+  // A specific date to go check.
   private parseRetryAfter(retryAfterRaw: string): number {
     let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
     if (!isNaN(retryAfter)) return retryAfter;
