@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@types/escape-html": "^1.0.1",
-    "@types/marked": "^4.0.0",
+    "@types/marked": "^5.0.0",
     "@types/mime": "^3.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.0.0",
