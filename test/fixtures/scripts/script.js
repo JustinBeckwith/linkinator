@@ -1,3 +1,3 @@
 const foo = {
-  bar: '<a href="uhoh.html">Wot<a>',
+	bar: '<a href="uhoh.html">Wot<a>',
 };

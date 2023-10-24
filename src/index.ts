@@ -1,493 +1,507 @@
-import {EventEmitter} from 'events';
-import {URL} from 'url';
-import {AddressInfo} from 'net';
-import * as http from 'http';
-import * as path from 'path';
-import {Readable} from 'stream';
-
-import {request, GaxiosResponse} from 'gaxios';
-
+import {EventEmitter} from 'node:events';
+import {type AddressInfo} from 'node:net';
+import type * as http from 'node:http';
+import * as path from 'node:path';
+import process from 'node:process';
+import {type Readable} from 'node:stream';
+import {request, type GaxiosResponse} from 'gaxios';
 import {Queue} from './queue.js';
 import {getLinks} from './links.js';
 import {startWebServer} from './server.js';
-import {CheckOptions, InternalCheckOptions, processOptions} from './options.js';
+import {
+	type CheckOptions,
+	type InternalCheckOptions,
+	processOptions,
+} from './options.js';
 
-export {CheckOptions};
 export {getConfig} from './config.js';
 
 export enum LinkState {
-  OK = 'OK',
-  BROKEN = 'BROKEN',
-  SKIPPED = 'SKIPPED',
+	OK = 'OK',
+	BROKEN = 'BROKEN',
+	SKIPPED = 'SKIPPED',
 }
 
-export interface RetryInfo {
-  url: string;
-  secondsUntilRetry: number;
-  status: number;
-}
+export type RetryInfo = {
+	url: string;
+	secondsUntilRetry: number;
+	status: number;
+};
 
-export interface LinkResult {
-  url: string;
-  status?: number;
-  state: LinkState;
-  parent?: string;
-  failureDetails?: {}[];
-}
+export type LinkResult = {
+	url: string;
+	status?: number;
+	state: LinkState;
+	parent?: string;
+	failureDetails?: Array<Error | GaxiosResponse>;
+};
 
-export interface CrawlResult {
-  passed: boolean;
-  links: LinkResult[];
-}
+export type CrawlResult = {
+	passed: boolean;
+	links: LinkResult[];
+};
 
-interface CrawlOptions {
-  url: URL;
-  parent?: string;
-  crawl: boolean;
-  results: LinkResult[];
-  cache: Set<string>;
-  delayCache: Map<string, number>;
-  retryErrorsCache: Map<string, number>;
-  checkOptions: CheckOptions;
-  queue: Queue;
-  rootPath: string;
-  retry: boolean;
-  retryErrors: boolean;
-  retryErrorsCount: number;
-  retryErrorsJitter: number;
-}
+type CrawlOptions = {
+	url: URL;
+	parent?: string;
+	crawl: boolean;
+	results: LinkResult[];
+	cache: Set<string>;
+	delayCache: Map<string, number>;
+	retryErrorsCache: Map<string, number>;
+	checkOptions: CheckOptions;
+	queue: Queue;
+	rootPath: string;
+	retry: boolean;
+	retryErrors: boolean;
+	retryErrorsCount: number;
+	retryErrorsJitter: number;
+};
 
 // Spoof a normal looking User-Agent to keep the servers happy
 export const headers = {
-  'User-Agent':
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
+	'User-Agent':
+		'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
 };
-
-export declare interface LinkChecker {
-  on(event: 'link', listener: (result: LinkResult) => void): this;
-  on(event: 'pagestart', listener: (link: string) => void): this;
-  on(event: 'retry', listener: (details: RetryInfo) => void): this;
-}
 
 /**
  * Instance class used to perform a crawl job.
  */
 export class LinkChecker extends EventEmitter {
-  /**
-   * Crawl a given url or path, and return a list of visited links along with
-   * status codes.
-   * @param options Options to use while checking for 404s
-   */
-  async check(opts: CheckOptions) {
-    const options = await processOptions(opts);
-    if (!Array.isArray(options.path)) {
-      options.path = [options.path];
-    }
-    options.linksToSkip = options.linksToSkip || [];
-    let server: http.Server | undefined;
-    const hasHttpPaths = options.path.find(x => x.startsWith('http'));
-    if (!hasHttpPaths) {
-      let port = options.port;
-      server = await startWebServer({
-        root: options.serverRoot!,
-        port,
-        markdown: options.markdown,
-        directoryListing: options.directoryListing,
-      });
-      if (port === undefined) {
-        const addr = server.address() as AddressInfo;
-        port = addr.port;
-      }
-      for (let i = 0; i < options.path.length; i++) {
-        if (options.path[i].startsWith('/')) {
-          options.path[i] = options.path[i].slice(1);
-        }
-        options.path[i] = `http://localhost:${port}/${options.path[i]}`;
-      }
-      options.staticHttpServerHost = `http://localhost:${port}/`;
-    }
+	on(event: 'link', listener: (result: LinkResult) => void): this;
+	on(event: 'pagestart', listener: (link: string) => void): this;
+	on(event: 'retry', listener: (details: RetryInfo) => void): this;
+	on(event: string | symbol, listener: (...args: any[]) => void): this {
+		return super.on(event, listener);
+	}
 
-    if (process.env.LINKINATOR_DEBUG) {
-      console.log(options);
-    }
+	/**
+	 * Crawl a given url or path, and return a list of visited links along with
+	 * status codes.
+	 * @param options Options to use while checking for 404s
+	 */
+	async check(options_: CheckOptions) {
+		const options = await processOptions(options_);
+		if (!Array.isArray(options.path)) {
+			options.path = [options.path];
+		}
 
-    const queue = new Queue({
-      concurrency: options.concurrency || 100,
-    });
+		options.linksToSkip = options.linksToSkip || [];
+		let server: http.Server | undefined;
+		const hasHttpPaths = options.path.find((x) => x.startsWith('http'));
+		if (!hasHttpPaths) {
+			let {port} = options;
+			server = await startWebServer({
+				root: options.serverRoot!,
+				port,
+				markdown: options.markdown,
+				directoryListing: options.directoryListing,
+			});
+			if (port === undefined) {
+				const addr = server.address() as AddressInfo;
+				port = addr.port;
+			}
 
-    const results = new Array<LinkResult>();
-    const initCache: Set<string> = new Set();
-    const delayCache: Map<string, number> = new Map();
-    const retryErrorsCache: Map<string, number> = new Map();
+			for (let i = 0; i < options.path.length; i++) {
+				if (options.path[i].startsWith('/')) {
+					options.path[i] = options.path[i].slice(1);
+				}
 
-    for (const path of options.path) {
-      const url = new URL(path);
-      initCache.add(url.href);
-      queue.add(async () => {
-        await this.crawl({
-          url,
-          crawl: true,
-          checkOptions: options,
-          results,
-          cache: initCache,
-          delayCache,
-          retryErrorsCache,
-          queue,
-          rootPath: path,
-          retry: !!opts.retry,
-          retryErrors: !!opts.retryErrors,
-          retryErrorsCount: opts.retryErrorsCount ?? 5,
-          retryErrorsJitter: opts.retryErrorsJitter ?? 3000,
-        });
-      });
-    }
-    await queue.onIdle();
+				options.path[i] = `http://localhost:${port}/${options.path[i]}`;
+			}
 
-    const result = {
-      links: results,
-      passed: results.filter(x => x.state === LinkState.BROKEN).length === 0,
-    };
-    if (server) {
-      server.destroy();
-    }
-    return result;
-  }
+			options.staticHttpServerHost = `http://localhost:${port}/`;
+		}
 
-  /**
-   * Crawl a given url with the provided options.
-   * @pram opts List of options used to do the crawl
-   * @private
-   * @returns A list of crawl results consisting of urls and status codes
-   */
-  async crawl(opts: CrawlOptions): Promise<void> {
-    // apply any regex url replacements
-    if (opts.checkOptions.urlRewriteExpressions) {
-      for (const exp of opts.checkOptions.urlRewriteExpressions) {
-        const newUrl = opts.url.href.replace(exp.pattern, exp.replacement);
-        if (opts.url.href !== newUrl) {
-          opts.url.href = newUrl;
-        }
-      }
-    }
+		if (process.env.LINKINATOR_DEBUG) {
+			console.log(options);
+		}
 
-    // explicitly skip non-http[s] links before making the request
-    const proto = opts.url.protocol;
-    if (proto !== 'http:' && proto !== 'https:') {
-      const r: LinkResult = {
-        url: mapUrl(opts.url.href, opts.checkOptions),
-        status: 0,
-        state: LinkState.SKIPPED,
-        parent: mapUrl(opts.parent, opts.checkOptions),
-      };
-      opts.results.push(r);
-      this.emit('link', r);
-      return;
-    }
+		const queue = new Queue({
+			concurrency: options.concurrency || 100,
+		});
 
-    // Check for a user-configured function to filter out links
-    if (
-      typeof opts.checkOptions.linksToSkip === 'function' &&
-      (await opts.checkOptions.linksToSkip(opts.url.href))
-    ) {
-      const result: LinkResult = {
-        url: mapUrl(opts.url.href, opts.checkOptions),
-        state: LinkState.SKIPPED,
-        parent: opts.parent,
-      };
-      opts.results.push(result);
-      this.emit('link', result);
-      return;
-    }
+		const results = new Array<LinkResult>();
+		const initCache = new Set<string>();
+		const delayCache = new Map<string, number>();
+		const retryErrorsCache = new Map<string, number>();
 
-    // Check for a user-configured array of link regular expressions that should be skipped
-    if (Array.isArray(opts.checkOptions.linksToSkip)) {
-      const skips = opts.checkOptions.linksToSkip
-        .map(linkToSkip => {
-          return new RegExp(linkToSkip).test(opts.url.href);
-        })
-        .filter(match => !!match);
+		for (const path of options.path) {
+			const url = new URL(path);
+			initCache.add(url.href);
+			queue.add(async () => {
+				await this.crawl({
+					url,
+					crawl: true,
+					checkOptions: options,
+					results,
+					cache: initCache,
+					delayCache,
+					retryErrorsCache,
+					queue,
+					rootPath: path,
+					retry: Boolean(options_.retry),
+					retryErrors: Boolean(options_.retryErrors),
+					retryErrorsCount: options_.retryErrorsCount ?? 5,
+					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+				});
+			});
+		}
 
-      if (skips.length > 0) {
-        const result: LinkResult = {
-          url: mapUrl(opts.url.href, opts.checkOptions),
-          state: LinkState.SKIPPED,
-          parent: mapUrl(opts.parent, opts.checkOptions),
-        };
-        opts.results.push(result);
-        this.emit('link', result);
-        return;
-      }
-    }
+		await queue.onIdle();
 
-    // Check if this host has been marked for delay due to 429
-    if (opts.delayCache.has(opts.url.host)) {
-      const timeout = opts.delayCache.get(opts.url.host)!;
-      if (timeout > Date.now()) {
-        opts.queue.add(
-          async () => {
-            await this.crawl(opts);
-          },
-          {
-            delay: timeout - Date.now(),
-          }
-        );
-        return;
-      }
-    }
+		const result = {
+			links: results,
+			passed: results.filter((x) => x.state === LinkState.BROKEN).length === 0,
+		};
+		if (server) {
+			server.destroy();
+		}
 
-    // Perform a HEAD or GET request based on the need to crawl
-    let status = 0;
-    let state = LinkState.BROKEN;
-    let shouldRecurse = false;
-    let res: GaxiosResponse<Readable> | undefined = undefined;
-    const failures: {}[] = [];
-    try {
-      res = await request<Readable>({
-        method: opts.crawl ? 'GET' : 'HEAD',
-        url: opts.url.href,
-        headers,
-        responseType: 'stream',
-        validateStatus: () => true,
-        timeout: opts.checkOptions.timeout,
-      });
-      if (this.shouldRetryAfter(res, opts)) {
-        return;
-      }
+		return result;
+	}
 
-      // If we got an HTTP 405, the server may not like HEAD. GET instead!
-      if (res.status === 405) {
-        res = await request<Readable>({
-          method: 'GET',
-          url: opts.url.href,
-          headers,
-          responseType: 'stream',
-          validateStatus: () => true,
-          timeout: opts.checkOptions.timeout,
-        });
-        if (this.shouldRetryAfter(res, opts)) {
-          return;
-        }
-      }
-    } catch (err) {
-      // request failure: invalid domain name, etc.
-      // this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
-      // for this reason, we also try doing a GET below to see if the link is valid
-      failures.push(err as Error);
-    }
+	/**
+	 * Crawl a given url with the provided options.
+	 * @pram opts List of options used to do the crawl
+	 * @private
+	 * @returns A list of crawl results consisting of urls and status codes
+	 */
+	async crawl(options: CrawlOptions): Promise<void> {
+		// Apply any regex url replacements
+		if (options.checkOptions.urlRewriteExpressions) {
+			for (const exp of options.checkOptions.urlRewriteExpressions) {
+				const newUrl = options.url.href.replace(exp.pattern, exp.replacement);
+				if (options.url.href !== newUrl) {
+					options.url.href = newUrl;
+				}
+			}
+		}
 
-    try {
-      //some sites don't respond to a stream response type correctly, especially with a HEAD. Try a GET with a text response type
-      if (
-        (res === undefined || res.status < 200 || res.status >= 300) &&
-        !opts.crawl
-      ) {
-        res = await request<Readable>({
-          method: 'GET',
-          url: opts.url.href,
-          responseType: 'stream',
-          validateStatus: () => true,
-          headers,
-          timeout: opts.checkOptions.timeout,
-        });
-        if (this.shouldRetryAfter(res, opts)) {
-          return;
-        }
-      }
-    } catch (ex) {
-      failures.push(ex as Error);
-      // catch the next failure
-    }
+		// Explicitly skip non-http[s] links before making the request
+		const proto = options.url.protocol;
+		if (proto !== 'http:' && proto !== 'https:') {
+			const r: LinkResult = {
+				url: mapUrl(options.url.href, options.checkOptions),
+				status: 0,
+				state: LinkState.SKIPPED,
+				parent: mapUrl(options.parent, options.checkOptions),
+			};
+			options.results.push(r);
+			this.emit('link', r);
+			return;
+		}
 
-    if (res !== undefined) {
-      status = res.status;
-      shouldRecurse = isHtml(res);
-    }
+		// Check for a user-configured function to filter out links
+		if (
+			typeof options.checkOptions.linksToSkip === 'function' &&
+			(await options.checkOptions.linksToSkip(options.url.href))
+		) {
+			const result: LinkResult = {
+				url: mapUrl(options.url.href, options.checkOptions),
+				state: LinkState.SKIPPED,
+				parent: options.parent,
+			};
+			options.results.push(result);
+			this.emit('link', result);
+			return;
+		}
 
-    // If retryErrors is enabled, retry 5xx and 0 status (which indicates
-    // a network error likely occurred):
-    if (this.shouldRetryOnError(status, opts)) {
-      return;
-    }
+		// Check for a user-configured array of link regular expressions that should be skipped
+		if (Array.isArray(options.checkOptions.linksToSkip)) {
+			const skips = options.checkOptions.linksToSkip
+				.map((linkToSkip) => {
+					return new RegExp(linkToSkip).test(options.url.href);
+				})
+				.filter(Boolean);
 
-    // Assume any 2xx status is 👌
-    if (status >= 200 && status < 300) {
-      state = LinkState.OK;
-    } else {
-      failures.push(res!);
-    }
+			if (skips.length > 0) {
+				const result: LinkResult = {
+					url: mapUrl(options.url.href, options.checkOptions),
+					state: LinkState.SKIPPED,
+					parent: mapUrl(options.parent, options.checkOptions),
+				};
+				options.results.push(result);
+				this.emit('link', result);
+				return;
+			}
+		}
 
-    const result: LinkResult = {
-      url: mapUrl(opts.url.href, opts.checkOptions),
-      status,
-      state,
-      parent: mapUrl(opts.parent, opts.checkOptions),
-      failureDetails: failures,
-    };
-    opts.results.push(result);
-    this.emit('link', result);
+		// Check if this host has been marked for delay due to 429
+		if (options.delayCache.has(options.url.host)) {
+			const timeout = options.delayCache.get(options.url.host)!;
+			if (timeout > Date.now()) {
+				options.queue.add(
+					async () => {
+						await this.crawl(options);
+					},
+					{
+						delay: timeout - Date.now(),
+					},
+				);
+				return;
+			}
+		}
 
-    // If we need to go deeper, scan the next level of depth for links and crawl
-    if (opts.crawl && shouldRecurse) {
-      this.emit('pagestart', opts.url);
-      const urlResults = res?.data
-        ? await getLinks(res.data, opts.url.href)
-        : [];
-      for (const result of urlResults) {
-        // if there was some sort of problem parsing the link while
-        // creating a new URL obj, treat it as a broken link.
-        if (!result.url) {
-          const r = {
-            url: mapUrl(result.link, opts.checkOptions),
-            status: 0,
-            state: LinkState.BROKEN,
-            parent: mapUrl(opts.url.href, opts.checkOptions),
-          };
-          opts.results.push(r);
-          this.emit('link', r);
-          continue;
-        }
+		// Perform a HEAD or GET request based on the need to crawl
+		let status = 0;
+		let state = LinkState.BROKEN;
+		let shouldRecurse = false;
+		let response: GaxiosResponse<Readable> | undefined;
+		const failures: Array<Error | GaxiosResponse> = [];
+		try {
+			response = await request<Readable>({
+				method: options.crawl ? 'GET' : 'HEAD',
+				url: options.url.href,
+				headers,
+				responseType: 'stream',
+				validateStatus: () => true,
+				timeout: options.checkOptions.timeout,
+			});
+			if (this.shouldRetryAfter(response, options)) {
+				return;
+			}
 
-        let crawl = (opts.checkOptions.recurse! &&
-          result.url?.href.startsWith(opts.rootPath)) as boolean;
+			// If we got an HTTP 405, the server may not like HEAD. GET instead!
+			if (response.status === 405) {
+				response = await request<Readable>({
+					method: 'GET',
+					url: options.url.href,
+					headers,
+					responseType: 'stream',
+					validateStatus: () => true,
+					timeout: options.checkOptions.timeout,
+				});
+				if (this.shouldRetryAfter(response, options)) {
+					return;
+				}
+			}
+		} catch (error) {
+			// Request failure: invalid domain name, etc.
+			// this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
+			// for this reason, we also try doing a GET below to see if the link is valid
+			failures.push(error as Error);
+		}
 
-        // only crawl links that start with the same host
-        if (crawl) {
-          try {
-            const pathUrl = new URL(opts.rootPath);
-            crawl = result.url!.host === pathUrl.host;
-          } catch {
-            // ignore errors
-          }
-        }
+		try {
+			// Some sites don't respond to a stream response type correctly, especially with a HEAD. Try a GET with a text response type
+			if (
+				(response === undefined ||
+					response.status < 200 ||
+					response.status >= 300) &&
+				!options.crawl
+			) {
+				response = await request<Readable>({
+					method: 'GET',
+					url: options.url.href,
+					responseType: 'stream',
+					validateStatus: () => true,
+					headers,
+					timeout: options.checkOptions.timeout,
+				});
+				if (this.shouldRetryAfter(response, options)) {
+					return;
+				}
+			}
+		} catch (error) {
+			failures.push(error as Error);
+			// Catch the next failure
+		}
 
-        // Ensure the url hasn't already been touched, largely to avoid a
-        // very large queue length and runaway memory consumption
-        if (!opts.cache.has(result.url.href)) {
-          opts.cache.add(result.url.href);
-          opts.queue.add(async () => {
-            await this.crawl({
-              url: result.url!,
-              crawl,
-              cache: opts.cache,
-              delayCache: opts.delayCache,
-              retryErrorsCache: opts.retryErrorsCache,
-              results: opts.results,
-              checkOptions: opts.checkOptions,
-              queue: opts.queue,
-              parent: opts.url.href,
-              rootPath: opts.rootPath,
-              retry: opts.retry,
-              retryErrors: opts.retryErrors,
-              retryErrorsCount: opts.retryErrorsCount,
-              retryErrorsJitter: opts.retryErrorsJitter,
-            });
-          });
-        }
-      }
-    }
-  }
-  /**
-   * Check the incoming response for a `retry-after` header.  If present,
-   * and if the status was an HTTP 429, calculate the date at which this
-   * request should be retried. Ensure the delayCache knows that we're
-   * going to wait on requests for this entire host.
-   * @param res GaxiosResponse returned from the request
-   * @param opts CrawlOptions used during this request
-   */
-  shouldRetryAfter(res: GaxiosResponse, opts: CrawlOptions): boolean {
-    if (!opts.retry) {
-      return false;
-    }
+		if (response !== undefined) {
+			status = response.status;
+			shouldRecurse = isHtml(response);
+		}
 
-    const retryAfterRaw = res.headers['retry-after'];
-    if (res.status !== 429 || !retryAfterRaw) {
-      return false;
-    }
+		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
+		// a network error likely occurred):
+		if (this.shouldRetryOnError(status, options)) {
+			return;
+		}
 
-    // The `retry-after` header can come in either <seconds> or
-    // A specific date to go check.
-    let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
-    if (isNaN(retryAfter)) {
-      retryAfter = Date.parse(retryAfterRaw);
-      if (isNaN(retryAfter)) {
-        return false;
-      }
-    }
+		// Assume any 2xx status is 👌
+		if (status >= 200 && status < 300) {
+			state = LinkState.OK;
+		} else {
+			failures.push(response!);
+		}
 
-    // check to see if there is already a request to wait for this host
-    if (opts.delayCache.has(opts.url.host)) {
-      // use whichever time is higher in the cache
-      const currentTimeout = opts.delayCache.get(opts.url.host)!;
-      if (retryAfter > currentTimeout) {
-        opts.delayCache.set(opts.url.host, retryAfter);
-      }
-    } else {
-      opts.delayCache.set(opts.url.host, retryAfter);
-    }
-    opts.queue.add(
-      async () => {
-        await this.crawl(opts);
-      },
-      {
-        delay: retryAfter - Date.now(),
-      }
-    );
-    const retryDetails: RetryInfo = {
-      url: opts.url.href,
-      status: res.status,
-      secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
-    };
-    this.emit('retry', retryDetails);
-    return true;
-  }
-  /**
-   * If the response is a 5xx or synthetic 0 response retry N times.
-   * @param status Status returned by request or 0 if request threw.
-   * @param opts CrawlOptions used during this request
-   */
-  shouldRetryOnError(status: number, opts: CrawlOptions): boolean {
-    const maxRetries = opts.retryErrorsCount;
+		const result: LinkResult = {
+			url: mapUrl(options.url.href, options.checkOptions),
+			status,
+			state,
+			parent: mapUrl(options.parent, options.checkOptions),
+			failureDetails: failures,
+		};
+		options.results.push(result);
+		this.emit('link', result);
 
-    if (!opts.retryErrors) {
-      return false;
-    }
+		// If we need to go deeper, scan the next level of depth for links and crawl
+		if (options.crawl && shouldRecurse) {
+			this.emit('pagestart', options.url);
+			const urlResults = response?.data
+				? await getLinks(response.data, options.url.href)
+				: [];
+			for (const result of urlResults) {
+				// If there was some sort of problem parsing the link while
+				// creating a new URL obj, treat it as a broken link.
+				if (!result.url) {
+					const r = {
+						url: mapUrl(result.link, options.checkOptions),
+						status: 0,
+						state: LinkState.BROKEN,
+						parent: mapUrl(options.url.href, options.checkOptions),
+					};
+					options.results.push(r);
+					this.emit('link', r);
+					continue;
+				}
 
-    // Only retry 0 and >5xx status codes:
-    if (status > 0 && status < 500) {
-      return false;
-    }
+				let crawl =
+					options.checkOptions.recurse! &&
+					result.url?.href.startsWith(options.rootPath);
 
-    // check to see if there is already a request to wait for this URL:
-    let currentRetries = 1;
-    if (opts.retryErrorsCache.has(opts.url.href)) {
-      // use whichever time is higher in the cache
-      currentRetries = opts.retryErrorsCache.get(opts.url.href)!;
-      if (currentRetries > maxRetries) return false;
-      opts.retryErrorsCache.set(opts.url.href, currentRetries + 1);
-    } else {
-      opts.retryErrorsCache.set(opts.url.href, 1);
-    }
-    // Use exponential backoff algorithm to take pressure off upstream service:
-    const retryAfter =
-      Math.pow(2, currentRetries) * 1000 +
-      Math.random() * opts.retryErrorsJitter;
+				// Only crawl links that start with the same host
+				if (crawl) {
+					try {
+						const pathUrl = new URL(options.rootPath);
+						crawl = result.url.host === pathUrl.host;
+					} catch {
+						// ignore errors
+					}
+				}
 
-    opts.queue.add(
-      async () => {
-        await this.crawl(opts);
-      },
-      {
-        delay: retryAfter,
-      }
-    );
-    const retryDetails: RetryInfo = {
-      url: opts.url.href,
-      status: status,
-      secondsUntilRetry: Math.round(retryAfter / 1000),
-    };
-    this.emit('retry', retryDetails);
-    return true;
-  }
+				// Ensure the url hasn't already been touched, largely to avoid a
+				// very large queue length and runaway memory consumption
+				if (!options.cache.has(result.url.href)) {
+					options.cache.add(result.url.href);
+					options.queue.add(async () => {
+						await this.crawl({
+							url: result.url!,
+							crawl,
+							cache: options.cache,
+							delayCache: options.delayCache,
+							retryErrorsCache: options.retryErrorsCache,
+							results: options.results,
+							checkOptions: options.checkOptions,
+							queue: options.queue,
+							parent: options.url.href,
+							rootPath: options.rootPath,
+							retry: options.retry,
+							retryErrors: options.retryErrors,
+							retryErrorsCount: options.retryErrorsCount,
+							retryErrorsJitter: options.retryErrorsJitter,
+						});
+					});
+				}
+			}
+		}
+	}
+
+	/**
+	 * Check the incoming response for a `retry-after` header.  If present,
+	 * and if the status was an HTTP 429, calculate the date at which this
+	 * request should be retried. Ensure the delayCache knows that we're
+	 * going to wait on requests for this entire host.
+	 * @param response GaxiosResponse returned from the request
+	 * @param opts CrawlOptions used during this request
+	 */
+	shouldRetryAfter(response: GaxiosResponse, options: CrawlOptions): boolean {
+		if (!options.retry) {
+			return false;
+		}
+
+		const retryAfterRaw = response.headers['retry-after'] as string;
+		if (response.status !== 429 || !retryAfterRaw) {
+			return false;
+		}
+
+		// The `retry-after` header can come in either <seconds> or
+		// A specific date to go check.
+		let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
+		if (Number.isNaN(retryAfter)) {
+			retryAfter = Date.parse(retryAfterRaw);
+			if (Number.isNaN(retryAfter)) {
+				return false;
+			}
+		}
+
+		// Check to see if there is already a request to wait for this host
+		if (options.delayCache.has(options.url.host)) {
+			// Use whichever time is higher in the cache
+			const currentTimeout = options.delayCache.get(options.url.host)!;
+			if (retryAfter > currentTimeout) {
+				options.delayCache.set(options.url.host, retryAfter);
+			}
+		} else {
+			options.delayCache.set(options.url.host, retryAfter);
+		}
+
+		options.queue.add(
+			async () => {
+				await this.crawl(options);
+			},
+			{
+				delay: retryAfter - Date.now(),
+			},
+		);
+		const retryDetails: RetryInfo = {
+			url: options.url.href,
+			status: response.status,
+			secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+		};
+		this.emit('retry', retryDetails);
+		return true;
+	}
+
+	/**
+	 * If the response is a 5xx or synthetic 0 response retry N times.
+	 * @param status Status returned by request or 0 if request threw.
+	 * @param opts CrawlOptions used during this request
+	 */
+	shouldRetryOnError(status: number, options: CrawlOptions): boolean {
+		const maxRetries = options.retryErrorsCount;
+
+		if (!options.retryErrors) {
+			return false;
+		}
+
+		// Only retry 0 and >5xx status codes:
+		if (status > 0 && status < 500) {
+			return false;
+		}
+
+		// Check to see if there is already a request to wait for this URL:
+		let currentRetries = 1;
+		if (options.retryErrorsCache.has(options.url.href)) {
+			// Use whichever time is higher in the cache
+			currentRetries = options.retryErrorsCache.get(options.url.href)!;
+			if (currentRetries > maxRetries) return false;
+			options.retryErrorsCache.set(options.url.href, currentRetries + 1);
+		} else {
+			options.retryErrorsCache.set(options.url.href, 1);
+		}
+
+		// Use exponential backoff algorithm to take pressure off upstream service:
+		const retryAfter =
+			2 ** currentRetries * 1000 + Math.random() * options.retryErrorsJitter;
+
+		options.queue.add(
+			async () => {
+				await this.crawl(options);
+			},
+			{
+				delay: retryAfter,
+			},
+		);
+		const retryDetails: RetryInfo = {
+			url: options.url.href,
+			status,
+			secondsUntilRetry: Math.round(retryAfter / 1000),
+		};
+		this.emit('retry', retryDetails);
+		return true;
+	}
 }
 
 /**
@@ -495,9 +509,9 @@ export class LinkChecker extends EventEmitter {
  * @param options CheckOptions to be passed on
  */
 export async function check(options: CheckOptions) {
-  const checker = new LinkChecker();
-  const results = await checker.check(options);
-  return results;
+	const checker = new LinkChecker();
+	const results = await checker.check(options);
+	return results;
 }
 
 /**
@@ -506,11 +520,11 @@ export async function check(options: CheckOptions) {
  * @returns {boolean}
  */
 function isHtml(response: GaxiosResponse): boolean {
-  const contentType = response.headers['content-type'] || '';
-  return (
-    !!contentType.match(/text\/html/g) ||
-    !!contentType.match(/application\/xhtml\+xml/g)
-  );
+	const contentType = (response.headers['content-type'] as string) || '';
+	return (
+		Boolean(/text\/html/g.test(contentType)) ||
+		Boolean(/application\/xhtml\+xml/g.test(contentType))
+	);
 }
 
 /**
@@ -522,25 +536,30 @@ function isHtml(response: GaxiosResponse): boolean {
  * @param options Original CheckOptions passed into the client
  */
 function mapUrl(url?: string, options?: InternalCheckOptions): string {
-  if (!url) {
-    return url!;
-  }
-  let newUrl = url;
+	if (!url) {
+		return url!;
+	}
 
-  // trim the starting http://localhost:0000 if we stood up a local static server
-  if (
-    options?.staticHttpServerHost?.length &&
-    url?.startsWith(options.staticHttpServerHost)
-  ) {
-    newUrl = url.slice(options.staticHttpServerHost.length);
+	let newUrl = url;
 
-    // add the full filesystem path back if we trimmed it
-    if (options?.syntheticServerRoot?.length) {
-      newUrl = path.join(options.syntheticServerRoot, newUrl);
-    }
-    if (newUrl === '') {
-      newUrl = `.${path.sep}`;
-    }
-  }
-  return newUrl!;
+	// Trim the starting http://localhost:0000 if we stood up a local static server
+	if (
+		options?.staticHttpServerHost?.length &&
+		url?.startsWith(options.staticHttpServerHost)
+	) {
+		newUrl = url.slice(options.staticHttpServerHost.length);
+
+		// Add the full filesystem path back if we trimmed it
+		if (options?.syntheticServerRoot?.length) {
+			newUrl = path.join(options.syntheticServerRoot, newUrl);
+		}
+
+		if (newUrl === '') {
+			newUrl = `.${path.sep}`;
+		}
+	}
+
+	return newUrl;
 }
+
+export type {CheckOptions} from './options.js';
