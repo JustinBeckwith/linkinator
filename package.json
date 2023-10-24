@@ -38,7 +38,7 @@
     "@types/escape-html": "^1.0.1",
     "@types/mime": "^3.0.0",
     "@types/mocha": "^10.0.0",
-    "@types/node": "^18.0.0",
+    "@types/node": "^20.0.0",
     "@types/server-destroy": "^1.0.1",
     "@types/sinon": "^10.0.6",
     "c8": "^8.0.0",
