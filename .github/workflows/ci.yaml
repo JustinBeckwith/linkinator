@@ -6,14 +6,14 @@ on:
 name: ci
 env:
   FORCE_COLOR: 2
-  NODE: 18
+  NODE: 20
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: [16, 18, 20]
+        node: [18, 20]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,8 +23,12 @@ jobs:
       - run: node -v
       - run: npm ci
       - run: npm test
-      - run: npm run codecov
-        if: matrix.node == env.NODE
+      - run: npm run coverage
+        if: matrix.node == env.node
+      - uses: codecov/codecov-action@v3
+        if: matrix.node == env.node
+        with:
+          fail_ci_if_error: false
   windows:
     runs-on: windows-latest
     steps:

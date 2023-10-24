@@ -14,21 +14,21 @@
   "scripts": {
     "pretest": "npm run compile",
     "prepare": "npm run compile",
-    "codecov": "c8 report --reporter=json && codecov -f coverage/*.json",
+    "coverage": "c8 report --reporter=json",
     "compile": "tsc -p .",
     "test": "c8 mocha build/test",
-    "fix": "gts fix",
-    "lint": "gts lint",
+    "fix": "xo --prettier --fix",
+    "lint": "xo --prettier",
     "build-binaries": "pkg . --out-path build/binaries",
     "docs-test": "node build/src/cli.js ./README.md"
   },
   "dependencies": {
     "chalk": "^5.0.0",
     "escape-html": "^1.0.3",
-    "gaxios": "^5.0.0",
-    "glob": "^9.3.2",
+    "gaxios": "^6.0.0",
+    "glob": "^10.3.10",
     "htmlparser2": "^9.0.0",
-    "marked": "^7.0.4",
+    "marked": "^9.0.0",
     "meow": "^12.0.1",
     "mime": "^3.0.0",
     "server-destroy": "^1.0.1",
@@ -38,23 +38,22 @@
     "@types/escape-html": "^1.0.1",
     "@types/mime": "^3.0.0",
     "@types/mocha": "^10.0.0",
-    "@types/node": "^18.0.0",
+    "@types/node": "^20.0.0",
     "@types/server-destroy": "^1.0.1",
     "@types/sinon": "^10.0.6",
     "c8": "^8.0.0",
-    "codecov": "^3.8.2",
     "execa": "^8.0.0",
-    "gts": "^4.0.0",
     "mocha": "^10.0.0",
     "nock": "^13.2.1",
     "pkg": "^5.4.1",
     "semantic-release": "^22.0.0",
     "sinon": "^17.0.0",
     "strip-ansi": "^7.0.1",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "xo": "^0.56.0"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "files": [
     "build/src"
@@ -70,5 +69,15 @@
     "broken",
     "link",
     "checker"
-  ]
+  ],
+  "xo": {
+    "rules": {
+      "unicorn/prefer-event-target": "off",
+      "complexity": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": "off"
+    },
+    "ignores": [
+      "test/fixtures"
+    ]
+  }
 }
