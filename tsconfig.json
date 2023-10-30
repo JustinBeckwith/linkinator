@@ -2,6 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "target": "ES2022",
+    "declaration": true,
     "rootDir": ".",
     "outDir": "build",
     "module": "Node16",
