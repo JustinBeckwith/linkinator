@@ -30,13 +30,12 @@
     "htmlparser2": "^9.0.0",
     "marked": "^10.0.0",
     "meow": "^13.0.0",
-    "mime": "^3.0.0",
+    "mime": "^4.0.0",
     "server-destroy": "^1.0.1",
     "srcset": "^5.0.0"
   },
   "devDependencies": {
     "@types/escape-html": "^1.0.1",
-    "@types/mime": "^3.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "^20.0.0",
     "@types/server-destroy": "^1.0.1",

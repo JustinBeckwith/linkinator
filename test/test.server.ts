@@ -42,7 +42,7 @@ describe('server', () => {
 	it('should serve correct mime type', async () => {
 		const url = `${rootUrl}/script.js`;
 		const response = await request({url});
-		const expectedContentType = 'application/javascript';
+		const expectedContentType = 'text/javascript';
 		assert.strictEqual(response.headers['content-type'], expectedContentType);
 	});
 
