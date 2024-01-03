@@ -1,5 +1,4 @@
 import {type Readable} from 'node:stream';
-// eslint-disable-next-line n/file-extension-in-import
 import {WritableStream} from 'htmlparser2/lib/WritableStream';
 import {parseSrcset} from 'srcset';
 
