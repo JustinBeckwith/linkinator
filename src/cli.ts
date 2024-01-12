@@ -195,6 +195,7 @@ async function main() {
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
 		retryErrorsJitter: Number(flags.retryErrorsJitter),
+		urlRewriteExpressions: flags.urlRewriteExpressions || [],
 	};
 	if (flags.skip) {
 		if (typeof flags.skip === 'string') {
@@ -212,12 +213,10 @@ async function main() {
 	}
 
 	if (flags.urlRewriteSearch && flags.urlRewriteReplace) {
-		options.urlRewriteExpressions = [
-			{
-				pattern: new RegExp(flags.urlRewriteSearch),
-				replacement: flags.urlRewriteReplace,
-			},
-		];
+		options.urlRewriteExpressions.push({
+			pattern: new RegExp(flags.urlRewriteSearch),
+			replacement: flags.urlRewriteReplace,
+		});
 	}
 
 	const result = await checker.check(options);
