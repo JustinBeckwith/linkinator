@@ -166,10 +166,6 @@ async function main() {
 				logger.info(`${state} ${chalk.gray(link.url)}`);
 				break;
 			}
-
-			default: {
-				throw new Error('Unexpected link state.');
-			}
 		}
 
 		if (format === Format.CSV) {
@@ -247,14 +243,12 @@ async function main() {
 	// }
 	// eslint-disable-next-line unicorn/no-array-reduce
 	const parents = result.links.reduce<Record<string, LinkResult[]>>(
-		(acc, curr) => {
-			const parent = curr.parent || '';
-			if (!acc[parent]) {
-				acc[parent] = [];
-			}
+		(accumulator, current) => {
+			const parent = current.parent || '';
+			accumulator[parent] ||= [];
 
-			acc[parent].push(curr);
-			return acc;
+			accumulator[parent].push(current);
+			return accumulator;
 		},
 		{},
 	);
@@ -305,10 +299,6 @@ async function main() {
 					state = `[${chalk.grey('SKP')}]`;
 					logger.info(`  ${state} ${chalk.gray(link.url)}`);
 					break;
-				}
-
-				default: {
-					throw new Error('Unexpected link state.');
 				}
 			}
 		}
@@ -397,10 +387,6 @@ function shouldShowResult(link: LinkResult, verbosity: LogLevel) {
 
 		case LinkState.SKIPPED: {
 			return verbosity <= LogLevel.INFO;
-		}
-
-		default: {
-			throw new Error('Unexpected link state.');
 		}
 	}
 }

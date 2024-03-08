@@ -2,7 +2,7 @@ import {type Readable} from 'node:stream';
 import {WritableStream} from 'htmlparser2/lib/WritableStream';
 import {parseSrcset} from 'srcset';
 
-const linksAttr: Record<string, string[]> = {
+const linksAttribute: Record<string, string[]> = {
 	background: ['body'],
 	cite: ['blockquote', 'del', 'ins', 'q'],
 	data: ['object'],
@@ -29,11 +29,11 @@ const linksAttr: Record<string, string[]> = {
 	srcset: ['img', 'source'],
 };
 // Create lookup table for tag name to attribute that contains URL:
-const tagAttr: Record<string, string[]> = {};
-for (const attr of Object.keys(linksAttr)) {
-	for (const tag of linksAttr[attr]) {
-		if (!tagAttr[tag]) tagAttr[tag] = [];
-		tagAttr[tag].push(attr);
+const tagAttribute: Record<string, string[]> = {};
+for (const attribute of Object.keys(linksAttribute)) {
+	for (const tag of linksAttribute[attribute]) {
+		tagAttribute[tag] ||= [];
+		tagAttribute[tag].push(attribute);
 	}
 }
 
@@ -59,6 +59,7 @@ export async function getLinks(
 			}
 
 			// ignore href properties for link tags where rel is likely to fail
+			// eslint-disable-next-line unicorn/prevent-abbreviations
 			const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
 			if (tag === 'link' && relValuesToIgnore.includes(attributes.rel)) {
 				return;
@@ -75,11 +76,11 @@ export async function getLinks(
 				}
 			}
 
-			if (tagAttr[tag]) {
-				for (const attr of tagAttr[tag]) {
-					const linkString = attributes[attr];
+			if (tagAttribute[tag]) {
+				for (const attribute of tagAttribute[tag]) {
+					const linkString = attributes[attribute];
 					if (linkString) {
-						for (const link of parseAttr(attr, linkString)) {
+						for (const link of parseAttribute(attribute, linkString)) {
 							links.push(parseLink(link, realBaseUrl));
 						}
 					}
@@ -114,7 +115,7 @@ function isAbsoluteUrl(url: string): boolean {
 	return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
 }
 
-function parseAttr(name: string, value: string): string[] {
+function parseAttribute(name: string, value: string): string[] {
 	switch (name) {
 		case 'srcset': {
 			// The swapping of any multiple spaces into a single space is here to

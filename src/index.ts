@@ -71,7 +71,7 @@ export class LinkChecker extends EventEmitter {
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
-	on(event: string | symbol, listener: (...args: any[]) => void): this {
+	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}
 
@@ -86,7 +86,7 @@ export class LinkChecker extends EventEmitter {
 			options.path = [options.path];
 		}
 
-		options.linksToSkip = options.linksToSkip || [];
+		options.linksToSkip ||= [];
 		let server: http.Server | undefined;
 		const hasHttpPaths = options.path.find((x) => x.startsWith('http'));
 		if (!hasHttpPaths) {

@@ -76,12 +76,12 @@ async function handleRequest(
 		const isDirectory = stats.isDirectory();
 		if (isDirectory) {
 			// This means we got a path with no / at the end!
-			const doc = "<html><body>Redirectin'</body></html>";
+			const document = "<html><body>Redirectin'</body></html>";
 			response.statusCode = 301;
 			response.setHeader('Content-Type', 'text/html; charset=UTF-8');
-			response.setHeader('Content-Length', Buffer.byteLength(doc));
+			response.setHeader('Content-Length', Buffer.byteLength(document));
 			response.setHeader('Location', request.url + '/');
-			response.end(doc);
+			response.end(document);
 			return;
 		}
 	} catch (error) {
