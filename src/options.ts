@@ -75,9 +75,7 @@ export async function processOptions(
 		);
 	}
 
-	if (options.serverRoot) {
-		options.serverRoot = path.normalize(options.serverRoot);
-	}
+	options.serverRoot &&= path.normalize(options.serverRoot);
 
 	// Expand globs into paths
 	if (!isUrlType) {
