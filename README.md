@@ -239,10 +239,11 @@ Constructor method that can be used to create a new `LinkChecker` instance.  Thi
 #### Simple example
 
 ```js
-const link = require('linkinator');
+import { LinkChecker } from 'linkinator';
 
 async function simple() {
-  const results = await link.check({
+  const checker = new LinkChecker();
+  const results = await checker.check({
     path: 'http://example.com'
   });
 
@@ -277,11 +278,11 @@ simple();
 In most cases you're going to want to respond to events, as running the check command can kinda take a long time.
 
 ```js
-const link = require('linkinator');
+import { LinkChecker } from 'linkinator';
 
 async function complex() {
   // create a new `LinkChecker` that we'll use to run the scan.
-  const checker = new link.LinkChecker();
+  const checker = new LinkChecker();
 
   // Respond to the beginning of a new page being scanned
   checker.on('pagestart', url => {
