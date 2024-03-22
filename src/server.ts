@@ -50,7 +50,10 @@ async function handleRequest(
 	root: string,
 	options: WebServerOptions,
 ) {
-	const requestUrl = new URL(request.url || '/', `http://localhost:${options.port}`);
+	const requestUrl = new URL(
+		request.url || '/',
+		`http://localhost:${options.port}`,
+	);
 	const pathParts = requestUrl.pathname
 		.split('/')
 		.filter(Boolean)
@@ -75,7 +78,6 @@ async function handleRequest(
 		const stats = await fs.stat(localPath);
 		const isDirectory = stats.isDirectory();
 		if (isDirectory) {
-
 			const redirectUrl = new URL(requestUrl);
 			if (!redirectUrl.pathname.endsWith('/')) {
 				redirectUrl.pathname += '/';
