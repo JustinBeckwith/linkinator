@@ -12,10 +12,10 @@ describe('cli', function () {
 	let server: http.Server;
 	this.timeout(20_000);
 
-	const pkg = JSON.parse(
+	const package_ = JSON.parse(
 		fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 	) as {bin: {linkinator: string}};
-	const {linkinator} = pkg.bin;
+	const {linkinator} = package_.bin;
 	const node = 'node';
 
 	afterEach(async () => {

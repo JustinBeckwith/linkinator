@@ -33,15 +33,15 @@ export class Queue extends EventEmitter {
 	}
 
 	on(event: 'done', listener: () => void): this;
-	on(event: string | symbol, listener: (...args: any[]) => void): this {
+	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}
 
-	add(fn: AsyncFunction, options?: QueueItemOptions) {
+	add(function_: AsyncFunction, options?: QueueItemOptions) {
 		const delay = options?.delay || 0;
 		const timeToRun = Date.now() + delay;
 		this.q.push({
-			fn,
+			fn: function_,
 			timeToRun,
 		});
 		setTimeout(() => {
