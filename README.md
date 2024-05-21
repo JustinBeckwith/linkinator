@@ -3,10 +3,8 @@
 > A super simple site crawler and broken link checker.
 
 [![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.org/package/linkinator)
-[![Build Status](https://img.shields.io/github/workflow/status/JustinBeckwith/linkinator/ci/main)](https://github.com/JustinBeckwith/linkinator/actions?query=branch%3Amain+workflow%3Aci)
 [![codecov](https://img.shields.io/codecov/c/github/JustinBeckwith/linkinator/main)](https://app.codecov.io/gh/JustinBeckwith/linkinator)
-[![Known Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/github/JustinBeckwith/linkinator)](https://snyk.io/test/github/JustinBeckwith/linkinator)
-[![Code Style: Google](https://img.shields.io/badge/code%20style-google-blueviolet)](https://github.com/google/gts)
+[![XO code style](https://shields.io/badge/code_style-5ed9c7?logo=xo&labelColor=gray)](https://github.com/xojs/xo)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
 
 
