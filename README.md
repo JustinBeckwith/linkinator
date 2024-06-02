@@ -127,25 +127,25 @@ npx linkinator ./docs --skip www.googleapis.com
 The `--skip` parameter will accept any regex! You can do more complex matching, or even tell it to only scan links with a given domain:
 
 ```sh
-linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
+npx linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
 ```
 
 Maybe you're going to pipe the output to another program.  Use the `--format` option to get JSON or CSV!
 
 ```sh
-linkinator ./docs --format CSV
+npx linkinator ./docs --format CSV
 ```
 
 Let's make sure the `README.md` in our repo doesn't have any busted links:
 
 ```sh
-linkinator ./README.md --markdown
+npx linkinator ./README.md --markdown
 ```
 
 You know what, we better check all of the markdown files!
 
 ```sh
-linkinator "**/*.md" --markdown
+npx linkinator "**/*.md" --markdown
 ```
 
 ### Configuration file
@@ -179,7 +179,7 @@ All options are optional. It should look like this:
 To load config settings outside the CWD, you can pass the `--config` flag to the `linkinator` CLI:
 
 ```sh
-linkinator --config /some/path/your-config.json
+npx linkinator --config /some/path/your-config.json
 ```
 
 ## GitHub Actions
@@ -341,7 +341,7 @@ This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment
 You may have noticed in the example, when using a glob the pattern is encapsulated in quotes:
 
 ```sh
-linkinator "**/*.md" --markdown
+npx linkinator "**/*.md" --markdown
 ```
 
 Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern.
@@ -351,7 +351,7 @@ Without the quotes, some shells will attempt to expand the glob paths on their o
 Oftentimes when a link fails, it's an easy to spot typo, or a clear 404.  Other times ... you may need more details on exactly what went wrong.  To see a full call stack for the HTTP request failure, use `--verbosity DEBUG`:
 
 ```sh
-linkinator https://jbeckwith.com --verbosity DEBUG
+npx linkinator https://jbeckwith.com --verbosity DEBUG
 ```
 
 ### Controlling Output
@@ -359,7 +359,7 @@ linkinator https://jbeckwith.com --verbosity DEBUG
 The `--verbosity` flag offers preset options for controlling the output, but you may want more control.  Using [`jq`](https://stedolan.github.io/jq/) and `--format JSON` - you can do just that!
 
 ```sh
-linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
+npx linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
 ```
 
 ## License
