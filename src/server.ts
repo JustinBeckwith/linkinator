@@ -105,7 +105,16 @@ async function handleRequest(
 		let mimeType = mime.getType(localPath);
 		const isMarkdown = request.url?.toLocaleLowerCase().endsWith('.md');
 		if (isMarkdown && options.markdown) {
-			data = marked(data, {gfm: true});
+			const markedData = marked(data, {gfm: true});
+			if (typeof markedData === 'string') {
+				data = markedData;
+			} else if (
+				(typeof markedData === 'object' || typeof markedData === 'function') &&
+				typeof markedData.then === 'function'
+			) {
+				data = await markedData;
+			}
+
 			mimeType = 'text/html; charset=UTF-8';
 		}
 
