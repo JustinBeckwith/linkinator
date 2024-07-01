@@ -70,7 +70,7 @@ jobs:
           node-version: ${{ env.NODE }}
           cache: npm
       - run: npm ci
-      - run: npm run compile
+      - run: npm run build
       # disabed due to https://github.com/vercel/pkg/issues/1291
       #     - run: npm run build-binaries
       - run: npx semantic-release

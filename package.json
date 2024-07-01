@@ -12,10 +12,10 @@
 		"linkinator": "./build/src/cli.js"
 	},
 	"scripts": {
-		"pretest": "npm run compile",
-		"prepare": "npm run compile",
+		"pretest": "npm run build",
+		"prepare": "npm run build",
 		"coverage": "c8 report --reporter=json",
-		"compile": "tsc -p .",
+		"build": "tsc -p .",
 		"test": "c8 mocha build/test",
 		"fix": "biome check --write .",
 		"lint": "biome check .",
