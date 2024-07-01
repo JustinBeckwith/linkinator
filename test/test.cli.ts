@@ -110,6 +110,19 @@ describe('cli', function () {
 		assert.ok(output.links);
 	});
 
+	it('should look for linkinator.config.json in the cwd', async () => {
+		const response = await execa(node, ['../../../build/src/cli.js', '.'], {
+			cwd: 'test/fixtures/defaultconfig',
+		});
+		let output: { passed: boolean };
+		try {
+			output = JSON.parse(response.stdout);
+			assert.strictEqual(output.passed, true);
+		} catch (e) {
+			assert.fail('Expected JSON output');
+		}
+	});
+
 	it('should not show links if --silent', async () => {
 		const response = await execa(node, [
 			linkinator,

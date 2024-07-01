@@ -22,15 +22,18 @@ export type Flags = {
 	urlRewriteReplace?: string;
 };
 
+const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
+type ConfigExtensions = (typeof validConfigExtensions)[number];
+
 export async function getConfig(flags: Flags) {
 	// Check to see if a config file path was passed
-	const configPath = flags.config || 'linkinator.config.json';
-	let config: Flags = {};
-
+	let config: Flags;
 	if (flags.config) {
-		config = await parseConfigFile(configPath);
+		config = await parseConfigFile(flags.config);
+	} else {
+		config = (await tryGetDefaultConfig()) || {};
 	}
-
+	
 	// `meow` is set up to pass boolean flags as `undefined` if not passed.
 	// copy the struct, and delete properties that are `undefined` so the merge
 	// doesn't blast away config level settings.
@@ -47,8 +50,20 @@ export async function getConfig(flags: Flags) {
 	return config;
 }
 
-const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
-type ConfigExtensions = (typeof validConfigExtensions)[number];
+/**
+ * Attempt to load `linkinator.config.json`, assuming the user hasn't
+ * passed a specific path to a config.
+ * @returns The contents of the default config if present, or an empty config.
+ */
+async function tryGetDefaultConfig() {
+	const defaultConfigPath = path.join(process.cwd(), 'linkinator.config.json');
+	try {
+		const config = await parseConfigFile(defaultConfigPath);
+		return config;
+	} catch (e) {
+		return {};
+	}
+}
 
 async function parseConfigFile(configPath: string): Promise<Flags> {
 	const typeOfConfig = getTypeOfConfig(configPath);
