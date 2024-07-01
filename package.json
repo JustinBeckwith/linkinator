@@ -17,8 +17,8 @@
     "coverage": "c8 report --reporter=json",
     "compile": "tsc -p .",
     "test": "c8 mocha build/test",
-    "fix": "biome check --write",
-    "lint": "biome check",
+    "fix": "biome check --write .",
+    "lint": "biome check .",
     "build-binaries": "pkg . --out-path build/binaries",
     "docs-test": "node build/src/cli.js ./README.md"
   },
