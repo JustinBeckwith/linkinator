@@ -1,0 +1,4 @@
+{ 
+  "main": "build/src/cli.js", 
+  "output": "build/binaries/sea-prep.blob"
+}

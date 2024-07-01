@@ -19,7 +19,7 @@
     "test": "c8 mocha build/test",
     "fix": "xo --prettier --fix",
     "lint": "xo --prettier",
-    "build-binaries": "pkg . --out-path build/binaries",
+    "build-binaries": "zx tools/build-binaries.js",
     "docs-test": "node build/src/cli.js ./README.md"
   },
   "dependencies": {
@@ -45,11 +45,13 @@
     "mocha": "^10.0.0",
     "nock": "^13.2.1",
     "pkg": "^5.4.1",
+    "postject": "^1.0.0-alpha.6",
     "semantic-release": "^24.0.0",
     "sinon": "^18.0.0",
     "strip-ansi": "^7.0.1",
     "typescript": "^5.0.0",
-    "xo": "^0.58.0"
+    "xo": "^0.58.0",
+    "zx": "^8.1.3"
   },
   "engines": {
     "node": ">=18"
