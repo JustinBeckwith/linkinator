@@ -33,7 +33,7 @@ export async function getConfig(flags: Flags) {
 	} else {
 		config = (await tryGetDefaultConfig()) || {};
 	}
-	
+
 	// `meow` is set up to pass boolean flags as `undefined` if not passed.
 	// copy the struct, and delete properties that are `undefined` so the merge
 	// doesn't blast away config level settings.
