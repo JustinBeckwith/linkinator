@@ -1,8 +1,5 @@
 {
-  "extends": [
-    "config:base",
-    ":disableDependencyDashboard"
-  ],
-  "pinVersions": false,
-  "rebaseStalePrs": true
+	"extends": ["config:base", ":disableDependencyDashboard"],
+	"pinVersions": false,
+	"rebaseStalePrs": true
 }

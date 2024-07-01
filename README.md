@@ -93,6 +93,9 @@ $ linkinator LOCATIONS [ --arguments ]
     --url-rewrite-replace
         Expression used to replace search content.  Must be used with --url-rewrite-search.
 
+    --user-agent
+        The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+
     --verbosity
         Override the default verbosity for this command. Available options are
         'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
@@ -127,25 +130,25 @@ npx linkinator ./docs --skip www.googleapis.com
 The `--skip` parameter will accept any regex! You can do more complex matching, or even tell it to only scan links with a given domain:
 
 ```sh
-linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
+npx linkinator http://jbeckwith.com --skip '^(?!http://jbeckwith.com)'
 ```
 
 Maybe you're going to pipe the output to another program.  Use the `--format` option to get JSON or CSV!
 
 ```sh
-linkinator ./docs --format CSV
+npx linkinator ./docs --format CSV
 ```
 
 Let's make sure the `README.md` in our repo doesn't have any busted links:
 
 ```sh
-linkinator ./README.md --markdown
+npx linkinator ./README.md --markdown
 ```
 
 You know what, we better check all of the markdown files!
 
 ```sh
-linkinator "**/*.md" --markdown
+npx linkinator "**/*.md" --markdown
 ```
 
 ### Configuration file
@@ -173,13 +176,14 @@ All options are optional. It should look like this:
   "retryErrorsJitter": 5,
   "urlRewriteSearch": "/pattern/",
   "urlRewriteReplace": "replacement",
+  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)",
 }
 ```
 
 To load config settings outside the CWD, you can pass the `--config` flag to the `linkinator` CLI:
 
 ```sh
-linkinator --config /some/path/your-config.json
+npx linkinator --config /some/path/your-config.json
 ```
 
 ## GitHub Actions
@@ -223,6 +227,7 @@ where the server is started.  Defaults to the path passed in `path`.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
 - `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement.
+- `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
 
 ### linkinator.LinkChecker()
 
@@ -239,10 +244,11 @@ Constructor method that can be used to create a new `LinkChecker` instance.  Thi
 #### Simple example
 
 ```js
-const link = require('linkinator');
+import { LinkChecker } from 'linkinator';
 
 async function simple() {
-  const results = await link.check({
+  const checker = new LinkChecker();
+  const results = await checker.check({
     path: 'http://example.com'
   });
 
@@ -277,11 +283,11 @@ simple();
 In most cases you're going to want to respond to events, as running the check command can kinda take a long time.
 
 ```js
-const link = require('linkinator');
+import { LinkChecker } from 'linkinator';
 
 async function complex() {
   // create a new `LinkChecker` that we'll use to run the scan.
-  const checker = new link.LinkChecker();
+  const checker = new LinkChecker();
 
   // Respond to the beginning of a new page being scanned
   checker.on('pagestart', url => {
@@ -340,7 +346,7 @@ This library supports proxies via the `HTTP_PROXY` and `HTTPS_PROXY` environment
 You may have noticed in the example, when using a glob the pattern is encapsulated in quotes:
 
 ```sh
-linkinator "**/*.md" --markdown
+npx linkinator "**/*.md" --markdown
 ```
 
 Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern.
@@ -350,7 +356,7 @@ Without the quotes, some shells will attempt to expand the glob paths on their o
 Oftentimes when a link fails, it's an easy to spot typo, or a clear 404.  Other times ... you may need more details on exactly what went wrong.  To see a full call stack for the HTTP request failure, use `--verbosity DEBUG`:
 
 ```sh
-linkinator https://jbeckwith.com --verbosity DEBUG
+npx linkinator https://jbeckwith.com --verbosity DEBUG
 ```
 
 ### Controlling Output
@@ -358,7 +364,7 @@ linkinator https://jbeckwith.com --verbosity DEBUG
 The `--verbosity` flag offers preset options for controlling the output, but you may want more control.  Using [`jq`](https://stedolan.github.io/jq/) and `--format JSON` - you can do just that!
 
 ```sh
-linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
+npx linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
 ```
 
 ## License

@@ -2,16 +2,16 @@ import assert from 'node:assert';
 import path from 'node:path';
 import process from 'node:process';
 import gaxios from 'gaxios';
+import { afterEach, describe, it } from 'mocha';
 import nock from 'nock';
 import * as sinon from 'sinon';
-import {describe, it, afterEach} from 'mocha';
 import {
-	check,
-	LinkState,
-	LinkChecker,
 	type CheckOptions,
-	headers,
+	LinkChecker,
+	LinkState,
+	check,
 } from '../src/index.js';
+import { DEFAULT_USER_AGENT } from '../src/options.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -24,14 +24,14 @@ describe('linkinator', () => {
 
 	it('should perform a basic shallow scan', async () => {
 		const scope = nock('http://fake.local').head('/').reply(200);
-		const results = await check({path: 'test/fixtures/basic'});
+		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
 		scope.done();
 	});
 
 	it('should only try a link once', async () => {
 		const scope = nock('http://fake.local').head('/').reply(200);
-		const results = await check({path: 'test/fixtures/twice'});
+		const results = await check({ path: 'test/fixtures/twice' });
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
 		scope.done();
@@ -41,7 +41,7 @@ describe('linkinator', () => {
 		const scope = nock('http://fake.local').head('/').reply(200);
 		const checker = new LinkChecker();
 		const checkerSpy = sinon.spy(checker, 'crawl');
-		const results = await checker.check({path: 'test/fixtures/twice'});
+		const results = await checker.check({ path: 'test/fixtures/twice' });
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
 		assert.strictEqual(checkerSpy.callCount, 2);
@@ -76,7 +76,7 @@ describe('linkinator', () => {
 
 	it('should report broken links', async () => {
 		const scope = nock('http://fake.local').head('/').reply(404);
-		const results = await check({path: 'test/fixtures/broke'});
+		const results = await check({ path: 'test/fixtures/broke' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
@@ -97,7 +97,7 @@ describe('linkinator', () => {
 	it('should handle fetch exceptions', async () => {
 		const requestStub = sinon.stub(gaxios, 'request');
 		requestStub.throws('Fetch error');
-		const results = await check({path: 'test/fixtures/basic'});
+		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
@@ -107,7 +107,7 @@ describe('linkinator', () => {
 	});
 
 	it('should report malformed links as broken', async () => {
-		const results = await check({path: 'test/fixtures/malformed'});
+		const results = await check({ path: 'test/fixtures/malformed' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
@@ -139,7 +139,7 @@ describe('linkinator', () => {
 			},
 		];
 
-		for (const {fixture, nonBrokenUrl} of cases) {
+		for (const { fixture, nonBrokenUrl } of cases) {
 			const scope = nock('http://fake.local')
 				.get('/pageBase/index')
 				.replyWithFile(200, fixture, {
@@ -148,7 +148,6 @@ describe('linkinator', () => {
 				.head(nonBrokenUrl)
 				.reply(200);
 
-			// eslint-disable-next-line no-await-in-loop
 			const results = await check({
 				path: 'http://fake.local/pageBase/index',
 			});
@@ -187,7 +186,7 @@ describe('linkinator', () => {
 	});
 
 	it('should detect broken image links', async () => {
-		const results = await check({path: 'test/fixtures/image'});
+		const results = await check({ path: 'test/fixtures/image' });
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			2,
@@ -220,7 +219,7 @@ describe('linkinator', () => {
 
 	it('should not follow non-http[s] links', async () => {
 		// Includes mailto, data urls, and irc
-		const results = await check({path: 'test/fixtures/protocols'});
+		const results = await check({ path: 'test/fixtures/protocols' });
 		assert.ok(results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.SKIPPED).length,
@@ -229,13 +228,13 @@ describe('linkinator', () => {
 	});
 
 	it('should work with picture elements', async () => {
-		const results = await check({path: 'test/fixtures/picture'});
+		const results = await check({ path: 'test/fixtures/picture' });
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 4);
 	});
 
 	it('should not recurse by default', async () => {
-		const results = await check({path: 'test/fixtures/recurse'});
+		const results = await check({ path: 'test/fixtures/recurse' });
 		assert.strictEqual(results.links.length, 2);
 	});
 
@@ -244,7 +243,7 @@ describe('linkinator', () => {
 			nock('http://fake.local').head('/').reply(405),
 			nock('http://fake.local').get('/').reply(200),
 		];
-		const results = await check({path: 'test/fixtures/basic'});
+		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
 		for (const x of scopes) {
 			x.done();
@@ -273,7 +272,7 @@ describe('linkinator', () => {
 
 	it('should not attempt to validate preconnect or prefetch urls', async () => {
 		const scope = nock('http://fake.local').head('/site.css').reply(200, '');
-		const results = await check({path: 'test/fixtures/prefetch'});
+		const results = await check({ path: 'test/fixtures/prefetch' });
 		scope.done();
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
@@ -284,7 +283,7 @@ describe('linkinator', () => {
 			nock('http://fake.local').head('/').reply(403),
 			nock('http://fake.local').get('/').reply(200),
 		];
-		const results = await check({path: 'test/fixtures/basic'});
+		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
 		for (const x of scopes) {
 			x.done();
@@ -366,7 +365,9 @@ describe('linkinator', () => {
 	});
 
 	it('should not pollute the original options after merge', async () => {
-		const options: CheckOptions = Object.freeze({path: 'test/fixtures/basic'});
+		const options: CheckOptions = Object.freeze({
+			path: 'test/fixtures/basic',
+		});
 		const scope = nock('http://fake.local').head('/').reply(200);
 		const results = await check(options);
 		assert.ok(results.passed);
@@ -408,7 +409,6 @@ describe('linkinator', () => {
 
 	it('should print debug information when the env var is set', async () => {
 		sinon.stub(process, 'env').value({
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			LINKINATOR_DEBUG: true,
 		});
 		const consoleSpy = sinon.stub(console, 'log');
@@ -450,12 +450,16 @@ describe('linkinator', () => {
 	it('should always send a human looking User-Agent', async () => {
 		const scopes = [
 			nock('http://fake.local')
-				.get('/', undefined, {reqheaders: headers})
+				.get('/', undefined, {
+					reqheaders: { 'User-Agent': DEFAULT_USER_AGENT },
+				})
 				.replyWithFile(200, 'test/fixtures/local/index.html', {
 					'Content-Type': 'text/html; charset=UTF-8',
 				}),
 			nock('http://fake.local')
-				.get('/page2.html', undefined, {reqheaders: headers})
+				.get('/page2.html', undefined, {
+					reqheaders: { 'User-Agent': DEFAULT_USER_AGENT },
+				})
 				.replyWithFile(200, 'test/fixtures/local/page2.html', {
 					'Content-Type': 'text/html; charset=UTF-8',
 				}),
@@ -474,7 +478,11 @@ describe('linkinator', () => {
 			path: 'http://fake.local',
 		});
 		assert.ok(!results.passed);
-		const error = results.links[0].failureDetails![0] as Error;
+		const failureDetails = results.links[0].failureDetails;
+		if (!failureDetails || failureDetails.length === 0) {
+			assert.fail('unexpected failure details');
+		}
+		const error = failureDetails[0] as Error;
 		assert.match(error.message, /Nock: Disallowed net connect for/);
 	});
 
@@ -510,7 +518,7 @@ describe('linkinator', () => {
 
 	it('should scan links in <meta content="URL"> tags', async () => {
 		const scope = nock('http://fake.local').head('/').reply(200);
-		const results = await check({path: 'test/fixtures/twittercard'});
+		const results = await check({ path: 'test/fixtures/twittercard' });
 		assert.ok(results.passed);
 		scope.done();
 		assert.strictEqual(results.links.length, 2);
@@ -535,7 +543,7 @@ describe('linkinator', () => {
 
 	it('should provide a relative path in the results', async () => {
 		const scope = nock('http://fake.local').head('/').reply(200);
-		const results = await check({path: 'test/fixtures/basic'});
+		const results = await check({ path: 'test/fixtures/basic' });
 		assert.strictEqual(results.links.length, 2);
 		const [rootLink, fakeLink] = results.links;
 		assert.strictEqual(rootLink.url, path.join('test', 'fixtures', 'basic'));
@@ -570,7 +578,7 @@ describe('linkinator', () => {
 	});
 
 	it('should report malformed links as broken', async () => {
-		const results = await check({path: 'test/fixtures/malformed'});
+		const results = await check({ path: 'test/fixtures/malformed' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
@@ -579,7 +587,7 @@ describe('linkinator', () => {
 	});
 
 	it('should handle comma separated srcset', async () => {
-		const results = await check({path: 'test/fixtures/srcset'});
+		const results = await check({ path: 'test/fixtures/srcset' });
 		assert.ok(results.passed);
 	});
 
@@ -589,5 +597,16 @@ describe('linkinator', () => {
 			path: 'index.html',
 		});
 		assert.ok(results.passed);
+	});
+
+	it('should accept a custom user agent', async () => {
+		const userAgent = 'linkinator-test';
+		const scope = nock('http://fake.local')
+			.head('/')
+			.matchHeader('user-agent', userAgent)
+			.reply(200);
+		const results = await check({ path: 'test/fixtures/basic', userAgent });
+		assert.ok(results.passed);
+		scope.done();
 	});
 });

@@ -1,12 +1,12 @@
 import assert from 'node:assert';
+import fs from 'node:fs';
 import http from 'node:http';
 import util from 'node:util';
-import fs from 'node:fs';
-import {execa} from 'execa';
-import {describe, it} from 'mocha';
-import stripAnsi from 'strip-ansi';
+import { execa } from 'execa';
+import { describe, it } from 'mocha';
 import enableDestroy from 'server-destroy';
-import {type LinkResult, LinkState} from '../src/index.js';
+import stripAnsi from 'strip-ansi';
+import { type LinkResult, LinkState } from '../src/index.js';
 
 describe('cli', function () {
 	let server: http.Server;
@@ -14,8 +14,8 @@ describe('cli', function () {
 
 	const package_ = JSON.parse(
 		fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
-	) as {bin: {linkinator: string}};
-	const {linkinator} = package_.bin;
+	) as { bin: { linkinator: string } };
+	const { linkinator } = package_.bin;
 	const node = 'node';
 
 	afterEach(async () => {
@@ -108,6 +108,19 @@ describe('cli', function () {
 		]);
 		const output = JSON.parse(response.stdout) as Record<string, string>;
 		assert.ok(output.links);
+	});
+
+	it('should look for linkinator.config.json in the cwd', async () => {
+		const response = await execa(node, ['../../../build/src/cli.js', '.'], {
+			cwd: 'test/fixtures/defaultconfig',
+		});
+		let output: { passed: boolean };
+		try {
+			output = JSON.parse(response.stdout);
+			assert.strictEqual(output.passed, true);
+		} catch (e) {
+			assert.fail('Expected JSON output');
+		}
 	});
 
 	it('should not show links if --silent', async () => {

@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
-import meow from 'meow';
 import chalk from 'chalk';
-import {type Flags, getConfig} from './config.js';
-import {Format, Logger, LogLevel} from './logger.js';
+import meow from 'meow';
+import { type Flags, getConfig } from './config.js';
 import {
-	LinkChecker,
-	LinkState,
-	type LinkResult,
 	type CheckOptions,
+	LinkChecker,
+	type LinkResult,
+	LinkState,
 	type RetryInfo,
 } from './index.js';
+import { Format, LogLevel, Logger } from './logger.js';
 
 const cli = meow(
 	`
@@ -76,6 +76,9 @@ const cli = meow(
       --url-rewrite-replace
           Expression used to replace search content.  Must be used with --url-rewrite-search.
 
+			--user-agent
+					The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+
       --verbosity
           Override the default verbosity for this command. Available options are
           'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
@@ -90,23 +93,23 @@ const cli = meow(
 	{
 		importMeta: import.meta,
 		flags: {
-			config: {type: 'string'},
-			concurrency: {type: 'number'},
-			recurse: {type: 'boolean', shortFlag: 'r'},
-			skip: {type: 'string', shortFlag: 's', isMultiple: true},
-			format: {type: 'string', shortFlag: 'f'},
-			silent: {type: 'boolean'},
-			timeout: {type: 'number'},
-			markdown: {type: 'boolean'},
-			serverRoot: {type: 'string'},
-			verbosity: {type: 'string'},
-			directoryListing: {type: 'boolean'},
-			retry: {type: 'boolean'},
-			retryErrors: {type: 'boolean'},
-			retryErrorsCount: {type: 'number', default: 5},
-			retryErrorsJitter: {type: 'number', default: 3000},
-			urlRewriteSearch: {type: 'string'},
-			urlReWriteReplace: {type: 'string'},
+			config: { type: 'string' },
+			concurrency: { type: 'number' },
+			recurse: { type: 'boolean', shortFlag: 'r' },
+			skip: { type: 'string', shortFlag: 's', isMultiple: true },
+			format: { type: 'string', shortFlag: 'f' },
+			silent: { type: 'boolean' },
+			timeout: { type: 'number' },
+			markdown: { type: 'boolean' },
+			serverRoot: { type: 'string' },
+			verbosity: { type: 'string' },
+			directoryListing: { type: 'boolean' },
+			retry: { type: 'boolean' },
+			retryErrors: { type: 'boolean' },
+			retryErrorsCount: { type: 'number', default: 5 },
+			retryErrorsJitter: { type: 'number', default: 3000 },
+			urlRewriteSearch: { type: 'string' },
+			urlReWriteReplace: { type: 'string' },
 		},
 		booleanDefault: undefined,
 	},
@@ -150,13 +153,13 @@ async function main() {
 		let state = '';
 		switch (link.state) {
 			case LinkState.BROKEN: {
-				state = `[${chalk.red(link.status!.toString())}]`;
+				state = `[${chalk.red(link.status?.toString())}]`;
 				logger.error(`${state} ${chalk.gray(link.url)}`);
 				break;
 			}
 
 			case LinkState.OK: {
-				state = `[${chalk.green(link.status!.toString())}]`;
+				state = `[${chalk.green(link.status?.toString())}]`;
 				logger.warn(`${state} ${chalk.gray(link.url)}`);
 				break;
 			}
@@ -241,7 +244,6 @@ async function main() {
 	//     }
 	//   ],
 	// }
-	// eslint-disable-next-line unicorn/no-array-reduce
 	const parents = result.links.reduce<Record<string, LinkResult[]>>(
 		(accumulator, current) => {
 			const parent = current.parent || '';
@@ -283,14 +285,14 @@ async function main() {
 			let state = '';
 			switch (link.state) {
 				case LinkState.BROKEN: {
-					state = `[${chalk.red(link.status!.toString())}]`;
+					state = `[${chalk.red(link.status?.toString())}]`;
 					logger.error(`  ${state} ${chalk.gray(link.url)}`);
 					logger.debug(JSON.stringify(link.failureDetails, null, 2));
 					break;
 				}
 
 				case LinkState.OK: {
-					state = `[${chalk.green(link.status!.toString())}]`;
+					state = `[${chalk.green(link.status?.toString())}]`;
 					logger.warn(`  ${state} ${chalk.gray(link.url)}`);
 					break;
 				}
