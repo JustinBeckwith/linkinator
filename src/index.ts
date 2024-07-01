@@ -288,7 +288,8 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		try {
-			// Some sites don't respond to a stream response type correctly, especially with a HEAD. Try a GET with a text response type
+			// Some sites don't respond well to HEAD requests, even if they don't return a 405.
+			// This is a last gasp effort to see if the link is valid.
 			if (
 				(response === undefined ||
 					response.status < 200 ||
