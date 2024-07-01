@@ -1,8 +1,8 @@
 import assert from 'node:assert';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import {promises as fs} from 'node:fs';
-import {describe, it} from 'mocha';
-import {getConfig, type Flags} from '../src/config.js';
+import { describe, it } from 'mocha';
+import { type Flags, getConfig } from '../src/config.js';
 
 describe('config', () => {
 	it('should allow passing no config', async () => {
@@ -25,14 +25,14 @@ describe('config', () => {
 		await assert.rejects(getConfig(cfg), /ENOENT: no such file or directory/);
 
 		await assert.rejects(
-			getConfig({config: '/path.dot/does/not/exist'}),
+			getConfig({ config: '/path.dot/does/not/exist' }),
 			/ENOENT: no such file or directory/,
 		);
 	});
 
 	it('should throw a reasonable message if invalid extension is passed', async () => {
 		await assert.rejects(
-			getConfig({config: 'invalid_extension.cfg'}),
+			getConfig({ config: 'invalid_extension.cfg' }),
 			/Config file should be either of extensions/,
 		);
 	});
@@ -47,6 +47,7 @@ describe('config', () => {
 			config: configPath,
 			skip: 'loo',
 		});
+		// biome-ignore lint/performance/noDelete: <explanation>
 		delete config.config;
 		assert.deepStrictEqual(config, expected);
 	});
@@ -60,7 +61,8 @@ describe('config', () => {
 			const expected = JSON.parse(
 				await fs.readFile(configPath, 'utf8'),
 			) as Flags;
-			const config = await getConfig({config: configPath});
+			const config = await getConfig({ config: configPath });
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete config.config;
 
 			assert.deepStrictEqual(config, expected);
@@ -71,7 +73,8 @@ describe('config', () => {
 			const expected = JSON.parse(
 				await fs.readFile(configPath, 'utf8'),
 			) as Flags;
-			const config = await getConfig({config: configPath});
+			const config = await getConfig({ config: configPath });
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete config.config;
 
 			assert.deepStrictEqual(config, expected);
@@ -80,7 +83,7 @@ describe('config', () => {
 		it('should throw with reasonable message if json file is in invalid format ', async () => {
 			const configPath = 'test/fixtures/config/linkinator.config.invalid.json';
 			await assert.rejects(
-				getConfig({config: configPath}),
+				getConfig({ config: configPath }),
 				/SyntaxError:.+in JSON/,
 			);
 		});
@@ -89,7 +92,7 @@ describe('config', () => {
 	describe('js config file', () => {
 		it('should import .js config file with relative path', async () => {
 			const configPath = 'test/fixtures/config/linkinator.config.js';
-			const actualConfig = await getConfig({config: configPath});
+			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
 				recurse: true,
@@ -98,6 +101,7 @@ describe('config', () => {
 				skip: '🌛',
 				directoryListing: false,
 			};
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -107,7 +111,7 @@ describe('config', () => {
 			const configPath = path.resolve(
 				'test/fixtures/config/linkinator.config.js',
 			);
-			const actualConfig = await getConfig({config: configPath});
+			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
 				recurse: true,
@@ -116,6 +120,7 @@ describe('config', () => {
 				skip: '🌛',
 				directoryListing: false,
 			};
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -125,7 +130,7 @@ describe('config', () => {
 	describe('.mjs config file', () => {
 		it('should import .mjs config file with relative path', async () => {
 			const configPath = 'test/fixtures/config/linkinator.config.mjs';
-			const actualConfig = await getConfig({config: configPath});
+			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
 				recurse: true,
@@ -134,6 +139,7 @@ describe('config', () => {
 				skip: '🪐',
 				directoryListing: false,
 			};
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -143,7 +149,7 @@ describe('config', () => {
 			const configPath = path.resolve(
 				'test/fixtures/config/linkinator.config.mjs',
 			);
-			const actualConfig = await getConfig({config: configPath});
+			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
 				recurse: true,
@@ -152,6 +158,7 @@ describe('config', () => {
 				skip: '🪐',
 				directoryListing: false,
 			};
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -161,7 +168,7 @@ describe('config', () => {
 	describe('.cjs config file', () => {
 		it('should import cjs config with relative path', async () => {
 			const configPath = 'test/fixtures/config/linkinator.config.cjs';
-			const actualConfig = await getConfig({config: configPath});
+			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
 				recurse: true,
@@ -170,6 +177,7 @@ describe('config', () => {
 				skip: '🌊',
 				directoryListing: false,
 			};
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -179,7 +187,7 @@ describe('config', () => {
 			const configPath = path.resolve(
 				'test/fixtures/config/linkinator.config.cjs',
 			);
-			const actualConfig = await getConfig({config: configPath});
+			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
 				recurse: true,
@@ -188,6 +196,7 @@ describe('config', () => {
 				skip: '🌊',
 				directoryListing: false,
 			};
+			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);

@@ -1,6 +1,6 @@
-import {type Readable} from 'node:stream';
-import {WritableStream} from 'htmlparser2/lib/WritableStream';
-import {parseSrcset} from 'srcset';
+import type { Readable } from 'node:stream';
+import { WritableStream } from 'htmlparser2/lib/WritableStream';
+import { parseSrcset } from 'srcset';
 
 const linksAttribute: Record<string, string[]> = {
 	background: ['body'],
@@ -59,7 +59,6 @@ export async function getLinks(
 			}
 
 			// ignore href properties for link tags where rel is likely to fail
-			// eslint-disable-next-line unicorn/prevent-abbreviations
 			const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
 			if (tag === 'link' && relValuesToIgnore.includes(attributes.rel)) {
 				return;
@@ -69,7 +68,6 @@ export async function getLinks(
 			// the content actually looks like a url
 			if (tag === 'meta' && attributes.content) {
 				try {
-					// eslint-disable-next-line no-new
 					new URL(attributes.content);
 				} catch {
 					return;
@@ -135,8 +133,8 @@ function parseLink(link: string, baseUrl: string): ParsedUrl {
 	try {
 		const url = new URL(link, baseUrl);
 		url.hash = '';
-		return {link, url};
+		return { link, url };
 	} catch (error) {
-		return {link, error: error as Error};
+		return { link, error: error as Error };
 	}
 }
