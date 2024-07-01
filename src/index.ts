@@ -1,20 +1,20 @@
-import {EventEmitter} from 'node:events';
-import {type AddressInfo} from 'node:net';
+import { EventEmitter } from 'node:events';
 import type * as http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import {type Readable} from 'node:stream';
-import {request, type GaxiosResponse} from 'gaxios';
-import {Queue} from './queue.js';
-import {getLinks} from './links.js';
-import {startWebServer} from './server.js';
+import type { Readable } from 'node:stream';
+import { type GaxiosResponse, request } from 'gaxios';
+import { getLinks } from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
 	processOptions,
 } from './options.js';
+import { Queue } from './queue.js';
+import { startWebServer } from './server.js';
 
-export {getConfig} from './config.js';
+export { getConfig } from './config.js';
 
 export enum LinkState {
 	OK = 'OK',
@@ -71,6 +71,7 @@ export class LinkChecker extends EventEmitter {
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}
@@ -90,9 +91,9 @@ export class LinkChecker extends EventEmitter {
 		let server: http.Server | undefined;
 		const hasHttpPaths = options.path.find((x) => x.startsWith('http'));
 		if (!hasHttpPaths) {
-			let {port} = options;
+			let { port } = options;
 			server = await startWebServer({
-				root: options.serverRoot!,
+				root: options.serverRoot ?? '',
 				port,
 				markdown: options.markdown,
 				directoryListing: options.directoryListing,
@@ -229,7 +230,10 @@ export class LinkChecker extends EventEmitter {
 
 		// Check if this host has been marked for delay due to 429
 		if (options.delayCache.has(options.url.host)) {
-			const timeout = options.delayCache.get(options.url.host)!;
+			const timeout = options.delayCache.get(options.url.host);
+			if (timeout === undefined) {
+				throw new Error('timeout not found');
+			}
 			if (timeout > Date.now()) {
 				options.queue.add(
 					async () => {
@@ -322,8 +326,8 @@ export class LinkChecker extends EventEmitter {
 		// Assume any 2xx status is 👌
 		if (status >= 200 && status < 300) {
 			state = LinkState.OK;
-		} else {
-			failures.push(response!);
+		} else if (response !== undefined) {
+			failures.push(response);
 		}
 
 		const result: LinkResult = {
@@ -358,7 +362,7 @@ export class LinkChecker extends EventEmitter {
 				}
 
 				let crawl =
-					options.checkOptions.recurse! &&
+					options.checkOptions.recurse &&
 					result.url?.href.startsWith(options.rootPath);
 
 				// Only crawl links that start with the same host
@@ -376,9 +380,12 @@ export class LinkChecker extends EventEmitter {
 				if (!options.cache.has(result.url.href)) {
 					options.cache.add(result.url.href);
 					options.queue.add(async () => {
+						if (result.url === undefined) {
+							throw new Error('url is undefined');
+						}
 						await this.crawl({
-							url: result.url!,
-							crawl,
+							url: result.url,
+							crawl: crawl ?? false,
 							cache: options.cache,
 							delayCache: options.delayCache,
 							retryErrorsCache: options.retryErrorsCache,
@@ -427,9 +434,9 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		// Check to see if there is already a request to wait for this host
-		if (options.delayCache.has(options.url.host)) {
+		const currentTimeout = options.delayCache.get(options.url.host);
+		if (currentTimeout !== undefined) {
 			// Use whichever time is higher in the cache
-			const currentTimeout = options.delayCache.get(options.url.host)!;
 			if (retryAfter > currentTimeout) {
 				options.delayCache.set(options.url.host, retryAfter);
 			}
@@ -473,9 +480,10 @@ export class LinkChecker extends EventEmitter {
 
 		// Check to see if there is already a request to wait for this URL:
 		let currentRetries = 1;
-		if (options.retryErrorsCache.has(options.url.href)) {
+		const cachedRetries = options.retryErrorsCache.get(options.url.href);
+		if (cachedRetries !== undefined) {
 			// Use whichever time is higher in the cache
-			currentRetries = options.retryErrorsCache.get(options.url.href)!;
+			currentRetries = cachedRetries;
 			if (currentRetries > maxRetries) return false;
 			options.retryErrorsCache.set(options.url.href, currentRetries + 1);
 		} else {
@@ -535,12 +543,15 @@ function isHtml(response: GaxiosResponse): boolean {
  * @param url The url that was checked
  * @param options Original CheckOptions passed into the client
  */
-function mapUrl(url?: string, options?: InternalCheckOptions): string {
+function mapUrl<T extends string | undefined>(
+	url: T,
+	options?: InternalCheckOptions,
+): T {
 	if (!url) {
-		return url!;
+		return url;
 	}
 
-	let newUrl = url;
+	let newUrl = url as string;
 
 	// Trim the starting http://localhost:0000 if we stood up a local static server
 	if (
@@ -559,7 +570,7 @@ function mapUrl(url?: string, options?: InternalCheckOptions): string {
 		}
 	}
 
-	return newUrl;
+	return newUrl as T;
 }
 
-export type {CheckOptions} from './options.js';
+export type { CheckOptions } from './options.js';

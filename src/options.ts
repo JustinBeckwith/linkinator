@@ -1,7 +1,7 @@
-import {promises as fs} from 'node:fs';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import {glob} from 'glob';
+import { glob } from 'glob';
 
 export type UrlRewriteExpression = {
 	pattern: RegExp;
@@ -37,7 +37,7 @@ export type InternalCheckOptions = {
 export async function processOptions(
 	options_: CheckOptions,
 ): Promise<InternalCheckOptions> {
-	const options: InternalCheckOptions = {...options_};
+	const options: InternalCheckOptions = { ...options_ };
 
 	// Ensure at least one path is provided
 	if (options.path.length === 0) {
@@ -90,7 +90,6 @@ export async function processOptions(
 
 			// Node-glob only accepts unix style path separators as of 8.x
 			fullPath = fullPath.split(path.sep).join('/');
-			// eslint-disable-next-line no-await-in-loop
 			const expandedPaths = await glob(fullPath);
 			if (expandedPaths.length === 0) {
 				throw new Error(
@@ -140,7 +139,7 @@ export async function processOptions(
 			options.serverRoot = options.path[0];
 			if (s.isFile()) {
 				const pathParts = options.path[0].split(path.sep);
-				options.path = [path.join('.', pathParts.at(-1)!)];
+				options.path = [path.join('.', pathParts.at(-1) ?? '')];
 				options.serverRoot = pathParts.slice(0, -1).join(path.sep) || '.';
 			} else {
 				options.serverRoot = options.path[0];

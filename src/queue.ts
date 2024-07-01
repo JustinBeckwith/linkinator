@@ -1,4 +1,4 @@
-import {EventEmitter} from 'node:events';
+import { EventEmitter } from 'node:events';
 
 export type QueueOptions = {
 	concurrency: number;
@@ -33,6 +33,7 @@ export class Queue extends EventEmitter {
 	}
 
 	on(event: 'done', listener: () => void): this;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}
@@ -64,7 +65,6 @@ export class Queue extends EventEmitter {
 			return;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/prefer-for-of
 		for (let i = 0; i < this.q.length; i++) {
 			// Check if we have too many concurrent functions executing
 			if (this.activeFunctions >= this.concurrency) {
@@ -72,12 +72,14 @@ export class Queue extends EventEmitter {
 			}
 
 			// Grab the element at the front of the array
-			const item = this.q.shift()!;
+			const item = this.q.shift();
+			if (item === undefined) {
+				throw new Error('unexpected undefined item in queue');
+			}
 			// Make sure this element is ready to execute - if not, to the back of the stack
 			if (item.timeToRun <= Date.now()) {
 				// This function is ready to go!
 				this.activeFunctions++;
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				item.fn().finally(() => {
 					this.activeFunctions--;
 					this.tick();

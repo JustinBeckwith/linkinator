@@ -1,8 +1,8 @@
 import assert from 'node:assert';
+import { afterEach, describe, it } from 'mocha';
 import nock from 'nock';
 import * as sinon from 'sinon';
-import {describe, it, afterEach} from 'mocha';
-import {check, LinkChecker} from '../src/index.js';
+import { LinkChecker, check } from '../src/index.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -34,7 +34,7 @@ describe('retries', () => {
 			.get('/')
 			.reply(200);
 
-		const {promise, resolve} = invertedPromise();
+		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
 		const clock = sinon.useFakeTimers({
 			shouldAdvanceTime: true,
@@ -62,7 +62,7 @@ describe('retries', () => {
 			.get('/')
 			.reply(200);
 
-		const {promise, resolve} = invertedPromise();
+		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
 		const clock = sinon.useFakeTimers({
 			shouldAdvanceTime: true,
@@ -87,7 +87,7 @@ describe('retries', () => {
 			.get('/')
 			.reply(200);
 
-		const {promise, resolve} = invertedPromise();
+		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
 		const clock = sinon.useFakeTimers({
 			shouldAdvanceTime: true,
@@ -129,7 +129,7 @@ describe('retries', () => {
 			})
 			.reply(200);
 
-		const {promise, resolve} = invertedPromise();
+		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
 		const clock = sinon.useFakeTimers({
 			shouldAdvanceTime: true,
@@ -176,8 +176,8 @@ describe('retries', () => {
 			})
 			.reply(200);
 
-		const {promise: p1, resolve: r1} = invertedPromise();
-		const {promise: p2, resolve: r2} = invertedPromise();
+		const { promise: p1, resolve: r1 } = invertedPromise();
+		const { promise: p2, resolve: r2 } = invertedPromise();
 		const checker = new LinkChecker().on('retry', (info) => {
 			if (info.url === 'http://fake.local/1') {
 				r1();
@@ -207,7 +207,7 @@ describe('retries', () => {
 			resolve = innerResolve;
 			reject = innerReject;
 		});
-		return {promise, resolve, reject};
+		return { promise, resolve, reject };
 	}
 
 	describe('retry-errors', () => {
@@ -218,7 +218,7 @@ describe('retries', () => {
 				.get('/')
 				.reply(200);
 
-			const {promise, resolve} = invertedPromise();
+			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
 			const clock = sinon.useFakeTimers({
 				shouldAdvanceTime: true,
@@ -237,11 +237,11 @@ describe('retries', () => {
 		it('should retry 0 status code', async () => {
 			const scope = nock('http://fake.local')
 				.get('/')
-				.replyWithError({code: 'ETIMEDOUT'})
+				.replyWithError({ code: 'ETIMEDOUT' })
 				.get('/')
 				.reply(200);
 
-			const {promise, resolve} = invertedPromise();
+			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
 			const clock = sinon.useFakeTimers({
 				shouldAdvanceTime: true,
@@ -261,9 +261,9 @@ describe('retries', () => {
 		it('should eventually stop retrying', async () => {
 			const scope = nock('http://fake.local')
 				.get('/')
-				.replyWithError({code: 'ETIMEDOUT'});
+				.replyWithError({ code: 'ETIMEDOUT' });
 
-			const {promise, resolve} = invertedPromise();
+			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
 			const clock = sinon.useFakeTimers({
 				shouldAdvanceTime: true,
