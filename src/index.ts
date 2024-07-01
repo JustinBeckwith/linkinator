@@ -56,12 +56,6 @@ type CrawlOptions = {
 	retryErrorsJitter: number;
 };
 
-// Spoof a normal looking User-Agent to keep the servers happy
-export const headers = {
-	'User-Agent':
-		'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36',
-};
-
 /**
  * Instance class used to perform a crawl job.
  */
@@ -255,7 +249,7 @@ export class LinkChecker extends EventEmitter {
 			response = await request<Readable>({
 				method: options.crawl ? 'GET' : 'HEAD',
 				url: options.url.href,
-				headers,
+				headers: { 'User-Agent': options.checkOptions.userAgent },
 				responseType: 'stream',
 				validateStatus: () => true,
 				timeout: options.checkOptions.timeout,
@@ -269,7 +263,7 @@ export class LinkChecker extends EventEmitter {
 				response = await request<Readable>({
 					method: 'GET',
 					url: options.url.href,
-					headers,
+					headers: { 'User-Agent': options.checkOptions.userAgent },
 					responseType: 'stream',
 					validateStatus: () => true,
 					timeout: options.checkOptions.timeout,
@@ -299,7 +293,7 @@ export class LinkChecker extends EventEmitter {
 					url: options.url.href,
 					responseType: 'stream',
 					validateStatus: () => true,
-					headers,
+					headers: { 'User-Agent': options.checkOptions.userAgent },
 					timeout: options.checkOptions.timeout,
 				});
 				if (this.shouldRetryAfter(response, options)) {

@@ -10,8 +10,8 @@ import {
 	LinkChecker,
 	LinkState,
 	check,
-	headers,
 } from '../src/index.js';
+import { DEFAULT_USER_AGENT } from '../src/options.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -450,12 +450,16 @@ describe('linkinator', () => {
 	it('should always send a human looking User-Agent', async () => {
 		const scopes = [
 			nock('http://fake.local')
-				.get('/', undefined, { reqheaders: headers })
+				.get('/', undefined, {
+					reqheaders: { 'User-Agent': DEFAULT_USER_AGENT },
+				})
 				.replyWithFile(200, 'test/fixtures/local/index.html', {
 					'Content-Type': 'text/html; charset=UTF-8',
 				}),
 			nock('http://fake.local')
-				.get('/page2.html', undefined, { reqheaders: headers })
+				.get('/page2.html', undefined, {
+					reqheaders: { 'User-Agent': DEFAULT_USER_AGENT },
+				})
 				.replyWithFile(200, 'test/fixtures/local/page2.html', {
 					'Content-Type': 'text/html; charset=UTF-8',
 				}),
@@ -593,5 +597,16 @@ describe('linkinator', () => {
 			path: 'index.html',
 		});
 		assert.ok(results.passed);
+	});
+
+	it('should accept a custom user agent', async () => {
+		const userAgent = 'linkinator-test';
+		const scope = nock('http://fake.local')
+			.head('/')
+			.matchHeader('user-agent', userAgent)
+			.reply(200);
+		const results = await check({ path: 'test/fixtures/basic', userAgent });
+		assert.ok(results.passed);
+		scope.done();
 	});
 });

@@ -76,6 +76,9 @@ const cli = meow(
       --url-rewrite-replace
           Expression used to replace search content.  Must be used with --url-rewrite-search.
 
+			--user-agent
+					The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+
       --verbosity
           Override the default verbosity for this command. Available options are
           'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
