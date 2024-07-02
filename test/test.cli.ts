@@ -99,6 +99,20 @@ describe('cli', function () {
 		assert.match(response.stdout, /README.md",200,OK,/);
 	});
 
+	it('should serialize errors with CSV and verbose output', async () => {
+		const response = await execa(node, [
+			linkinator,
+			'--format',
+			'csv',
+			'--verbosity',
+			'DEBUG',
+			'test/fixtures/localbroke/README.md',
+		]);
+		// This is a very lazy way of trying to recognize the JSON we expect
+		// in CSV without using a CSV parser.
+		assert.match(response.stdout, /statusText": "Not Found"/);
+	});
+
 	it('should provide JSON if asked nicely', async () => {
 		const response = await execa(node, [
 			linkinator,

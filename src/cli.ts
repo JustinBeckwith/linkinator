@@ -174,10 +174,11 @@ async function main() {
 		if (format === Format.CSV) {
 			const showIt = shouldShowResult(link, verbosity);
 			if (showIt) {
+				const failureDetails = link.failureDetails
+					? JSON.stringify(link.failureDetails, null, 2)
+					: '';
 				console.log(
-					`"${link.url}",${link.status},${link.state},"${link.parent || ''}","${
-						link.failureDetails?.toString() || ''
-					}"`,
+					`"${link.url}",${link.status},${link.state},"${link.parent || ''}","${failureDetails}"`,
 				);
 			}
 		}
