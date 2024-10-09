@@ -14,6 +14,8 @@ import {
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
 
+export { getConfig } from './config.js';
+
 export enum LinkState {
 	OK = 'OK',
 	BROKEN = 'BROKEN',
