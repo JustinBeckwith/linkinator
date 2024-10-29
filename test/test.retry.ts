@@ -275,7 +275,7 @@ describe('retries', () => {
 				retryErrorsJitter: 10,
 			});
 			await promise;
-			await clock.tickAsync(5000);
+			await clock.tickAsync(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
 			scope.done();
