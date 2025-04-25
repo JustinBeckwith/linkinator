@@ -56,7 +56,10 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --format, -f
         Return the data in CSV or JSON format.
-
+    
+    --header, -h
+	  		List of additional headers to be include in the request. use key:value notation.
+        
     --help
         Show this command.
 

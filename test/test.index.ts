@@ -551,6 +551,42 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
+	it('should use though additional headers if passed', async () => {
+		const scopes = [
+			nock('http://fake.local')
+				.get('/', undefined, {
+					reqheaders: {
+						'User-Agent': DEFAULT_USER_AGENT,
+						'X-My-Header': 'my-value',
+					},
+				})
+				.replyWithFile(200, 'test/fixtures/local/index.html', {
+					'Content-Type': 'text/html; charset=UTF-8',
+				}),
+			nock('http://fake.local')
+				.get('/page2.html', undefined, {
+					reqheaders: {
+						'User-Agent': DEFAULT_USER_AGENT,
+						'X-My-Header': 'my-value',
+					},
+				})
+				.replyWithFile(200, 'test/fixtures/local/page2.html', {
+					'Content-Type': 'text/html; charset=UTF-8',
+				}),
+		];
+
+		const results = await check({
+			path: 'http://fake.local',
+			headers: {
+				'X-My-Header': 'my-value',
+			},
+		});
+		assert.ok(results.passed);
+		for (const x of scopes) {
+			x.done();
+		}
+	});
+
 	it('should surface call stacks on failures in the API', async () => {
 		const results = await check({
 			path: 'http://example.invalid',
