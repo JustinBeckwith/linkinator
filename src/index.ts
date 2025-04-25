@@ -246,12 +246,13 @@ export class LinkChecker extends EventEmitter {
 		let state = LinkState.BROKEN;
 		let shouldRecurse = false;
 		let response: GaxiosResponse<Readable> | undefined;
+		const headers = options.checkOptions.headers;
 		const failures: Array<Error | GaxiosResponse> = [];
 		try {
 			response = await request<Readable>({
 				method: options.crawl ? 'GET' : 'HEAD',
 				url: options.url.href,
-				headers: { 'User-Agent': options.checkOptions.userAgent },
+				headers,
 				responseType: 'stream',
 				validateStatus: () => true,
 				timeout: options.checkOptions.timeout,
@@ -265,7 +266,7 @@ export class LinkChecker extends EventEmitter {
 				response = await request<Readable>({
 					method: 'GET',
 					url: options.url.href,
-					headers: { 'User-Agent': options.checkOptions.userAgent },
+					headers,
 					responseType: 'stream',
 					validateStatus: () => true,
 					timeout: options.checkOptions.timeout,
@@ -295,7 +296,7 @@ export class LinkChecker extends EventEmitter {
 					url: options.url.href,
 					responseType: 'stream',
 					validateStatus: () => true,
-					headers: { 'User-Agent': options.checkOptions.userAgent },
+					headers,
 					timeout: options.checkOptions.timeout,
 				});
 				if (this.shouldRetryAfter(response, options)) {

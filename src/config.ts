@@ -20,6 +20,7 @@ export type Flags = {
 	retryErrorsJitter?: number;
 	urlRewriteSearch?: string;
 	urlRewriteReplace?: string;
+	header?: string[];
 };
 
 const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
