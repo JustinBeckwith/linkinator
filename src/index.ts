@@ -56,6 +56,7 @@ type CrawlOptions = {
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
+	extraHeaders: { [key: string]: string };
 };
 
 /**
@@ -139,6 +140,7 @@ export class LinkChecker extends EventEmitter {
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
 					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+					extraHeaders: options.extraHeaders ?? {},
 				});
 			});
 		}
@@ -251,7 +253,10 @@ export class LinkChecker extends EventEmitter {
 			response = await request<Readable>({
 				method: options.crawl ? 'GET' : 'HEAD',
 				url: options.url.href,
-				headers: { 'User-Agent': options.checkOptions.userAgent },
+				headers: {
+					'User-Agent': options.checkOptions.userAgent,
+					...options.extraHeaders,
+				},
 				responseType: 'stream',
 				validateStatus: () => true,
 				timeout: options.checkOptions.timeout,
@@ -393,6 +398,7 @@ export class LinkChecker extends EventEmitter {
 							retryErrors: options.retryErrors,
 							retryErrorsCount: options.retryErrorsCount,
 							retryErrorsJitter: options.retryErrorsJitter,
+							extraHeaders: options.extraHeaders,
 						});
 					});
 				}
