@@ -1,5 +1,5 @@
-import type { Readable } from 'node:stream';
-import { WritableStream } from 'htmlparser2/lib/WritableStream';
+import { Stream } from 'node:stream';
+import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 
 const linksAttribute: Record<string, string[]> = {
@@ -44,7 +44,7 @@ export type ParsedUrl = {
 };
 
 export async function getLinks(
-	source: Readable,
+	source: ReadableStream,
 	baseUrl: string,
 ): Promise<ParsedUrl[]> {
 	let realBaseUrl = baseUrl;
@@ -87,7 +87,10 @@ export async function getLinks(
 		},
 	});
 	await new Promise((resolve, reject) => {
-		source.pipe(parser).on('finish', resolve).on('error', reject);
+		Stream.Readable.fromWeb(source as import('stream/web').ReadableStream)
+			.pipe(parser)
+			.on('finish', resolve)
+			.on('error', reject);
 	});
 	return links;
 }
