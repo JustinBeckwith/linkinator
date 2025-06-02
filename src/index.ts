@@ -3,8 +3,6 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import type { Readable } from 'node:stream';
-import { type GaxiosResponse, request } from 'gaxios';
 import { getLinks } from './links.js';
 import {
 	type CheckOptions,
@@ -28,12 +26,26 @@ export type RetryInfo = {
 	status: number;
 };
 
+export type FailureDetails =
+	| {
+			cause: unknown;
+			message: string;
+	  }
+	| {
+			status: number;
+			statusText: string;
+			headers: { [k: string]: string };
+			ok: boolean;
+			url: string;
+			body: ReadableStream | null;
+	  };
+
 export type LinkResult = {
 	url: string;
 	status?: number;
 	state: LinkState;
 	parent?: string;
-	failureDetails?: Array<Error | GaxiosResponse>;
+	failureDetails?: Array<FailureDetails>;
 };
 
 export type CrawlResult = {
@@ -152,7 +164,6 @@ export class LinkChecker extends EventEmitter {
 		if (server) {
 			server.destroy();
 		}
-
 		return result;
 	}
 
@@ -245,30 +256,30 @@ export class LinkChecker extends EventEmitter {
 		let status = 0;
 		let state = LinkState.BROKEN;
 		let shouldRecurse = false;
-		let response: GaxiosResponse<Readable> | undefined;
-		const failures: Array<Error | GaxiosResponse> = [];
+		let response: Response | undefined = undefined;
+		const failures: Array<FailureDetails> = [];
+		const fetchOptions: RequestInit = {};
+
+		fetchOptions.headers = new Headers();
+		if (options.checkOptions.userAgent) {
+			fetchOptions.headers.append('User-Agent', options.checkOptions.userAgent);
+		}
+		fetchOptions.signal = AbortSignal.timeout(
+			options.checkOptions.timeout || 20000,
+		);
 		try {
-			response = await request<Readable>({
+			response = await fetch(options.url.href, {
 				method: options.crawl ? 'GET' : 'HEAD',
-				url: options.url.href,
-				headers: { 'User-Agent': options.checkOptions.userAgent },
-				responseType: 'stream',
-				validateStatus: () => true,
-				timeout: options.checkOptions.timeout,
+				...fetchOptions,
 			});
 			if (this.shouldRetryAfter(response, options)) {
 				return;
 			}
-
 			// If we got an HTTP 405, the server may not like HEAD. GET instead!
 			if (response.status === 405) {
-				response = await request<Readable>({
+				response = await fetch(options.url.href, {
 					method: 'GET',
-					url: options.url.href,
-					headers: { 'User-Agent': options.checkOptions.userAgent },
-					responseType: 'stream',
-					validateStatus: () => true,
-					timeout: options.checkOptions.timeout,
+					...fetchOptions,
 				});
 				if (this.shouldRetryAfter(response, options)) {
 					return;
@@ -278,9 +289,11 @@ export class LinkChecker extends EventEmitter {
 			// Request failure: invalid domain name, etc.
 			// this also occasionally catches too many redirects, but is still valid (e.g. https://www.ebay.com)
 			// for this reason, we also try doing a GET below to see if the link is valid
-			failures.push(error as Error);
+			failures.push({
+				cause: (error as Error).cause,
+				message: (error as Error).message,
+			});
 		}
-
 		try {
 			// Some sites don't respond well to HEAD requests, even if they don't return a 405.
 			// This is a last gasp effort to see if the link is valid.
@@ -290,28 +303,25 @@ export class LinkChecker extends EventEmitter {
 					response.status >= 300) &&
 				!options.crawl
 			) {
-				response = await request<Readable>({
+				response = await fetch(options.url.href, {
 					method: 'GET',
-					url: options.url.href,
-					responseType: 'stream',
-					validateStatus: () => true,
-					headers: { 'User-Agent': options.checkOptions.userAgent },
-					timeout: options.checkOptions.timeout,
+					...fetchOptions,
 				});
 				if (this.shouldRetryAfter(response, options)) {
 					return;
 				}
 			}
 		} catch (error) {
-			failures.push(error as Error);
+			failures.push({
+				cause: (error as Error).cause,
+				message: (error as Error).message,
+			});
 			// Catch the next failure
 		}
-
 		if (response !== undefined) {
 			status = response.status;
 			shouldRecurse = isHtml(response);
 		}
-
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
 		// a network error likely occurred):
 		if (this.shouldRetryOnError(status, options)) {
@@ -322,7 +332,14 @@ export class LinkChecker extends EventEmitter {
 		if (status >= 200 && status < 300) {
 			state = LinkState.OK;
 		} else if (response !== undefined) {
-			failures.push(response);
+			failures.push({
+				status: response.status,
+				statusText: response.statusText,
+				headers: Object.fromEntries(response.headers),
+				ok: response.ok,
+				url: response.url,
+				body: response.body,
+			});
 		}
 
 		const result: LinkResult = {
@@ -338,8 +355,8 @@ export class LinkChecker extends EventEmitter {
 		// If we need to go deeper, scan the next level of depth for links and crawl
 		if (options.crawl && shouldRecurse) {
 			this.emit('pagestart', options.url);
-			const urlResults = response?.data
-				? await getLinks(response.data, options.url.href)
+			const urlResults = response?.body
+				? await getLinks(response.body, options.url.href)
 				: [];
 			for (const result of urlResults) {
 				// If there was some sort of problem parsing the link while
@@ -405,15 +422,15 @@ export class LinkChecker extends EventEmitter {
 	 * and if the status was an HTTP 429, calculate the date at which this
 	 * request should be retried. Ensure the delayCache knows that we're
 	 * going to wait on requests for this entire host.
-	 * @param response GaxiosResponse returned from the request
+	 * @param response Response returned from the request
 	 * @param opts CrawlOptions used during this request
 	 */
-	shouldRetryAfter(response: GaxiosResponse, options: CrawlOptions): boolean {
+	shouldRetryAfter(response: Response, options: CrawlOptions): boolean {
 		if (!options.retry) {
 			return false;
 		}
 
-		const retryAfterRaw = response.headers['retry-after'] as string;
+		const retryAfterRaw = response.headers.get('retry-after');
 		if (response.status !== 429 || !retryAfterRaw) {
 			return false;
 		}
@@ -522,8 +539,8 @@ export async function check(options: CheckOptions) {
  * @param {object} response Page response.
  * @returns {boolean}
  */
-function isHtml(response: GaxiosResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
+function isHtml(response: Response): boolean {
+	const contentType = response.headers.get('content-type') ?? '';
 	return (
 		Boolean(/text\/html/g.test(contentType)) ||
 		Boolean(/application\/xhtml\+xml/g.test(contentType))
