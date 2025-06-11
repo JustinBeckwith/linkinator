@@ -1,7 +1,6 @@
 import assert from 'node:assert';
 import path from 'node:path';
 import process from 'node:process';
-import gaxios from 'gaxios';
 import { afterEach, describe, it } from 'mocha';
 import nock from 'nock';
 import * as sinon from 'sinon';
@@ -95,7 +94,7 @@ describe('linkinator', () => {
 	});
 
 	it('should handle fetch exceptions', async () => {
-		const requestStub = sinon.stub(gaxios, 'request');
+		const requestStub = sinon.stub(global, 'fetch');
 		requestStub.throws('Fetch error');
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(!results.passed);
