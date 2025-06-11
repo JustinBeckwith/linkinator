@@ -68,6 +68,7 @@ type CrawlOptions = {
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
+	extraHeaders: { [key: string]: string };
 };
 
 /**
@@ -151,6 +152,7 @@ export class LinkChecker extends EventEmitter {
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
 					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+					extraHeaders: options.extraHeaders ?? {},
 				});
 			});
 		}
@@ -263,6 +265,9 @@ export class LinkChecker extends EventEmitter {
 		fetchOptions.headers = new Headers();
 		if (options.checkOptions.userAgent) {
 			fetchOptions.headers.append('User-Agent', options.checkOptions.userAgent);
+		}
+		for (const [header, value] of Object.entries(options.extraHeaders)) {
+			fetchOptions.headers.append(header, value);
 		}
 		fetchOptions.signal = AbortSignal.timeout(
 			options.checkOptions.timeout || 20000,
@@ -410,6 +415,7 @@ export class LinkChecker extends EventEmitter {
 							retryErrors: options.retryErrors,
 							retryErrorsCount: options.retryErrorsCount,
 							retryErrorsJitter: options.retryErrorsJitter,
+							extraHeaders: options.extraHeaders,
 						});
 					});
 				}

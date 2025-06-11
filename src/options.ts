@@ -24,6 +24,7 @@ export type CheckOptions = {
 	retryErrorsJitter?: number;
 	urlRewriteExpressions?: UrlRewriteExpression[];
 	userAgent?: string;
+	extraHeaders?: { [key: string]: string };
 };
 
 export type InternalCheckOptions = {
@@ -81,6 +82,9 @@ export async function processOptions(
 
 	options.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
 	options.serverRoot &&= path.normalize(options.serverRoot);
+
+	// Add extra headers
+	options.extraHeaders = options.extraHeaders ?? {};
 
 	// Expand globs into paths
 	if (!isUrlType) {

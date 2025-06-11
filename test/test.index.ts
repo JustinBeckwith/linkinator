@@ -609,4 +609,19 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 		scope.done();
 	});
+
+	it('should handle extra headers', async () => {
+		const scope = nock('http://fake.local', {
+			reqheaders: { 'sec-ch-ua-platform': 'Linux' },
+		})
+			.head('/')
+			.reply(200);
+		const checker = new LinkChecker();
+		const results = await checker.check({
+			path: 'test/fixtures/basic',
+			extraHeaders: { 'sec-ch-ua-platform': 'Linux' },
+		});
+		assert.ok(results.passed);
+		scope.done();
+	});
 });
