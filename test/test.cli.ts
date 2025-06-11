@@ -236,7 +236,7 @@ describe('cli', function () {
 			},
 		);
 		assert.strictEqual(response.exitCode, 1);
-		assert.match(response.stdout, /reason: getaddrinfo/);
+		assert.match(response.stdout, /"syscall": "getaddrinfo"/);
 	});
 
 	it('should allow passing a config', async () => {
