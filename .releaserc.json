@@ -1,4 +1,6 @@
 {
-	"assets": "build/binaries/*",
-	"branches": ["main"]
+	"branches": [
+		"main",
+		"next"
+	]
 }
