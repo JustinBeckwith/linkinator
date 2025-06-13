@@ -1,9 +1,9 @@
 {
-	"name": "linkinator",
+	"name": "@avenga/linkinator",
 	"description": "Find broken links, missing images, etc in your HTML. Scurry around your site and find all those broken links.",
 	"version": "0.0.0",
 	"license": "MIT",
-	"repository": "JustinBeckwith/linkinator",
+	"repository": "avenga/linkinator",
 	"author": "Justin Beckwith",
 	"exports": "./build/src/index.js",
 	"types": "./build/src/index.d.ts",
@@ -15,11 +15,11 @@
 		"pretest": "npm run build",
 		"prepare": "husky && npm run build",
 		"coverage": "c8 report --reporter=json",
-		"build": "tsc -p .",
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
 		"test": "c8 mocha build/test",
 		"fix": "biome check --write .",
 		"lint": "biome check .",
-		"build-binaries": "pkg . --out-path build/binaries",
 		"docs-test": "node build/src/cli.js ./README.md"
 	},
 	"dependencies": {
@@ -45,14 +45,14 @@
 		"husky": "^9.0.11",
 		"mocha": "^11.0.0",
 		"nock": "^14.0.5",
-		"pkg": "^5.4.1",
 		"semantic-release": "^24.0.0",
 		"sinon": "^20.0.0",
 		"strip-ansi": "^7.0.1",
 		"typescript": "^5.5.2"
 	},
 	"engines": {
-		"node": ">=18"
+		"node": ">=20",
+		"npm": ">=9"
 	},
 	"files": [
 		"build/src"
