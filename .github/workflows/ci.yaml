@@ -51,7 +51,7 @@ jobs:
       - run: npm ci
       - run: npm run docs-test
   release:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [lint, test]
     permissions:
