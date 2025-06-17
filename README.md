@@ -21,7 +21,7 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 npm install @avenga/linkinator
 ```
 
-Not into the whole node.js or npm thing?  You can also download a standalone binary that bundles node, linkinator, and anything else you need.  See [releases](https://github.com/JustinBeckwith/linkinator/releases).
+Not into the whole node.js or npm thing?  You can also download a standalone binary that bundles node, linkinator, and anything else you need.  See [releases](https://github.com/avenga/linkinator/releases).
 
 ## Command Usage
 
