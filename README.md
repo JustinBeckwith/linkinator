@@ -2,8 +2,7 @@
 
 > A super simple site crawler and broken link checker.
 
-[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.org/package/linkinator)
-[![codecov](https://img.shields.io/codecov/c/github/JustinBeckwith/linkinator/main)](https://app.codecov.io/gh/JustinBeckwith/linkinator)
+[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.org/package/@avenga/linkinator)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
 
@@ -19,7 +18,7 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 ## Installation
 
 ```sh
-npm install linkinator
+npm install @avenga/linkinator
 ```
 
 Not into the whole node.js or npm thing?  You can also download a standalone binary that bundles node, linkinator, and anything else you need.  See [releases](https://github.com/JustinBeckwith/linkinator/releases).
