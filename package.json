@@ -68,5 +68,8 @@
 		"broken",
 		"link",
 		"checker"
-	]
+	],
+	"publishConfig": {
+		"access": "public"
+	}
 }
