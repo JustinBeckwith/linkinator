@@ -1,4 +1,4 @@
-# 🐿 linkinator
+# ![Avenga logo](https://raw.githubusercontent.com/avenga/linkinator/main/assets/avenga_symbol.png) linkinator
 
 > A super simple site crawler and broken link checker.
 
