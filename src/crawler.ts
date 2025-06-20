@@ -12,9 +12,9 @@ import {
 	LinkState,
 	type RetryInfo,
 } from './types.js';
-import { isHtml, mapUrl } from './utils.js';
+import { createFetchOptions, isHtml, mapUrl } from './utils.js';
 
-type CrawlOptions = {
+export type CrawlOptions = {
 	url: URL;
 	parent?: string;
 	crawl: boolean;
@@ -221,18 +221,8 @@ export class LinkChecker extends EventEmitter {
 		let shouldRecurse = false;
 		let response: Response | undefined = undefined;
 		const failures: Array<FailureDetails> = [];
-		const fetchOptions: RequestInit = {};
+		const fetchOptions = createFetchOptions(options);
 
-		fetchOptions.headers = new Headers();
-		if (options.checkOptions.userAgent) {
-			fetchOptions.headers.append('User-Agent', options.checkOptions.userAgent);
-		}
-		for (const [header, value] of Object.entries(options.extraHeaders)) {
-			fetchOptions.headers.append(header, value);
-		}
-		fetchOptions.signal = AbortSignal.timeout(
-			options.checkOptions.timeout || 20000,
-		);
 		try {
 			response = await fetch(options.url.href, {
 				method: options.crawl ? 'GET' : 'HEAD',

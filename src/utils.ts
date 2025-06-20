@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { LinkChecker } from './crawler.js';
+import { type CrawlOptions, LinkChecker } from './crawler.js';
 import type { CheckOptions, InternalCheckOptions } from './options.js';
 
 /**
@@ -61,4 +61,21 @@ export function mapUrl<T extends string | undefined>(
 	}
 
 	return newUrl as T;
+}
+
+export function createFetchOptions(options: CrawlOptions): RequestInit {
+	const fetchOptions: RequestInit = {};
+
+	fetchOptions.headers = new Headers();
+	if (options.checkOptions.userAgent) {
+		fetchOptions.headers.append('User-Agent', options.checkOptions.userAgent);
+	}
+	for (const [header, value] of Object.entries(options.extraHeaders)) {
+		fetchOptions.headers.append(header, value);
+	}
+	fetchOptions.signal = AbortSignal.timeout(
+		options.checkOptions.timeout || 20000,
+	);
+
+	return fetchOptions;
 }
