@@ -148,71 +148,23 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		// Explicitly skip non-http[s] links before making the request
-		const proto = options.url.protocol;
-		if (proto !== 'http:' && proto !== 'https:') {
-			const r: LinkResult = {
-				url: mapUrl(options.url.href, options.checkOptions),
-				status: 0,
-				state: LinkState.SKIPPED,
-				parent: mapUrl(options.parent, options.checkOptions),
-			};
-			options.results.push(r);
-			this.emit('link', r);
+		if (this.skipProtocol(options)) {
 			return;
 		}
 
 		// Check for a user-configured function to filter out links
-		if (
-			typeof options.checkOptions.linksToSkip === 'function' &&
-			(await options.checkOptions.linksToSkip(options.url.href))
-		) {
-			const result: LinkResult = {
-				url: mapUrl(options.url.href, options.checkOptions),
-				state: LinkState.SKIPPED,
-				parent: options.parent,
-			};
-			options.results.push(result);
-			this.emit('link', result);
+		if (await this.skipLinksFunction(options)) {
 			return;
 		}
 
-		// Check for a user-configured array of link regular expressions that should be skipped
-		if (Array.isArray(options.checkOptions.linksToSkip)) {
-			const skips = options.checkOptions.linksToSkip
-				.map((linkToSkip) => {
-					return new RegExp(linkToSkip).test(options.url.href);
-				})
-				.filter(Boolean);
-
-			if (skips.length > 0) {
-				const result: LinkResult = {
-					url: mapUrl(options.url.href, options.checkOptions),
-					state: LinkState.SKIPPED,
-					parent: mapUrl(options.parent, options.checkOptions),
-				};
-				options.results.push(result);
-				this.emit('link', result);
-				return;
-			}
+		// Check for a user-provided array of links to filter out
+		if (this.skipLinksArray(options)) {
+			return;
 		}
 
 		// Check if this host has been marked for delay due to 429
-		if (options.delayCache.has(options.url.host)) {
-			const timeout = options.delayCache.get(options.url.host);
-			if (timeout === undefined) {
-				throw new Error('timeout not found');
-			}
-			if (timeout > Date.now()) {
-				options.queue.add(
-					async () => {
-						await this.crawl(options);
-					},
-					{
-						delay: timeout - Date.now(),
-					},
-				);
-				return;
-			}
+		if (this.handleExistingDelay(options)) {
+			return;
 		}
 
 		// Perform a HEAD or GET request based on the need to crawl
@@ -478,5 +430,92 @@ export class LinkChecker extends EventEmitter {
 		};
 		this.emit('retry', retryDetails);
 		return true;
+	}
+
+	/**
+	 * Adds the link to the results as skipped and returns `true` when
+	 * the protocol is not http or https.
+	 */
+	private skipProtocol(options: CrawlOptions): boolean {
+		const proto = options.url.protocol;
+		if (proto !== 'http:' && proto !== 'https:') {
+			const r: LinkResult = {
+				url: mapUrl(options.url.href, options.checkOptions),
+				status: 0,
+				state: LinkState.SKIPPED,
+				parent: mapUrl(options.parent, options.checkOptions),
+			};
+			options.results.push(r);
+			this.emit('link', r);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Adds the link to the results as skipped and returns `true` when a function
+	 * is defined as condition to skip links and calling the function with the
+	 * URL returns true.
+	 */
+	private async skipLinksFunction(options: CrawlOptions): Promise<boolean> {
+		const skipFn = options.checkOptions.linksToSkip;
+		if (typeof skipFn === 'function' && (await skipFn(options.url.href))) {
+			const result: LinkResult = {
+				url: mapUrl(options.url.href, options.checkOptions),
+				state: LinkState.SKIPPED,
+				parent: options.parent,
+			};
+			options.results.push(result);
+			this.emit('link', result);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Adds the link to the results as skipped and returns `true` when an
+	 * array of link patterns to skip has been configured and at least
+	 * one of them matches.
+	 */
+	private skipLinksArray(options: CrawlOptions): boolean {
+		const skipArr = options.checkOptions.linksToSkip;
+		if (Array.isArray(skipArr)) {
+			const found = skipArr.some((pattern) =>
+				new RegExp(pattern).test(options.url.href),
+			);
+			if (found) {
+				const result: LinkResult = {
+					url: mapUrl(options.url.href, options.checkOptions),
+					state: LinkState.SKIPPED,
+					parent: mapUrl(options.parent, options.checkOptions),
+				};
+				options.results.push(result);
+				this.emit('link', result);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Adds the link to the queue again and returns `true` when an existing
+	 * active delay for this URL exists.
+	 */
+	private handleExistingDelay(options: CrawlOptions): boolean {
+		const host = options.url.host;
+		const timeout = options.delayCache.get(host);
+		if (timeout === undefined) {
+			return false;
+		}
+		if (timeout > Date.now()) {
+			options.queue.add(
+				async () => {
+					await this.crawl(options);
+				},
+				{ delay: timeout - Date.now() },
+			);
+			return true;
+		}
+		return false;
 	}
 }
