@@ -4,14 +4,10 @@ import process from 'node:process';
 import chalk from 'chalk';
 import meow from 'meow';
 import { type Flags, getConfig } from './config.js';
-import {
-	type CheckOptions,
-	LinkChecker,
-	type LinkResult,
-	LinkState,
-	type RetryInfo,
-} from './index.js';
+import { LinkChecker } from './index.js';
 import { Format, LogLevel, Logger } from './logger.js';
+import type { CheckOptions } from './options.js';
+import { type LinkResult, LinkState, type RetryInfo } from './types.js';
 
 const cli = meow(
 	`
