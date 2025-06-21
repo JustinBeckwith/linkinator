@@ -35,7 +35,7 @@
 		"srcset": "^5.0.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
+		"@biomejs/biome": "2.0.4",
 		"@types/escape-html": "^1.0.1",
 		"@types/mocha": "^10.0.0",
 		"@types/node": "^22.0.0",
