@@ -48,7 +48,7 @@
 		"nock": "^13.2.1",
 		"pkg": "^5.4.1",
 		"semantic-release": "^24.0.0",
-		"sinon": "^20.0.0",
+		"sinon": "^21.0.0",
 		"strip-ansi": "^7.0.1",
 		"typescript": "^5.5.2"
 	},
