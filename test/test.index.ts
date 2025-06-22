@@ -7,9 +7,9 @@ import nock from 'nock';
 import * as sinon from 'sinon';
 import {
 	type CheckOptions,
+	check,
 	LinkChecker,
 	LinkState,
-	check,
 } from '../src/index.js';
 import { DEFAULT_USER_AGENT } from '../src/options.js';
 

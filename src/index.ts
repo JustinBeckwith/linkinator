@@ -65,7 +65,7 @@ export class LinkChecker extends EventEmitter {
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	// biome-ignore lint/suspicious/noExplicitAny: this can in fact be generic
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}
@@ -116,7 +116,7 @@ export class LinkChecker extends EventEmitter {
 			concurrency: options.concurrency || 100,
 		});
 
-		const results = new Array<LinkResult>();
+		const results: LinkResult[] = [];
 		const initCache = new Set<string>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();

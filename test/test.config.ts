@@ -47,7 +47,6 @@ describe('config', () => {
 			config: configPath,
 			skip: 'loo',
 		});
-		// biome-ignore lint/performance/noDelete: <explanation>
 		delete config.config;
 		assert.deepStrictEqual(config, expected);
 	});
@@ -62,7 +61,6 @@ describe('config', () => {
 				await fs.readFile(configPath, 'utf8'),
 			) as Flags;
 			const config = await getConfig({ config: configPath });
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete config.config;
 
 			assert.deepStrictEqual(config, expected);
@@ -74,7 +72,6 @@ describe('config', () => {
 				await fs.readFile(configPath, 'utf8'),
 			) as Flags;
 			const config = await getConfig({ config: configPath });
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete config.config;
 
 			assert.deepStrictEqual(config, expected);
@@ -101,7 +98,6 @@ describe('config', () => {
 				skip: '🌛',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -120,7 +116,6 @@ describe('config', () => {
 				skip: '🌛',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -139,7 +134,6 @@ describe('config', () => {
 				skip: '🪐',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -158,7 +152,6 @@ describe('config', () => {
 				skip: '🪐',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -177,7 +170,6 @@ describe('config', () => {
 				skip: '🌊',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -196,7 +188,6 @@ describe('config', () => {
 				skip: '🌊',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);

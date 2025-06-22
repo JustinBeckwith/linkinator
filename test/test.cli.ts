@@ -132,7 +132,7 @@ describe('cli', function () {
 		try {
 			output = JSON.parse(response.stdout);
 			assert.strictEqual(output.passed, true);
-		} catch (e) {
+		} catch {
 			assert.fail('Expected JSON output');
 		}
 	});

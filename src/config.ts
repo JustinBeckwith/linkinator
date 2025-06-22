@@ -60,7 +60,7 @@ async function tryGetDefaultConfig() {
 	try {
 		const config = await parseConfigFile(defaultConfigPath);
 		return config;
-	} catch (e) {
+	} catch {
 		return {};
 	}
 }
