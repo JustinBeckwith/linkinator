@@ -11,7 +11,7 @@ import {
 	LinkState,
 	type RetryInfo,
 } from './index.js';
-import { Format, LogLevel, Logger } from './logger.js';
+import { Format, Logger, LogLevel } from './logger.js';
 
 const cli = meow(
 	`
