@@ -3,7 +3,11 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import process from 'node:process';
 import { getLinks } from './links.js';
-import { type CheckOptions, processOptions } from './options.js';
+import {
+	type CheckOptions,
+	type InternalCheckOptions,
+	processOptions,
+} from './options.js';
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
 import {
@@ -56,31 +60,7 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		options.linksToSkip ||= [];
-		let server: http.Server | undefined;
-		const hasHttpPaths = options.path.find((x) => x.startsWith('http'));
-		if (!hasHttpPaths) {
-			let { port } = options;
-			server = await startWebServer({
-				root: options.serverRoot ?? '',
-				port,
-				markdown: options.markdown,
-				directoryListing: options.directoryListing,
-			});
-			if (port === undefined) {
-				const addr = server.address() as AddressInfo;
-				port = addr.port;
-			}
-
-			for (let i = 0; i < options.path.length; i++) {
-				if (options.path[i].startsWith('/')) {
-					options.path[i] = options.path[i].slice(1);
-				}
-
-				options.path[i] = `http://localhost:${port}/${options.path[i]}`;
-			}
-
-			options.staticHttpServerHost = `http://localhost:${port}/`;
-		}
+		const server = await this.setupLocalServer(options);
 
 		if (process.env.LINKINATOR_DEBUG) {
 			console.log(options);
@@ -128,6 +108,33 @@ export class LinkChecker extends EventEmitter {
 			server.destroy();
 		}
 		return result;
+	}
+
+	private async setupLocalServer(
+		options: InternalCheckOptions,
+	): Promise<http.Server | undefined> {
+		// Ensure options.path is always an array
+		options.path = Array.isArray(options.path) ? options.path : [options.path];
+		const hasHttpPaths = options.path.find((x) => x.startsWith('http'));
+		let server: http.Server | undefined;
+		if (!hasHttpPaths) {
+			let { port } = options;
+			server = await startWebServer({
+				root: options.serverRoot ?? '',
+				port,
+				markdown: options.markdown,
+				directoryListing: options.directoryListing,
+			});
+			if (port === undefined) {
+				const addr = server.address() as AddressInfo;
+				port = addr.port;
+			}
+			options.path = options.path
+				.map((p) => (p.startsWith('/') ? p.slice(1) : p))
+				.map((p) => `http://localhost:${port}/${p}`);
+			options.staticHttpServerHost = `http://localhost:${port}/`;
+		}
+		return server;
 	}
 
 	/**
