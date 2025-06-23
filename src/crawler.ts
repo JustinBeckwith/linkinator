@@ -161,7 +161,6 @@ export class LinkChecker extends EventEmitter {
 		// Perform a HEAD or GET request based on the need to crawl
 		let status = 0;
 		let state = LinkState.BROKEN;
-		let shouldRecurse = false;
 		let response: Response | undefined = undefined;
 		const failures: Array<FailureDetails> = [];
 		const fetchOptions = createFetchOptions(options);
@@ -219,7 +218,6 @@ export class LinkChecker extends EventEmitter {
 		}
 		if (response !== undefined) {
 			status = response.status;
-			shouldRecurse = isHtml(response);
 		}
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
 		// a network error likely occurred):
@@ -251,70 +249,7 @@ export class LinkChecker extends EventEmitter {
 		options.results.push(result);
 		this.emit('link', result);
 
-		// If we need to go deeper, scan the next level of depth for links and crawl
-		if (options.crawl && shouldRecurse) {
-			this.emit('pagestart', options.url);
-			const urlResults = response?.body
-				? await getLinks(response.body, options.url.href)
-				: [];
-			for (const result of urlResults) {
-				// If there was some sort of problem parsing the link while
-				// creating a new URL obj, treat it as a broken link.
-				if (!result.url) {
-					const r = {
-						url: mapUrl(result.link, options.checkOptions),
-						status: 0,
-						state: LinkState.BROKEN,
-						parent: mapUrl(options.url.href, options.checkOptions),
-					};
-					options.results.push(r);
-					this.emit('link', r);
-					continue;
-				}
-
-				let crawl =
-					options.checkOptions.recurse &&
-					result.url?.href.startsWith(options.rootPath);
-
-				// Only crawl links that start with the same host
-				if (crawl) {
-					try {
-						const pathUrl = new URL(options.rootPath);
-						crawl = result.url.host === pathUrl.host;
-					} catch {
-						// ignore errors
-					}
-				}
-
-				// Ensure the url hasn't already been touched, largely to avoid a
-				// very large queue length and runaway memory consumption
-				if (!options.cache.has(result.url.href)) {
-					options.cache.add(result.url.href);
-					options.queue.add(async () => {
-						if (result.url === undefined) {
-							throw new Error('url is undefined');
-						}
-						await this.crawl({
-							url: result.url,
-							crawl: crawl ?? false,
-							cache: options.cache,
-							delayCache: options.delayCache,
-							retryErrorsCache: options.retryErrorsCache,
-							results: options.results,
-							checkOptions: options.checkOptions,
-							queue: options.queue,
-							parent: options.url.href,
-							rootPath: options.rootPath,
-							retry: options.retry,
-							retryErrors: options.retryErrors,
-							retryErrorsCount: options.retryErrorsCount,
-							retryErrorsJitter: options.retryErrorsJitter,
-							extraHeaders: options.extraHeaders,
-						});
-					});
-				}
-			}
-		}
+		await this.maybeRecurse(options, response);
 	}
 
 	/**
@@ -421,6 +356,78 @@ export class LinkChecker extends EventEmitter {
 		};
 		this.emit('retry', retryDetails);
 		return true;
+	}
+
+	private async maybeRecurse(
+		options: CrawlOptions,
+		response: Response | undefined,
+	): Promise<void> {
+		if (!options.crawl || !response || !isHtml(response)) {
+			return;
+		}
+
+		// If we need to go deeper, scan the next level of depth for links and crawl
+		this.emit('pagestart', options.url);
+		const urlResults = response?.body
+			? await getLinks(response.body, options.url.href)
+			: [];
+		for (const result of urlResults) {
+			// If there was some sort of problem parsing the link while
+			// creating a new URL obj, treat it as a broken link.
+			if (!result.url) {
+				const r = {
+					url: mapUrl(result.link, options.checkOptions),
+					status: 0,
+					state: LinkState.BROKEN,
+					parent: mapUrl(options.url.href, options.checkOptions),
+				};
+				options.results.push(r);
+				this.emit('link', r);
+				continue;
+			}
+
+			let crawl =
+				options.checkOptions.recurse &&
+				result.url?.href.startsWith(options.rootPath);
+
+			// Only crawl links that start with the same host
+			if (crawl) {
+				try {
+					const pathUrl = new URL(options.rootPath);
+					crawl = result.url.host === pathUrl.host;
+				} catch {
+					// ignore errors
+				}
+			}
+
+			// Ensure the url hasn't already been touched, largely to avoid a
+			// very large queue length and runaway memory consumption
+			if (!options.cache.has(result.url.href)) {
+				options.cache.add(result.url.href);
+				options.queue.add(async () => {
+					if (result.url === undefined) {
+						throw new Error('url is undefined');
+					}
+					await this.crawl({
+						url: result.url,
+						crawl: crawl ?? false,
+						cache: options.cache,
+						delayCache: options.delayCache,
+						retryErrorsCache: options.retryErrorsCache,
+						results: options.results,
+						checkOptions: options.checkOptions,
+						queue: options.queue,
+						parent: options.url.href,
+						rootPath: options.rootPath,
+						retry: options.retry,
+						retryErrors: options.retryErrors,
+						retryErrorsCount: options.retryErrorsCount,
+						retryErrorsJitter: options.retryErrorsJitter,
+						extraHeaders: options.extraHeaders,
+					});
+				});
+			}
+		}
 	}
 
 	private async shouldSkip(options: CrawlOptions): Promise<boolean> {
