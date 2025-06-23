@@ -154,23 +154,7 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
-		// Explicitly skip non-http[s] links before making the request
-		if (this.skipProtocol(options)) {
-			return;
-		}
-
-		// Check for a user-configured function to filter out links
-		if (await this.skipLinksFunction(options)) {
-			return;
-		}
-
-		// Check for a user-provided array of links to filter out
-		if (this.skipLinksArray(options)) {
-			return;
-		}
-
-		// Check if this host has been marked for delay due to 429
-		if (this.handleExistingDelay(options)) {
+		if (await this.shouldSkip(options)) {
 			return;
 		}
 
@@ -437,6 +421,22 @@ export class LinkChecker extends EventEmitter {
 		};
 		this.emit('retry', retryDetails);
 		return true;
+	}
+
+	private async shouldSkip(options: CrawlOptions): Promise<boolean> {
+		// Explicitly skip non-http[s] links before making the request
+		if (this.skipProtocol(options)) return true;
+
+		// Check for a user-configured function to filter out links
+		if (await this.skipLinksFunction(options)) return true;
+
+		// Check for a user-provided array of links to filter out
+		if (this.skipLinksArray(options)) return true;
+
+		// Check if this host has been marked for delay due to 429
+		if (this.handleExistingDelay(options)) return true;
+
+		return false;
 	}
 
 	/**
