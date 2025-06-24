@@ -139,48 +139,69 @@ export class LinkChecker extends EventEmitter {
 
 	/**
 	 * Crawl a given url with the provided options.
-	 * @pram opts List of options used to do the crawl
-	 * @private
-	 * @returns A list of crawl results consisting of urls and status codes
+	 * @param opts List of options used to do the crawl
 	 */
-	async crawl(options: CrawlOptions): Promise<void> {
+	async crawl(opts: CrawlOptions): Promise<void> {
 		// Apply any regex url replacements
-		if (options.checkOptions.urlRewriteExpressions) {
-			for (const exp of options.checkOptions.urlRewriteExpressions) {
-				const newUrl = options.url.href.replace(exp.pattern, exp.replacement);
-				if (options.url.href !== newUrl) {
-					options.url.href = newUrl;
+		if (opts.checkOptions.urlRewriteExpressions) {
+			for (const exp of opts.checkOptions.urlRewriteExpressions) {
+				const newUrl = opts.url.href.replace(exp.pattern, exp.replacement);
+				if (opts.url.href !== newUrl) {
+					opts.url.href = newUrl;
 				}
 			}
 		}
 
-		if (await this.shouldSkip(options)) {
+		if (await this.shouldSkip(opts)) {
 			return;
 		}
 
-		// Perform a HEAD or GET request based on the need to crawl
-		let status = 0;
-		let state = LinkState.BROKEN;
-		let response: Response | undefined = undefined;
-		const failures: Array<FailureDetails> = [];
-		const fetchOptions = createFetchOptions(options);
+		// Fetch + optionally re-enqueue on 429
+		const { response, failures, willBeRetried } =
+			await this.requestWithRetry(opts);
+		if (willBeRetried) {
+			return;
+		}
+
+		const status = response?.status ?? 0;
+
+		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
+		// a network error likely occurred):
+		if (this.shouldRetryOnError(status, opts)) return;
+
+		const state =
+			status >= 200 && status < 300 ? LinkState.OK : LinkState.BROKEN;
+		this.emitResult(opts, state, status, failures);
+
+		// Recurse if body is HTML and crawling is enabled
+		await this.maybeRecurse(opts, response);
+	}
+
+	// Perform fetch, handle retry on 429, collect failures
+	private async requestWithRetry(opts: CrawlOptions): Promise<{
+		response?: Response;
+		failures: FailureDetails[];
+		willBeRetried?: boolean;
+	}> {
+		let response: Response | undefined;
+		const failures: FailureDetails[] = [];
+		const fetchOptions = createFetchOptions(opts);
 
 		try {
-			response = await fetch(options.url.href, {
-				method: options.crawl ? 'GET' : 'HEAD',
+			response = await fetch(opts.url.href, {
+				method: opts.crawl ? 'GET' : 'HEAD',
 				...fetchOptions,
 			});
-			if (this.shouldRetryAfter(response, options)) {
-				return;
+			if (this.shouldRetryAfter(response, opts)) {
+				return { response: undefined, failures, willBeRetried: true };
 			}
-			// If we got an HTTP 405, the server may not like HEAD. GET instead!
 			if (response.status === 405) {
-				response = await fetch(options.url.href, {
+				response = await fetch(opts.url.href, {
 					method: 'GET',
 					...fetchOptions,
 				});
-				if (this.shouldRetryAfter(response, options)) {
-					return;
+				if (this.shouldRetryAfter(response, opts)) {
+					return { response: undefined, failures, willBeRetried: true };
 				}
 			}
 		} catch (error) {
@@ -192,21 +213,20 @@ export class LinkChecker extends EventEmitter {
 				message: (error as Error).message,
 			});
 		}
+
 		try {
 			// Some sites don't respond well to HEAD requests, even if they don't return a 405.
 			// This is a last gasp effort to see if the link is valid.
 			if (
-				(response === undefined ||
-					response.status < 200 ||
-					response.status >= 300) &&
-				!options.crawl
+				(!response || response.status < 200 || response.status >= 300) &&
+				!opts.crawl
 			) {
-				response = await fetch(options.url.href, {
+				response = await fetch(opts.url.href, {
 					method: 'GET',
 					...fetchOptions,
 				});
-				if (this.shouldRetryAfter(response, options)) {
-					return;
+				if (this.shouldRetryAfter(response, opts)) {
+					return { response: undefined, failures, willBeRetried: true };
 				}
 			}
 		} catch (error) {
@@ -214,21 +234,9 @@ export class LinkChecker extends EventEmitter {
 				cause: (error as Error).cause,
 				message: (error as Error).message,
 			});
-			// Catch the next failure
-		}
-		if (response !== undefined) {
-			status = response.status;
-		}
-		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
-		// a network error likely occurred):
-		if (this.shouldRetryOnError(status, options)) {
-			return;
 		}
 
-		// Assume any 2xx status is 👌
-		if (status >= 200 && status < 300) {
-			state = LinkState.OK;
-		} else if (response !== undefined) {
+		if (response && (response.status < 200 || response.status >= 300)) {
 			failures.push({
 				status: response.status,
 				statusText: response.statusText,
@@ -239,17 +247,25 @@ export class LinkChecker extends EventEmitter {
 			});
 		}
 
+		return { response, failures };
+	}
+
+	// Helper to emit and record link results
+	private emitResult(
+		opts: CrawlOptions,
+		state: LinkState,
+		status: number,
+		failures: FailureDetails[],
+	): void {
 		const result: LinkResult = {
-			url: mapUrl(options.url.href, options.checkOptions),
+			url: mapUrl(opts.url.href, opts.checkOptions),
 			status,
 			state,
-			parent: mapUrl(options.parent, options.checkOptions),
+			parent: mapUrl(opts.parent, opts.checkOptions),
 			failureDetails: failures,
 		};
-		options.results.push(result);
+		opts.results.push(result);
 		this.emit('link', result);
-
-		await this.maybeRecurse(options, response);
 	}
 
 	/**
@@ -358,6 +374,9 @@ export class LinkChecker extends EventEmitter {
 		return true;
 	}
 
+	/**
+	 * If `crawl` is enabled and the response is HTML, recursively check its links
+	 */
 	private async maybeRecurse(
 		options: CrawlOptions,
 		response: Response | undefined,
