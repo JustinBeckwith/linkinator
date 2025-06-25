@@ -11,6 +11,7 @@ import {
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
 import {
+	type CrawlResult,
 	type FailureDetails,
 	type LinkResult,
 	LinkState,
@@ -53,7 +54,7 @@ export class LinkChecker extends EventEmitter {
 	 * status codes.
 	 * @param options Options to use while checking for 404s
 	 */
-	async check(options_: CheckOptions) {
+	async check(options_: CheckOptions): Promise<CrawlResult> {
 		const options = await processOptions(options_);
 		if (!Array.isArray(options.path)) {
 			options.path = [options.path];
@@ -100,7 +101,7 @@ export class LinkChecker extends EventEmitter {
 
 		await queue.onIdle();
 
-		const result = {
+		const result: CrawlResult = {
 			links: results,
 			passed: results.filter((x) => x.state === LinkState.BROKEN).length === 0,
 		};
