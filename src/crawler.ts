@@ -44,7 +44,7 @@ export class LinkChecker extends EventEmitter {
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	// biome-ignore lint/suspicious/noExplicitAny: `any` matches parent EventEmitter method
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}

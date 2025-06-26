@@ -33,7 +33,7 @@ export class Queue extends EventEmitter {
 	}
 
 	on(event: 'done', listener: () => void): this;
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	// biome-ignore lint/suspicious/noExplicitAny: `any` matches parent EventEmitter method
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
 	}
