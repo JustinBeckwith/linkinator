@@ -31,6 +31,9 @@ export type CrawlOptions = {
 	queue: Queue;
 	rootPath: string;
 	retry: boolean;
+	retryNoHeader: boolean;
+	retryNoHeaderCount: number;
+	retryNoHeaderDelay: number;
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
@@ -91,6 +94,9 @@ export class LinkChecker extends EventEmitter {
 					queue,
 					rootPath: path,
 					retry: Boolean(options_.retry),
+					retryNoHeader: Boolean(options_.retryNoHeader),
+					retryNoHeaderCount: options_.retryNoHeaderCount ?? 3,
+					retryNoHeaderDelay: options_.retryNoHeaderDelay ?? 30 * 60 * 1000,
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
 					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
@@ -278,23 +284,29 @@ export class LinkChecker extends EventEmitter {
 	 * @param opts CrawlOptions used during this request
 	 */
 	shouldRetryAfter(response: Response, options: CrawlOptions): boolean {
-		if (!options.retry) {
+		if (response.status !== 429) {
 			return false;
 		}
 
 		const retryAfterRaw = response.headers.get('retry-after');
-		if (response.status !== 429 || !retryAfterRaw) {
-			return false;
-		}
 
-		// The `retry-after` header can come in either <seconds> or
-		// A specific date to go check.
-		let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
-		if (Number.isNaN(retryAfter)) {
-			retryAfter = Date.parse(retryAfterRaw);
+		let retryAfter: number;
+
+		if (options.retry && retryAfterRaw) {
+			// The `retry-after` header can come in either <seconds> or
+			// A specific date to go check.
+			retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
 			if (Number.isNaN(retryAfter)) {
-				return false;
+				retryAfter = Date.parse(retryAfterRaw);
+				if (Number.isNaN(retryAfter)) {
+					return false;
+				}
 			}
+		} else if (options.retryNoHeader && !retryAfterRaw) {
+			// No `retry-after` response header, use configured delay
+			retryAfter = Date.now() + options.retryNoHeaderDelay;
+		} else {
+			return false;
 		}
 
 		// Check to see if there is already a request to wait for this host
@@ -440,6 +452,9 @@ export class LinkChecker extends EventEmitter {
 						parent: options.url.href,
 						rootPath: options.rootPath,
 						retry: options.retry,
+						retryNoHeader: options.retryNoHeader,
+						retryNoHeaderCount: options.retryNoHeaderCount,
+						retryNoHeaderDelay: options.retryNoHeaderDelay,
 						retryErrors: options.retryErrors,
 						retryErrorsCount: options.retryErrorsCount,
 						retryErrorsJitter: options.retryErrorsJitter,

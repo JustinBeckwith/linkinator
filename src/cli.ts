@@ -47,6 +47,18 @@ const cli = meow(
           Automatically retry requests that return HTTP 429 responses and include
           a 'retry-after' header. Defaults to false.
 
+      --retry-no-header,
+          Automatically retry requests that return HTTP 429 responses and DON'T
+          include a 'retry-after' header. Defaults to false.
+
+      --retry-no-header-count,
+          How many times should a HTTP 429 response with no 'retry-after' header
+          be retried?
+
+      --retry-no-header-delay,
+          Delay in ms between retries for HTTP 429 responses with
+          no 'retry-after' header.
+
       --retry-errors,
           Automatically retry requests that return 5xx or unknown response.
 
@@ -54,7 +66,7 @@ const cli = meow(
           How many times should an error be retried?
 
       --retry-errors-jitter,
-          Random jitter applied to error retry.
+          Random jitter in ms applied to error retry.
 
       --server-root
           When scanning a locally directory, customize the location on disk
@@ -101,6 +113,9 @@ const cli = meow(
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
 			retry: { type: 'boolean' },
+			retryNoHeader: { type: 'boolean' },
+			retryNoHeaderCount: { type: 'number', default: 3 },
+			retryNoHeaderDelay: { type: 'number', default: 30 * 60 * 1000 },
 			retryErrors: { type: 'boolean' },
 			retryErrorsCount: { type: 'number', default: 5 },
 			retryErrorsJitter: { type: 'number', default: 3000 },
@@ -188,6 +203,9 @@ async function main() {
 		serverRoot: flags.serverRoot,
 		directoryListing: flags.directoryListing,
 		retry: flags.retry,
+		retryNoHeader: flags.retryNoHeader,
+		retryNoHeaderCount: Number(flags.retryNoHeaderCount),
+		retryNoHeaderDelay: Number(flags.retryNoHeaderDelay),
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
 		retryErrorsJitter: Number(flags.retryErrorsJitter),
