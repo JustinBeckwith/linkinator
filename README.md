@@ -1,8 +1,8 @@
 # ![Avenga logo](https://raw.githubusercontent.com/avenga/linkinator/main/assets/avenga_symbol.png) linkinator
 
-> A super simple site crawler and broken link checker.
+> A super simple site crawler and broken link checker, forked from [JustinBeckwith/linkinator](https://github.com/JustinBeckwith/linkinator)
 
-[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.org/package/@avenga/linkinator)
+[![npm version](https://img.shields.io/npm/v/@avenga/linkinator)](https://www.npmjs.org/package/@avenga/linkinator)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
 
@@ -184,29 +184,6 @@ To load config settings outside the CWD, you can pass the `--config` flag to the
 ```sh
 npx linkinator --config /some/path/your-config.json
 ```
-
-## GitHub Actions
-
-You can use `linkinator` as a GitHub Action as well, using [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action):
-
-```yaml
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-name: ci
-jobs:
-  linkinator:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: JustinBeckwith/linkinator-action@v1
-        with:
-          paths: README.md
-```
-
-To see all options or to learn more, visit [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action).
 
 ## API Usage
 

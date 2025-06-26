@@ -4,14 +4,10 @@ import process from 'node:process';
 import chalk from 'chalk';
 import meow from 'meow';
 import { type Flags, getConfig } from './config.js';
-import {
-	type CheckOptions,
-	LinkChecker,
-	type LinkResult,
-	LinkState,
-	type RetryInfo,
-} from './index.js';
+import { LinkChecker } from './index.js';
 import { Format, LogLevel, Logger } from './logger.js';
+import type { CheckOptions } from './options.js';
+import { type LinkResult, LinkState, type RetryInfo } from './types.js';
 
 const cli = meow(
 	`
@@ -76,8 +72,8 @@ const cli = meow(
       --url-rewrite-replace
           Expression used to replace search content.  Must be used with --url-rewrite-search.
 
-			--user-agent
-					The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+      --user-agent
+          The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
 
       --verbosity
           Override the default verbosity for this command. Available options are
