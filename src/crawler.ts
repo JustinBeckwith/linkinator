@@ -27,6 +27,7 @@ export type CrawlOptions = {
 	cache: Set<string>;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
+	retryNoHeaderCache: Map<string, number>;
 	checkOptions: CheckOptions;
 	queue: Queue;
 	rootPath: string;
@@ -78,6 +79,7 @@ export class LinkChecker extends EventEmitter {
 		const initCache = new Set<string>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
+		const retryNoHeaderCache = new Map<string, number>();
 
 		for (const path of options.path) {
 			const url = new URL(path);
@@ -91,6 +93,7 @@ export class LinkChecker extends EventEmitter {
 					cache: initCache,
 					delayCache,
 					retryErrorsCache,
+					retryNoHeaderCache,
 					queue,
 					rootPath: path,
 					retry: Boolean(options_.retry),
@@ -276,10 +279,10 @@ export class LinkChecker extends EventEmitter {
 	}
 
 	/**
-	 * Check the incoming response for a `retry-after` header.  If present,
-	 * and if the status was an HTTP 429, calculate the date at which this
-	 * request should be retried. Ensure the delayCache knows that we're
-	 * going to wait on requests for this entire host.
+	 * Checks for HTTP 429 status in the incoming response and for the existence
+	 * of a `retry-after` header. Adds the request to the queue again after
+	 * calculating the date when it should be retried, depending on a
+	 * `retry-after` header existing and configuration.
 	 * @param response Response returned from the request
 	 * @param opts CrawlOptions used during this request
 	 */
@@ -302,22 +305,29 @@ export class LinkChecker extends EventEmitter {
 					return false;
 				}
 			}
+
+			// Check to see if there is already a request to wait for this host
+			const currentTimeout = options.delayCache.get(options.url.host);
+			if (currentTimeout !== undefined) {
+				// Use whichever time is higher in the cache
+				if (retryAfter > currentTimeout) {
+					options.delayCache.set(options.url.host, retryAfter);
+				}
+			} else {
+				options.delayCache.set(options.url.host, retryAfter);
+			}
 		} else if (options.retryNoHeader && !retryAfterRaw) {
-			// No `retry-after` response header, use configured delay
+			// No `retry-after` response header, use preconfigured delay and retry count
+			const maxRetries = options.retryNoHeaderCount;
+			const currentRetries =
+				options.retryNoHeaderCache.get(options.url.href) ?? 1;
+			if (currentRetries > maxRetries) {
+				return false;
+			}
+			options.retryNoHeaderCache.set(options.url.href, currentRetries + 1);
 			retryAfter = Date.now() + options.retryNoHeaderDelay;
 		} else {
 			return false;
-		}
-
-		// Check to see if there is already a request to wait for this host
-		const currentTimeout = options.delayCache.get(options.url.host);
-		if (currentTimeout !== undefined) {
-			// Use whichever time is higher in the cache
-			if (retryAfter > currentTimeout) {
-				options.delayCache.set(options.url.host, retryAfter);
-			}
-		} else {
-			options.delayCache.set(options.url.host, retryAfter);
 		}
 
 		options.queue.add(
@@ -455,6 +465,7 @@ export class LinkChecker extends EventEmitter {
 						retryNoHeader: options.retryNoHeader,
 						retryNoHeaderCount: options.retryNoHeaderCount,
 						retryNoHeaderDelay: options.retryNoHeaderDelay,
+						retryNoHeaderCache: options.retryNoHeaderCache,
 						retryErrors: options.retryErrors,
 						retryErrorsCount: options.retryErrorsCount,
 						retryErrorsJitter: options.retryErrorsJitter,
