@@ -270,6 +270,39 @@ describe('linkinator', () => {
 		}
 	});
 
+	it('should recurse within the same origin domain for http[s] paths', async () => {
+		const scopes = [
+			nock('http://fake.local/')
+				.get('/sub/path/')
+				.replyWithFile(
+					200,
+					path.resolve('test/fixtures/recurseNested/sub/path/index.html'),
+					{
+						'content-type': 'text/html',
+					},
+				),
+			nock('http://fake.local/')
+				.get('/sub/')
+				.replyWithFile(
+					200,
+					path.resolve('test/fixtures/recurseNested/sub/index.html'),
+					{
+						'content-type': 'text/html',
+					},
+				),
+			nock('http://fake.local/').get('/').reply(200),
+		];
+		const results = await check({
+			path: 'http://fake.local/sub/path/',
+			recurse: true,
+		});
+		assert.strictEqual(results.links.length, 3);
+		assert.ok(results.passed);
+		for (const x of scopes) {
+			x.done();
+		}
+	});
+
 	it('should not attempt to validate preconnect or prefetch urls', async () => {
 		const scope = nock('http://fake.local').head('/site.css').reply(200, '');
 		const results = await check({ path: 'test/fixtures/prefetch' });
