@@ -1,5 +1,5 @@
 import type { Readable } from 'node:stream';
-import { WritableStream } from 'htmlparser2/lib/WritableStream';
+import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 
 const linksAttribute: Record<string, string[]> = {
