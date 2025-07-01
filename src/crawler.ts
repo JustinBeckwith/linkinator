@@ -27,10 +27,14 @@ export type CrawlOptions = {
 	cache: Set<string>;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
+	retryNoHeaderCache: Map<string, number>;
 	checkOptions: CheckOptions;
 	queue: Queue;
 	rootPath: string;
 	retry: boolean;
+	retryNoHeader: boolean;
+	retryNoHeaderCount: number;
+	retryNoHeaderDelay: number;
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
@@ -75,6 +79,7 @@ export class LinkChecker extends EventEmitter {
 		const initCache = new Set<string>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
+		const retryNoHeaderCache = new Map<string, number>();
 
 		for (const path of options.path) {
 			const url = new URL(path);
@@ -88,9 +93,13 @@ export class LinkChecker extends EventEmitter {
 					cache: initCache,
 					delayCache,
 					retryErrorsCache,
+					retryNoHeaderCache,
 					queue,
 					rootPath: path,
 					retry: Boolean(options_.retry),
+					retryNoHeader: Boolean(options_.retryNoHeader),
+					retryNoHeaderCount: options_.retryNoHeaderCount ?? -1,
+					retryNoHeaderDelay: options_.retryNoHeaderDelay ?? 30 * 60 * 1000,
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
 					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
@@ -270,31 +279,47 @@ export class LinkChecker extends EventEmitter {
 	}
 
 	/**
-	 * Check the incoming response for a `retry-after` header.  If present,
-	 * and if the status was an HTTP 429, calculate the date at which this
-	 * request should be retried. Ensure the delayCache knows that we're
-	 * going to wait on requests for this entire host.
+	 * Checks for HTTP 429 status in the incoming response and for the existence
+	 * of a `retry-after` header. Adds the request to the queue again after
+	 * calculating the date when it should be retried, depending on a
+	 * `retry-after` header existing and configuration.
 	 * @param response Response returned from the request
 	 * @param opts CrawlOptions used during this request
 	 */
 	shouldRetryAfter(response: Response, options: CrawlOptions): boolean {
-		if (!options.retry) {
+		if (response.status !== 429) {
 			return false;
 		}
 
 		const retryAfterRaw = response.headers.get('retry-after');
-		if (response.status !== 429 || !retryAfterRaw) {
-			return false;
-		}
 
-		// The `retry-after` header can come in either <seconds> or
-		// A specific date to go check.
-		let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
-		if (Number.isNaN(retryAfter)) {
-			retryAfter = Date.parse(retryAfterRaw);
+		let retryAfter: number;
+
+		if (options.retry && retryAfterRaw !== null) {
+			// The `retry-after` header can come in either <seconds> or
+			// A specific date to go check.
+			retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
 			if (Number.isNaN(retryAfter)) {
+				retryAfter = Date.parse(retryAfterRaw);
+				if (Number.isNaN(retryAfter)) {
+					return false;
+				}
+			}
+		} else if (options.retryNoHeader && retryAfterRaw === null) {
+			// No `retry-after` response header, use preconfigured delay and retry count
+			const maxRetries = options.retryNoHeaderCount;
+
+			// Check and set per-URL retry counter (infinite retries if `maxRetries` is -1)
+			const currentRetries =
+				options.retryNoHeaderCache.get(options.url.href) ?? 1;
+			if (maxRetries >= 0 && currentRetries > maxRetries) {
 				return false;
 			}
+			options.retryNoHeaderCache.set(options.url.href, currentRetries + 1);
+
+			retryAfter = Date.now() + options.retryNoHeaderDelay;
+		} else {
+			return false;
 		}
 
 		// Check to see if there is already a request to wait for this host
@@ -308,14 +333,10 @@ export class LinkChecker extends EventEmitter {
 			options.delayCache.set(options.url.host, retryAfter);
 		}
 
-		options.queue.add(
-			async () => {
-				await this.crawl(options);
-			},
-			{
-				delay: retryAfter - Date.now(),
-			},
-		);
+		options.queue.add(() => this.crawl(options), {
+			// Make sure delay is always >= 0
+			delay: Math.max(0, retryAfter - Date.now()),
+		});
 		const retryDetails: RetryInfo = {
 			url: options.url.href,
 			status: response.status,
@@ -440,6 +461,10 @@ export class LinkChecker extends EventEmitter {
 						parent: options.url.href,
 						rootPath: options.rootPath,
 						retry: options.retry,
+						retryNoHeader: options.retryNoHeader,
+						retryNoHeaderCount: options.retryNoHeaderCount,
+						retryNoHeaderDelay: options.retryNoHeaderDelay,
+						retryNoHeaderCache: options.retryNoHeaderCache,
 						retryErrors: options.retryErrors,
 						retryErrorsCount: options.retryErrorsCount,
 						retryErrorsJitter: options.retryErrorsJitter,

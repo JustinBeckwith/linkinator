@@ -19,6 +19,9 @@ export type CheckOptions = {
 	serverRoot?: string;
 	directoryListing?: boolean;
 	retry?: boolean;
+	retryNoHeader?: boolean;
+	retryNoHeaderCount?: number;
+	retryNoHeaderDelay?: number;
 	retryErrors?: boolean;
 	retryErrorsCount?: number;
 	retryErrorsJitter?: number;

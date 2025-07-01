@@ -7,7 +7,9 @@ import { LinkChecker, check } from '../src/index.js';
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
 
-describe('retries', () => {
+describe('retries', function () {
+	this.timeout(5_000);
+
 	afterEach(() => {
 		sinon.restore();
 		nock.cleanAll();
@@ -20,6 +22,17 @@ describe('retries', () => {
 		const results = await check({
 			path: 'test/fixtures/basic',
 			retry: true,
+		});
+		assert.ok(!results.passed);
+		scope.done();
+	});
+
+	it('should ignore 429s without retry-after header', async () => {
+		const scope = nock('http://fake.local').get('/').reply(429);
+		const results = await check({
+			path: 'test/fixtures/basic',
+			retry: true,
+			retryNoHeader: false,
 		});
 		assert.ok(!results.passed);
 		scope.done();
@@ -200,6 +213,22 @@ describe('retries', () => {
 		scope.done();
 	});
 
+	it('should handle `retry-after` value of 0 by retrying again without delay', async () => {
+		const scope = nock('http://fake.local')
+			.get('/')
+			.reply(429, undefined, {
+				'retry-after': '0',
+			})
+			.get('/')
+			.reply(200);
+		const results = await check({
+			path: 'test/fixtures/basic',
+			retry: true,
+		});
+		assert.ok(results.passed);
+		scope.done();
+	});
+
 	function invertedPromise() {
 		let resolve!: () => void;
 		let reject!: (error: Error) => void;
@@ -209,6 +238,116 @@ describe('retries', () => {
 		});
 		return { promise, resolve, reject };
 	}
+
+	describe('retry-no-header', () => {
+		it('should use preconfigured delay on 429s', async () => {
+			const scope = nock('http://fake.local')
+				.get('/')
+				.reply(429)
+				.get('/')
+				.reply(200);
+
+			const { promise, resolve } = invertedPromise();
+			const checker = new LinkChecker().on('retry', resolve);
+			const clock = sinon.useFakeTimers({
+				shouldAdvanceTime: true,
+			});
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retryNoHeader: true,
+				retryNoHeaderDelay: 30_000,
+			});
+
+			await promise;
+			await clock.tickAsync(30_000);
+			const results = await checkPromise;
+			assert.ok(results.passed);
+			scope.done();
+		});
+
+		it('should use `retry` instead of `retryNoHeader` when `retry-after` header exists', async () => {
+			const scope = nock('http://fake.local')
+				.get('/')
+				.reply(429, undefined, { 'retry-after': '5' })
+				.get('/')
+				.reply(200);
+
+			const { promise, resolve } = invertedPromise();
+			const checker = new LinkChecker().on('retry', resolve);
+			const clock = sinon.useFakeTimers({
+				shouldAdvanceTime: true,
+			});
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retry: true,
+				retryNoHeader: true,
+				retryNoHeaderDelay: 100_000,
+			});
+
+			await promise;
+			await clock.tickAsync(5_000);
+			const results = await checkPromise;
+			assert.ok(results.passed);
+			scope.done();
+		});
+
+		it('should retry multiple times', async () => {
+			const scope = nock('http://fake.local')
+				.get('/')
+				.reply(429)
+				.get('/')
+				.reply(429)
+				.get('/')
+				.reply(200);
+
+			const { promise, resolve } = invertedPromise();
+			let count = 0;
+			const checker = new LinkChecker().on('retry', () => {
+				count++;
+				if (count >= 2) resolve();
+			});
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retryNoHeader: true,
+				retryNoHeaderCount: 2,
+				retryNoHeaderDelay: 10,
+			});
+
+			await promise;
+			const results = await checkPromise;
+			assert.ok(results.passed);
+			scope.done();
+		});
+
+		it('should abort after reaching retryNoHeaderCount', async () => {
+			const scope = nock('http://fake.local').persist().get('/').reply(429);
+			const { promise, resolve } = invertedPromise();
+			const retries = 2;
+			let retryEvents = 0;
+			const checker = new LinkChecker().on('retry', () => {
+				retryEvents++;
+				if (retryEvents === retries) resolve();
+			});
+			const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retryNoHeader: true,
+				retryNoHeaderCount: retries,
+				retryNoHeaderDelay: 100,
+			});
+
+			await promise;
+			await clock.tickAsync(10_000);
+			const results = await checkPromise;
+			assert.ok(!results.passed);
+			assert.strictEqual(
+				retryEvents,
+				retries,
+				'should not retry more than 2 times',
+			);
+			scope.done();
+		});
+	});
 
 	describe('retry-errors', () => {
 		it('should retry 5xx status code', async () => {

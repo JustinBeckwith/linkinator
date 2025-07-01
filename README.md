@@ -39,7 +39,7 @@ $ linkinator LOCATIONS [ --arguments ]
   Flags
 
     --concurrency
-          The number of connections to make simultaneously. Defaults to 100.
+        The number of connections to make simultaneously. Defaults to 100.
 
     --config
         Path to the config file to use. Looks for `linkinator.config.json` by default.
@@ -54,9 +54,6 @@ $ linkinator LOCATIONS [ --arguments ]
     --help
         Show this command.
 
-    --include, -i
-        List of urls in regexy form to include.  The opposite of --skip.
-
     --markdown
         Automatically parse and scan markdown if scanning from a location on disk.
 
@@ -67,6 +64,18 @@ $ linkinator LOCATIONS [ --arguments ]
         Automatically retry requests that return HTTP 429 responses and include
         a 'retry-after' header. Defaults to false.
 
+    --retry-no-header,
+        Automatically retry requests that return HTTP 429 responses and DON'T
+        include a 'retry-after' header. Defaults to false.
+
+    --retry-no-header-count,
+        How many times should a HTTP 429 response with no 'retry-after' header
+        be retried? Defaults to -1 for infinite retries.
+
+    --retry-no-header-delay,
+        Delay in ms between retries for HTTP 429 responses with
+        no 'retry-after' header.
+
     --retry-errors,
         Automatically retry requests that return 5xx or unknown response.
 
@@ -74,7 +83,7 @@ $ linkinator LOCATIONS [ --arguments ]
         How many times should an error be retried?
 
     --retry-errors-jitter,
-        Random jitter applied to error retry.
+        Random jitter in ms applied to error retry.
 
     --server-root
         When scanning a locally directory, customize the location on disk
@@ -170,9 +179,12 @@ All options are optional. It should look like this:
   "serverRoot": "./",
   "directoryListing": true,
   "retry": true,
+  "retryNoHeader": true,
+  "retryNoHeaderCount": 3,
+  "retryNoHeaderDelay": 1800000,
   "retryErrors": true,
   "retryErrorsCount": 3,
-  "retryErrorsJitter": 5,
+  "retryErrorsJitter": 5000,
   "urlRewriteSearch": "/pattern/",
   "urlRewriteReplace": "replacement",
   "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)",
