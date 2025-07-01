@@ -1,19 +1,17 @@
-import assert from 'node:assert';
 import fs from 'node:fs';
 import http from 'node:http';
 import util from 'node:util';
 import { execa } from 'execa';
-import { describe, it } from 'mocha';
 import enableDestroy from 'server-destroy';
 import stripAnsi from 'strip-ansi';
+import { afterEach, assert, describe, it } from 'vitest';
 import { type LinkResult, LinkState } from '../src/index.js';
 
-describe('cli', function () {
+describe('cli', () => {
 	let server: http.Server;
-	this.timeout(20_000);
 
 	const package_ = JSON.parse(
-		fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+		fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 	) as { bin: { linkinator: string } };
 	const { linkinator } = package_.bin;
 	const node = 'node';
@@ -143,7 +141,7 @@ describe('cli', function () {
 			'--silent',
 			'test/fixtures/markdown/README.md',
 		]);
-		assert.doesNotMatch(response.stdout, /\[/);
+		assert.notMatch(response.stdout, /\[/);
 	});
 
 	it('should not show 200 links if verbosity is ERROR with JSON', async () => {
