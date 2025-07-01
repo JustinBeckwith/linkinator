@@ -1,10 +1,9 @@
-import assert from 'node:assert';
 import path from 'node:path';
 import process from 'node:process';
 import gaxios from 'gaxios';
-import { afterEach, describe, it } from 'mocha';
 import nock from 'nock';
 import * as sinon from 'sinon';
+import { afterEach, assert, describe, expect, it } from 'vitest';
 import {
 	type CheckOptions,
 	check,
@@ -309,13 +308,12 @@ describe('linkinator', () => {
 	});
 
 	it('should throw an error if you pass server-root and an http based path', async () => {
-		await assert.rejects(
+		await expect(() =>
 			check({
 				path: 'https://jbeckwith.com',
 				serverRoot: process.cwd(),
 			}),
-			/cannot be defined/,
-		);
+		).rejects.toThrow(/cannot be defined/);
 	});
 
 	it('should allow overriding the server root', async () => {
@@ -347,21 +345,19 @@ describe('linkinator', () => {
 	});
 
 	it('should not allow mixed local and remote paths', async () => {
-		await assert.rejects(
+		await expect(
 			check({
 				path: ['https://jbeckwith.com', 'test/fixtures/basic'],
 			}),
-			/cannot be mixed/,
-		);
+		).rejects.toThrow(/cannot be mixed/);
 	});
 
 	it('should require at least one path', async () => {
-		await assert.rejects(
+		await expect(
 			check({
 				path: [],
 			}),
-			/At least one/,
-		);
+		).rejects.toThrow(/At least one/);
 	});
 
 	it('should not pollute the original options after merge', async () => {
@@ -439,12 +435,11 @@ describe('linkinator', () => {
 	});
 
 	it('should throw if a glob provides no paths to scan', async () => {
-		await assert.rejects(
+		await expect(
 			check({
 				path: 'test/fixtures/basic/*.md',
 			}),
-			/returned 0 results/,
-		);
+		).rejects.toThrow(/returned 0 results/);
 	});
 
 	it('should always send a human looking User-Agent', async () => {

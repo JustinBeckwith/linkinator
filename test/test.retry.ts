@@ -1,7 +1,6 @@
-import assert from 'node:assert';
-import { afterEach, describe, it } from 'mocha';
 import nock from 'nock';
 import * as sinon from 'sinon';
+import { afterEach, assert, describe, it } from 'vitest';
 import { check, LinkChecker } from '../src/index.js';
 
 nock.disableNetConnect();
