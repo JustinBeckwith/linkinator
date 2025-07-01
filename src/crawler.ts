@@ -305,40 +305,38 @@ export class LinkChecker extends EventEmitter {
 					return false;
 				}
 			}
-
-			// Check to see if there is already a request to wait for this host
-			const currentTimeout = options.delayCache.get(options.url.host);
-			if (currentTimeout !== undefined) {
-				// Use whichever time is higher in the cache
-				if (retryAfter > currentTimeout) {
-					options.delayCache.set(options.url.host, retryAfter);
-				}
-			} else {
-				options.delayCache.set(options.url.host, retryAfter);
-			}
 		} else if (options.retryNoHeader && !retryAfterRaw) {
 			// No `retry-after` response header, use preconfigured delay and retry count
 			const maxRetries = options.retryNoHeaderCount;
+
+			// Check and set per-URL retry counter (infinite retries if `maxRetries` is -1)
 			const currentRetries =
 				options.retryNoHeaderCache.get(options.url.href) ?? 1;
-			// Only check `maxRetries` if it is >= 0 because -1 means infinite retries
 			if (maxRetries >= 0 && currentRetries > maxRetries) {
 				return false;
 			}
 			options.retryNoHeaderCache.set(options.url.href, currentRetries + 1);
+
 			retryAfter = Date.now() + options.retryNoHeaderDelay;
 		} else {
 			return false;
 		}
 
-		options.queue.add(
-			async () => {
-				await this.crawl(options);
-			},
-			{
-				delay: retryAfter - Date.now(),
-			},
-		);
+		// Check to see if there is already a request to wait for this host
+		const currentTimeout = options.delayCache.get(options.url.host);
+		if (currentTimeout !== undefined) {
+			// Use whichever time is higher in the cache
+			if (retryAfter > currentTimeout) {
+				options.delayCache.set(options.url.host, retryAfter);
+			}
+		} else {
+			options.delayCache.set(options.url.host, retryAfter);
+		}
+
+		options.queue.add(() => this.crawl(options), {
+			// Make sure delay is always >= 0
+			delay: Math.max(0, retryAfter - Date.now()),
+		});
 		const retryDetails: RetryInfo = {
 			url: options.url.href,
 			status: response.status,
