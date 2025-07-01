@@ -295,7 +295,7 @@ export class LinkChecker extends EventEmitter {
 
 		let retryAfter: number;
 
-		if (options.retry && retryAfterRaw) {
+		if (options.retry && retryAfterRaw !== null) {
 			// The `retry-after` header can come in either <seconds> or
 			// A specific date to go check.
 			retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
@@ -305,7 +305,7 @@ export class LinkChecker extends EventEmitter {
 					return false;
 				}
 			}
-		} else if (options.retryNoHeader && !retryAfterRaw) {
+		} else if (options.retryNoHeader && retryAfterRaw === null) {
 			// No `retry-after` response header, use preconfigured delay and retry count
 			const maxRetries = options.retryNoHeaderCount;
 

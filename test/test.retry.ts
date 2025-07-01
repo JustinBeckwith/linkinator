@@ -213,6 +213,22 @@ describe('retries', function () {
 		scope.done();
 	});
 
+	it('should handle `retry-after` value of 0 by retrying again without delay', async () => {
+		const scope = nock('http://fake.local')
+			.get('/')
+			.reply(429, undefined, {
+				'retry-after': '0',
+			})
+			.get('/')
+			.reply(200);
+		const results = await check({
+			path: 'test/fixtures/basic',
+			retry: true,
+		});
+		assert.ok(results.passed);
+		scope.done();
+	});
+
 	function invertedPromise() {
 		let resolve!: () => void;
 		let reject!: (error: Error) => void;
