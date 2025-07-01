@@ -98,7 +98,7 @@ export class LinkChecker extends EventEmitter {
 					rootPath: path,
 					retry: Boolean(options_.retry),
 					retryNoHeader: Boolean(options_.retryNoHeader),
-					retryNoHeaderCount: options_.retryNoHeaderCount ?? 3,
+					retryNoHeaderCount: options_.retryNoHeaderCount ?? -1,
 					retryNoHeaderDelay: options_.retryNoHeaderDelay ?? 30 * 60 * 1000,
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
@@ -321,7 +321,8 @@ export class LinkChecker extends EventEmitter {
 			const maxRetries = options.retryNoHeaderCount;
 			const currentRetries =
 				options.retryNoHeaderCache.get(options.url.href) ?? 1;
-			if (currentRetries > maxRetries) {
+			// Only check `maxRetries` if it is >= 0 because -1 means infinite retries
+			if (maxRetries >= 0 && currentRetries > maxRetries) {
 				return false;
 			}
 			options.retryNoHeaderCache.set(options.url.href, currentRetries + 1);

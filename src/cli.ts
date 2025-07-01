@@ -53,7 +53,7 @@ const cli = meow(
 
       --retry-no-header-count,
           How many times should a HTTP 429 response with no 'retry-after' header
-          be retried?
+          be retried? Defaults to -1 for infinite retries.
 
       --retry-no-header-delay,
           Delay in ms between retries for HTTP 429 responses with
@@ -114,7 +114,7 @@ const cli = meow(
 			directoryListing: { type: 'boolean' },
 			retry: { type: 'boolean' },
 			retryNoHeader: { type: 'boolean' },
-			retryNoHeaderCount: { type: 'number', default: 3 },
+			retryNoHeaderCount: { type: 'number', default: -1 },
 			retryNoHeaderDelay: { type: 'number', default: 30 * 60 * 1000 },
 			retryErrors: { type: 'boolean' },
 			retryErrorsCount: { type: 'number', default: 5 },
