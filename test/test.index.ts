@@ -2,8 +2,7 @@ import path from 'node:path';
 import process from 'node:process';
 import gaxios from 'gaxios';
 import nock from 'nock';
-import * as sinon from 'sinon';
-import { afterEach, assert, describe, expect, it } from 'vitest';
+import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import {
 	type CheckOptions,
 	check,
@@ -17,7 +16,8 @@ nock.enableNetConnect('localhost');
 
 describe('linkinator', () => {
 	afterEach(() => {
-		sinon.restore();
+		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 		nock.cleanAll();
 	});
 
@@ -39,11 +39,11 @@ describe('linkinator', () => {
 	it('should only queue a link once', async () => {
 		const scope = nock('http://example.invalid').head('/').reply(200);
 		const checker = new LinkChecker();
-		const checkerSpy = sinon.spy(checker, 'crawl');
+		const checkerSpy = vi.spyOn(checker, 'crawl');
 		const results = await checker.check({ path: 'test/fixtures/twice' });
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
-		assert.strictEqual(checkerSpy.callCount, 2);
+		assert.strictEqual(checkerSpy.mock.calls.length, 2);
 		scope.done();
 	});
 
@@ -94,15 +94,16 @@ describe('linkinator', () => {
 	});
 
 	it('should handle fetch exceptions', async () => {
-		const requestStub = sinon.stub(gaxios, 'request');
-		requestStub.throws('Fetch error');
+		const requestStub = vi
+			.spyOn(gaxios, 'request')
+			.mockRejectedValue('Fetch error');
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
-		requestStub.restore();
+		requestStub.mockRestore();
 	});
 
 	it('should report malformed links as broken', async () => {
@@ -406,15 +407,13 @@ describe('linkinator', () => {
 	});
 
 	it('should print debug information when the env var is set', async () => {
-		sinon.stub(process, 'env').value({
-			LINKINATOR_DEBUG: true,
-		});
-		const consoleSpy = sinon.stub(console, 'log');
+		vi.stubEnv('LINKINATOR_DEBUG', 'true');
+		const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const results = await check({
 			path: 'test/fixtures/markdown/README.md',
 		});
 		assert.ok(results.passed);
-		assert.ok(consoleSpy.calledOnce);
+		assert.strictEqual(consoleSpy.mock.calls.length, 1);
 	});
 
 	it('should respect globs', async () => {
