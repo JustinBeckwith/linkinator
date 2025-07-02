@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+      - 8-add-codecov
 
 permissions:
   contents: read # for checkout
@@ -39,7 +40,11 @@ jobs:
       - run: node -v
       - run: npm ci
       - run: npm run test
-      # - run: npm run coverage
+      - run: npm run coverage
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
   docs:
     runs-on: ubuntu-latest
     steps:
