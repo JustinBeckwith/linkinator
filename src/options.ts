@@ -24,6 +24,7 @@ export type CheckOptions = {
 	retryErrorsJitter?: number;
 	urlRewriteExpressions?: UrlRewriteExpression[];
 	userAgent?: string;
+	headers?: Record<string, string>;
 };
 
 export type InternalCheckOptions = {
@@ -42,7 +43,6 @@ export async function processOptions(
 	options_: CheckOptions,
 ): Promise<InternalCheckOptions> {
 	const options: InternalCheckOptions = { ...options_ };
-
 	// Ensure at least one path is provided
 	if (options.path.length === 0) {
 		throw new Error('At least one path must be provided');
@@ -80,6 +80,10 @@ export async function processOptions(
 	}
 
 	options.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
+	options.headers = {
+		'User-Agent': options.userAgent,
+		...(options.headers ?? {}),
+	};
 	options.serverRoot &&= path.normalize(options.serverRoot);
 
 	// Expand globs into paths
