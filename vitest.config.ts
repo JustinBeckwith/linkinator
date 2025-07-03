@@ -6,19 +6,6 @@ export default defineConfig({
     testTimeout: 10_000,
     coverage: {
       provider: 'v8'
-    },
-    pool: 'forks', // or 'threads'
-    poolOptions: {
-      forks: {
-        singleFork: true,
-        maxForks: 1,
-        minForks: 1,  
-      },
-      threads: {
-        singleThread: true,
-        maxThreads: 1,
-        minThreads: 1,
-      }
     }
   } 
 });
