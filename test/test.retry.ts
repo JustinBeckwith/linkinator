@@ -8,6 +8,7 @@ nock.enableNetConnect('localhost');
 describe('retries', () => {
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.clearAllTimers();
 		nock.cleanAll();
 	});
 
