@@ -15,7 +15,10 @@ import {
 	type FailureDetails,
 	type LinkResult,
 	LinkState,
+	type RetryAfterHeaderInfo,
+	type RetryErrorInfo,
 	type RetryInfo,
+	type RetryNoHeaderInfo,
 } from './types.js';
 import { createFetchOptions, isHtml, mapUrl } from './utils.js';
 
@@ -291,6 +294,8 @@ export class LinkChecker extends EventEmitter {
 			return false;
 		}
 
+		let retryDetails: RetryAfterHeaderInfo | RetryNoHeaderInfo;
+
 		const retryAfterRaw = response.headers.get('retry-after');
 
 		let retryAfter: number;
@@ -305,6 +310,14 @@ export class LinkChecker extends EventEmitter {
 					return false;
 				}
 			}
+
+			retryDetails = {
+				type: 'retry-after',
+				url: options.url.href,
+				status: response.status,
+				secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+				retryAfterRaw,
+			};
 		} else if (options.retryNoHeader && retryAfterRaw === null) {
 			// No `retry-after` response header, use preconfigured delay and retry count
 			const maxRetries = options.retryNoHeaderCount;
@@ -318,6 +331,15 @@ export class LinkChecker extends EventEmitter {
 			options.retryNoHeaderCache.set(options.url.href, currentRetries + 1);
 
 			retryAfter = Date.now() + options.retryNoHeaderDelay;
+
+			retryDetails = {
+				type: 'retry-no-header',
+				url: options.url.href,
+				status: response.status,
+				secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+				currentAttempt: currentRetries,
+				maxAttempts: maxRetries,
+			};
 		} else {
 			return false;
 		}
@@ -337,11 +359,6 @@ export class LinkChecker extends EventEmitter {
 			// Make sure delay is always >= 0
 			delay: Math.max(0, retryAfter - Date.now()),
 		});
-		const retryDetails: RetryInfo = {
-			url: options.url.href,
-			status: response.status,
-			secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
-		};
 		this.emit('retry', retryDetails);
 		return true;
 	}
@@ -379,18 +396,17 @@ export class LinkChecker extends EventEmitter {
 		const retryAfter =
 			2 ** currentRetries * 1000 + Math.random() * options.retryErrorsJitter;
 
-		options.queue.add(
-			async () => {
-				await this.crawl(options);
-			},
-			{
-				delay: retryAfter,
-			},
-		);
-		const retryDetails: RetryInfo = {
+		options.queue.add(() => this.crawl(options), {
+			delay: retryAfter,
+		});
+		const retryDetails: RetryErrorInfo = {
+			type: 'retry-error',
 			url: options.url.href,
 			status,
 			secondsUntilRetry: Math.round(retryAfter / 1000),
+			currentAttempt: currentRetries,
+			maxAttempts: maxRetries,
+			jitter: options.retryErrorsJitter,
 		};
 		this.emit('retry', retryDetails);
 		return true;
