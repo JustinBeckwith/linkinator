@@ -219,6 +219,31 @@ describe('retries', () => {
 		scope.done();
 	});
 
+	it('should emit correct retry event for valid retry-after header', async () => {
+		const retryAfterRaw = '5';
+		const scope = nock('http://fake.local')
+			.get('/')
+			.reply(429, undefined, { 'retry-after': retryAfterRaw })
+			.get('/')
+			.reply(200);
+		const { promise, resolve } = invertedPromise();
+		const checker = new LinkChecker().on('retry', (info) => {
+			assert.strictEqual(info.type, 'retry-after');
+			assert.strictEqual(info.retryAfterRaw, retryAfterRaw);
+			resolve();
+		});
+		const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
+		const checkPromise = checker.check({
+			path: 'test/fixtures/basic',
+			retry: true,
+		});
+		await promise;
+		await clock.tickAsync(5_000);
+		const results = await checkPromise;
+		assert.ok(results.passed);
+		scope.done();
+	});
+
 	function invertedPromise() {
 		let resolve!: () => void;
 		let reject!: (error: Error) => void;
@@ -336,6 +361,34 @@ describe('retries', () => {
 			);
 			scope.done();
 		});
+
+		it('should emit correct retry event for missing retry-after header', async () => {
+			const scope = nock('http://fake.local')
+				.get('/')
+				.reply(429)
+				.get('/')
+				.reply(200);
+			const { promise, resolve } = invertedPromise();
+			const maxRetries = 3;
+			const checker = new LinkChecker().on('retry', (info) => {
+				assert.strictEqual(info.type, 'retry-no-header');
+				assert.strictEqual(info.currentAttempt, 1);
+				assert.strictEqual(info.maxAttempts, maxRetries);
+				resolve();
+			});
+			const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retryNoHeader: true,
+				retryNoHeaderDelay: 5_000,
+				retryNoHeaderCount: maxRetries,
+			});
+			await promise;
+			await clock.tickAsync(5_000);
+			const results = await checkPromise;
+			assert.ok(results.passed);
+			scope.done();
+		});
 	});
 
 	describe('retry-errors', () => {
@@ -400,6 +453,34 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
+			scope.done();
+		});
+
+		it('should emit correct retry event for error', async () => {
+			const scope = nock('http://fake.local')
+				.get('/')
+				.reply(522)
+				.get('/')
+				.reply(200);
+
+			const { promise, resolve } = invertedPromise();
+			const maxRetries = 3;
+			const checker = new LinkChecker().on('retry', (info) => {
+				assert.strictEqual(info.type, 'retry-error');
+				assert.strictEqual(info.currentAttempt, 1);
+				assert.strictEqual(info.maxAttempts, maxRetries);
+				resolve();
+			});
+			const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retryErrors: true,
+				retryErrorsCount: maxRetries,
+			});
+			await promise;
+			await clock.tickAsync(5_000);
+			const results = await checkPromise;
+			assert.ok(results.passed);
 			scope.done();
 		});
 	});
