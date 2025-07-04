@@ -523,6 +523,7 @@ export class LinkChecker extends EventEmitter {
 				status: 0,
 				state: LinkState.SKIPPED,
 				parent: mapUrl(options.parent, options.checkOptions),
+				elementMetadata: options.elementMetadata,
 			};
 			options.results.push(r);
 			this.emit('link', r);
@@ -543,6 +544,7 @@ export class LinkChecker extends EventEmitter {
 				url: mapUrl(options.url.href, options.checkOptions),
 				state: LinkState.SKIPPED,
 				parent: options.parent,
+				elementMetadata: options.elementMetadata,
 			};
 			options.results.push(result);
 			this.emit('link', result);
@@ -567,6 +569,7 @@ export class LinkChecker extends EventEmitter {
 					url: mapUrl(options.url.href, options.checkOptions),
 					state: LinkState.SKIPPED,
 					parent: mapUrl(options.parent, options.checkOptions),
+					elementMetadata: options.elementMetadata,
 				};
 				options.results.push(result);
 				this.emit('link', result);
