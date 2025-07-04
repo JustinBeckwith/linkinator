@@ -5,6 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/@avenga/linkinator)](https://www.npmjs.org/package/@avenga/linkinator)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
+[![codecov](https://codecov.io/gh/avenga/linkinator/branch/main/graph/badge.svg?token=3LQ6DVGAFP)](https://codecov.io/gh/avenga/linkinator)
 
 
 Behold my latest inator! The `linkinator` provides an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
