@@ -1,15 +1,14 @@
-import assert from 'node:assert';
 import fs from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { after, before, describe, it } from 'mocha';
+import { assert, afterAll, beforeAll, describe, it } from 'vitest';
 import { startWebServer } from '../src/server.js';
 
 describe('server', () => {
 	let server: Server;
 	let rootUrl: string;
 	const contents = fs.readFileSync('test/fixtures/server/index.html', 'utf8');
-	before(async () => {
+	beforeAll(async () => {
 		server = await startWebServer({
 			directoryListing: true,
 			markdown: true,
@@ -18,7 +17,7 @@ describe('server', () => {
 		const addr = server.address() as AddressInfo;
 		rootUrl = `http://localhost:${addr.port}`;
 	});
-	after(() => {
+	afterAll(() => {
 		server.destroy();
 	});
 

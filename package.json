@@ -14,10 +14,10 @@
 	"scripts": {
 		"pretest": "npm run build",
 		"prepare": "husky && npm run build",
-		"coverage": "c8 report --reporter=json",
+		"coverage": "vitest run --coverage",
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
-		"test": "c8 mocha build/test",
+		"test": "vitest",
 		"fix": "biome check --write .",
 		"lint": "biome check .",
 		"docs-test": "node build/src/cli.js ./README.md"
@@ -36,19 +36,16 @@
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
 		"@types/escape-html": "^1.0.1",
-		"@types/mocha": "^10.0.0",
 		"@types/node": "^22.0.0",
 		"@types/server-destroy": "^1.0.1",
-		"@types/sinon": "^17.0.0",
-		"c8": "^10.0.0",
+		"@vitest/coverage-v8": "^3.2.4",
 		"execa": "^9.0.0",
 		"husky": "^9.0.11",
-		"mocha": "^11.0.0",
 		"nock": "^14.0.5",
 		"semantic-release": "^24.0.0",
-		"sinon": "^20.0.0",
 		"strip-ansi": "^7.0.1",
-		"typescript": "^5.5.2"
+		"typescript": "^5.5.2",
+		"vitest": "^3.2.4"
 	},
 	"engines": {
 		"node": ">=20",
