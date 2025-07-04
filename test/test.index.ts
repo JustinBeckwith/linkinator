@@ -619,4 +619,24 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 		scope.done();
 	});
+
+	it('should provide <a> text in results', async () => {
+		const scope = nock('http://fake.local').head('/').reply(404);
+		const results = await check({ path: 'test/fixtures/basic' });
+		assert.strictEqual(
+			results.links[1]?.elementMetadata?.linkText,
+			'just follow a link',
+		);
+		scope.done();
+	});
+
+	it('should provide <blockquote> text in results', async () => {
+		const scope = nock('http://fake.local').head('/').reply(404);
+		const results = await check({ path: 'test/fixtures/blockquote' });
+		assert.strictEqual(
+			results.links[1]?.elementMetadata?.quoteText,
+			'Quote Text',
+		);
+		scope.done();
+	});
 });
