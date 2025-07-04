@@ -1,6 +1,7 @@
 import nock from 'nock';
 import { assert, afterEach, describe, it, vi } from 'vitest';
 import { LinkChecker, check } from '../src/index.js';
+import { invertedPromise } from './utils.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -243,16 +244,6 @@ describe('retries', () => {
 		assert.ok(results.passed);
 		scope.done();
 	});
-
-	function invertedPromise() {
-		let resolve!: () => void;
-		let reject!: (error: Error) => void;
-		const promise = new Promise<void>((innerResolve, innerReject) => {
-			resolve = innerResolve;
-			reject = innerReject;
-		});
-		return { promise, resolve, reject };
-	}
 
 	describe('retry-no-header', () => {
 		it('should use preconfigured delay on 429s', async () => {
