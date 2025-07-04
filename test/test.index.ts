@@ -622,7 +622,7 @@ describe('linkinator', () => {
 	});
 
 	it('should provide <a> text in results', async () => {
-		const scope = nock('http://fake.local').head('/').reply(404);
+		const scope = nock('http://example.invalid').head('/').reply(404);
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.strictEqual(
 			results.links[1]?.elementMetadata?.text,
@@ -633,7 +633,7 @@ describe('linkinator', () => {
 	});
 
 	it('should provide <blockquote> text in results', async () => {
-		const scope = nock('http://fake.local').head('/').reply(404);
+		const scope = nock('http://example.invalid').head('/').reply(404);
 		const results = await check({ path: 'test/fixtures/blockquote' });
 		assert.strictEqual(results.links[1]?.elementMetadata?.text, 'Quote Text');
 		assert.ok(!results.passed);
@@ -641,7 +641,7 @@ describe('linkinator', () => {
 	});
 
 	it('should provide <a> text in `link` event', async () => {
-		const scope = nock('http://fake.local').head('/').reply(404);
+		const scope = nock('http://example.invalid').head('/').reply(404);
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker();
 		let count = 0;
