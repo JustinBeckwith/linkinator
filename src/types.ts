@@ -56,6 +56,7 @@ export type LinkResult = {
 	state: LinkState;
 	parent?: string;
 	failureDetails?: Array<FailureDetails>;
+	elementMetadata?: Record<string, string>;
 };
 
 export type CrawlResult = {

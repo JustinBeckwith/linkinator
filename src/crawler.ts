@@ -42,6 +42,7 @@ export type CrawlOptions = {
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
 	extraHeaders: { [key: string]: string };
+	elementMetadata?: Record<string, string>;
 };
 
 /**
@@ -276,6 +277,7 @@ export class LinkChecker extends EventEmitter {
 			state,
 			parent: mapUrl(opts.parent, opts.checkOptions),
 			failureDetails: failures,
+			elementMetadata: opts.elementMetadata,
 		};
 		opts.results.push(result);
 		this.emit('link', result);
@@ -432,11 +434,12 @@ export class LinkChecker extends EventEmitter {
 			// If there was some sort of problem parsing the link while
 			// creating a new URL obj, treat it as a broken link.
 			if (!result.url) {
-				const r = {
+				const r: LinkResult = {
 					url: mapUrl(result.link, options.checkOptions),
 					status: 0,
 					state: LinkState.BROKEN,
 					parent: mapUrl(options.url.href, options.checkOptions),
+					elementMetadata: result.metadata,
 				};
 				options.results.push(r);
 				this.emit('link', r);
@@ -485,6 +488,7 @@ export class LinkChecker extends EventEmitter {
 						retryErrorsCount: options.retryErrorsCount,
 						retryErrorsJitter: options.retryErrorsJitter,
 						extraHeaders: options.extraHeaders,
+						elementMetadata: result.metadata,
 					});
 				});
 			}
