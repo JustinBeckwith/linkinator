@@ -12,6 +12,7 @@ import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
 import {
 	type CrawlResult,
+	type ElementMetadata,
 	type FailureDetails,
 	type LinkResult,
 	LinkState,
@@ -42,7 +43,7 @@ export type CrawlOptions = {
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
 	extraHeaders: { [key: string]: string };
-	elementMetadata?: Record<string, string>;
+	elementMetadata?: ElementMetadata;
 };
 
 /**

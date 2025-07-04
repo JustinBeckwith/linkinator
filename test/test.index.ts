@@ -625,7 +625,7 @@ describe('linkinator', () => {
 		const scope = nock('http://fake.local').head('/').reply(404);
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.strictEqual(
-			results.links[1]?.elementMetadata?.linkText,
+			results.links[1]?.elementMetadata?.text,
 			'just follow a link',
 		);
 		assert.ok(!results.passed);
@@ -635,10 +635,7 @@ describe('linkinator', () => {
 	it('should provide <blockquote> text in results', async () => {
 		const scope = nock('http://fake.local').head('/').reply(404);
 		const results = await check({ path: 'test/fixtures/blockquote' });
-		assert.strictEqual(
-			results.links[1]?.elementMetadata?.quoteText,
-			'Quote Text',
-		);
+		assert.strictEqual(results.links[1]?.elementMetadata?.text, 'Quote Text');
 		assert.ok(!results.passed);
 		scope.done();
 	});
@@ -650,7 +647,7 @@ describe('linkinator', () => {
 		let count = 0;
 		checker.on('link', (e) => {
 			if (count === 1) {
-				assert.strictEqual(e.elementMetadata?.linkText, 'just follow a link');
+				assert.strictEqual(e.elementMetadata?.text, 'just follow a link');
 				resolve();
 			}
 			count++;

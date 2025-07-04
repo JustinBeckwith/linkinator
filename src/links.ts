@@ -1,31 +1,33 @@
 import { Stream } from 'node:stream';
 import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
+import type { ElementMetadata } from './types.js';
 
 type TagConfig = {
 	urlAttrs: string[];
-	textKey?: string;
+	captureText?: boolean;
+	attributeKey?: string;
 };
 
 const tagConfigs: Record<string, TagConfig> = {
-	a: { urlAttrs: ['href'], textKey: 'linkText' },
+	a: { urlAttrs: ['href'], captureText: true },
 	area: { urlAttrs: ['href'] },
 	audio: { urlAttrs: ['src'] },
-	blockquote: { urlAttrs: ['cite'], textKey: 'quoteText' },
+	blockquote: { urlAttrs: ['cite'], captureText: true },
 	body: { urlAttrs: ['background'] },
 	command: { urlAttrs: ['icon'] },
-	del: { urlAttrs: ['cite'], textKey: 'deletedText' },
+	del: { urlAttrs: ['cite'], captureText: true },
 	embed: { urlAttrs: ['href', 'pluginspage', 'pluginurl', 'src'] },
 	frame: { urlAttrs: ['longdesc', 'src'] },
 	html: { urlAttrs: ['manifest'] },
 	iframe: { urlAttrs: ['longdesc', 'src'] },
-	img: { urlAttrs: ['src', 'srcset'] },
+	img: { urlAttrs: ['src', 'srcset'], attributeKey: 'alt' },
 	input: { urlAttrs: ['src'] },
-	ins: { urlAttrs: ['cite'], textKey: 'insertedText' },
+	ins: { urlAttrs: ['cite'], captureText: true },
 	link: { urlAttrs: ['href'] },
 	meta: { urlAttrs: ['content'] },
 	object: { urlAttrs: ['data'] },
-	q: { urlAttrs: ['cite'], textKey: 'quoteText' },
+	q: { urlAttrs: ['cite'], captureText: true },
 	script: { urlAttrs: ['src'] },
 	source: { urlAttrs: ['src', 'srcset'] },
 	track: { urlAttrs: ['src'] },
@@ -36,7 +38,7 @@ export type ParsedUrl = {
 	link: string;
 	error?: Error;
 	url?: URL;
-	metadata?: Record<string, string>;
+	metadata?: ElementMetadata;
 };
 
 export async function getLinks(
@@ -47,7 +49,7 @@ export async function getLinks(
 	let baseSet = false;
 
 	// Tracks all open tags that have text to be captured
-	let activeTextCapture: { tag: string; parsed: ParsedUrl; key: string }[] = [];
+	let activeTextCapture: { tag: string; parsed: ParsedUrl }[] = [];
 
 	const links: ParsedUrl[] = [];
 
@@ -90,14 +92,21 @@ export async function getLinks(
 
 				for (const parsedAttribute of parseAttribute(attr, raw)) {
 					const parsedUrl = parseLink(parsedAttribute, realBaseUrl);
-					parsedUrl.metadata = {};
+					parsedUrl.metadata = {
+						tag,
+					};
 
-					if (cfg.textKey) {
-						parsedUrl.metadata[cfg.textKey] = '';
+					// Use specified attribute to identify element
+					if (cfg.attributeKey && attributes[cfg.attributeKey]) {
+						parsedUrl.metadata[cfg.attributeKey] = attributes[cfg.attributeKey];
+					}
+
+					// Add element to array of currently open tags to capture following inner text
+					if (cfg.captureText) {
+						parsedUrl.metadata.text = '';
 						activeTextCapture.push({
 							tag,
 							parsed: parsedUrl,
-							key: cfg.textKey,
 						});
 					}
 
@@ -109,7 +118,7 @@ export async function getLinks(
 			// Add text to all currently open tags
 			for (const entry of activeTextCapture) {
 				if (entry.parsed.metadata) {
-					entry.parsed.metadata[entry.key] += data.trim();
+					entry.parsed.metadata.text += data.trim();
 				}
 			}
 		},

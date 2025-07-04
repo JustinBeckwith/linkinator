@@ -56,7 +56,12 @@ export type LinkResult = {
 	state: LinkState;
 	parent?: string;
 	failureDetails?: Array<FailureDetails>;
-	elementMetadata?: Record<string, string>;
+	elementMetadata?: ElementMetadata;
+};
+
+export type ElementMetadata = {
+	tag: string;
+	[key: string]: string;
 };
 
 export type CrawlResult = {
