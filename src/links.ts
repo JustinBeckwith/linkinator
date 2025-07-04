@@ -109,7 +109,7 @@ export async function getLinks(
 			// Add text to all currently open tags
 			for (const entry of activeTextCapture) {
 				if (entry.parsed.metadata) {
-					entry.parsed.metadata[entry.key] += data;
+					entry.parsed.metadata[entry.key] += data.trim();
 				}
 			}
 		},
