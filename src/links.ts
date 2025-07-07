@@ -4,33 +4,39 @@ import { parseSrcset } from 'srcset';
 import type { ElementMetadata } from './types.js';
 
 type TagConfig = {
+	// Element attributes that can contain URLs
 	urlAttrs: string[];
+	// Capture text inside the element
 	captureText?: boolean;
-	attributeKey?: string;
+	// Other attributes to be saved in order to identify element
+	attributeKeys?: string[];
 };
 
 const tagConfigs: Record<string, TagConfig> = {
 	a: { urlAttrs: ['href'], captureText: true },
-	area: { urlAttrs: ['href'] },
+	area: { urlAttrs: ['href'], attributeKeys: ['alt'] },
 	audio: { urlAttrs: ['src'] },
 	blockquote: { urlAttrs: ['cite'], captureText: true },
 	body: { urlAttrs: ['background'] },
 	command: { urlAttrs: ['icon'] },
 	del: { urlAttrs: ['cite'], captureText: true },
-	embed: { urlAttrs: ['href', 'pluginspage', 'pluginurl', 'src'] },
-	frame: { urlAttrs: ['longdesc', 'src'] },
+	embed: {
+		urlAttrs: ['href', 'pluginspage', 'pluginurl', 'src'],
+		attributeKeys: ['type'],
+	},
+	frame: { urlAttrs: ['longdesc', 'src'], attributeKeys: ['name', 'title'] },
 	html: { urlAttrs: ['manifest'] },
-	iframe: { urlAttrs: ['longdesc', 'src'] },
-	img: { urlAttrs: ['src', 'srcset'], attributeKey: 'alt' },
-	input: { urlAttrs: ['src'] },
+	iframe: { urlAttrs: ['longdesc', 'src'], attributeKeys: ['name', 'title'] },
+	img: { urlAttrs: ['src', 'srcset'], attributeKeys: ['alt'] },
+	input: { urlAttrs: ['src'], attributeKeys: ['alt'] },
 	ins: { urlAttrs: ['cite'], captureText: true },
-	link: { urlAttrs: ['href'] },
-	meta: { urlAttrs: ['content'] },
-	object: { urlAttrs: ['data'] },
+	link: { urlAttrs: ['href'], attributeKeys: ['rel'] },
+	meta: { urlAttrs: ['content'], attributeKeys: ['name'] },
+	object: { urlAttrs: ['data'], attributeKeys: ['type'] },
 	q: { urlAttrs: ['cite'], captureText: true },
-	script: { urlAttrs: ['src'] },
-	source: { urlAttrs: ['src', 'srcset'] },
-	track: { urlAttrs: ['src'] },
+	script: { urlAttrs: ['src'], attributeKeys: ['type'] },
+	source: { urlAttrs: ['src', 'srcset'], attributeKeys: ['type'] },
+	track: { urlAttrs: ['src'], attributeKeys: ['kind'] },
 	video: { urlAttrs: ['poster', 'src'] },
 };
 
@@ -48,7 +54,7 @@ export async function getLinks(
 	let realBaseUrl = baseUrl;
 	let baseSet = false;
 
-	// Tracks all open tags that have text to be captured
+	// Tracks all currently open tags that have text to be captured
 	let activeTextCapture: { tag: string; parsed: ParsedUrl }[] = [];
 
 	const links: ParsedUrl[] = [];
@@ -94,11 +100,15 @@ export async function getLinks(
 					const parsedUrl = parseLink(parsedAttribute, realBaseUrl);
 					parsedUrl.metadata = {
 						tag,
+						...(attributes.id ? { id: attributes.id } : {}),
+						...(attributes.class ? { class: attributes.class } : {}),
 					};
 
-					// Use specified attribute to identify element
-					if (cfg.attributeKey && attributes[cfg.attributeKey]) {
-						parsedUrl.metadata[cfg.attributeKey] = attributes[cfg.attributeKey];
+					// Use specified attributes if they exist to identify element
+					for (const attributeKey of cfg.attributeKeys ?? []) {
+						if (attributes[attributeKey]) {
+							parsedUrl.metadata[attributeKey] = attributes[attributeKey];
+						}
 					}
 
 					// Add element to array of currently open tags to capture following inner text
