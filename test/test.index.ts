@@ -1,7 +1,8 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import gaxios from 'gaxios';
-import nock from 'nock';
+import { HttpResponse, http } from 'msw';
 import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import {
 	type CheckOptions,
@@ -10,41 +11,56 @@ import {
 	LinkState,
 } from '../src/index.js';
 import { DEFAULT_USER_AGENT } from '../src/options.js';
-
-nock.disableNetConnect();
-nock.enableNetConnect('localhost');
+import { ignoreUnhandledRequests, server } from './setup.js';
 
 describe('linkinator', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		vi.unstubAllEnvs();
-		nock.cleanAll();
 	});
 
 	it('should perform a basic shallow scan', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should only try a link once', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/twice' });
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should only queue a link once', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const checker = new LinkChecker();
 		const checkerSpy = vi.spyOn(checker, 'crawl');
 		const results = await checker.check({ path: 'test/fixtures/twice' });
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
 		assert.strictEqual(checkerSpy.mock.calls.length, 2);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should skip links if asked nicely', async () => {
@@ -60,7 +76,13 @@ describe('linkinator', () => {
 	});
 
 	it('should skip links if passed a linksToSkip function', async () => {
-		const scope = nock('https://good.com').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('https://good.com/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			path: 'test/fixtures/filter',
 			linksToSkip: async (link) => link.includes('filterme'),
@@ -70,18 +92,24 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.SKIPPED).length,
 			2,
 		);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should report broken links', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(404);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 404 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/broke' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
-		scope.done();
+		assert.equal(requestCount, 1);
 	});
 
 	it('should handle relative links', async () => {
@@ -107,12 +135,17 @@ describe('linkinator', () => {
 	});
 
 	it('should report malformed links as broken', async () => {
+		// This test expects some requests to fail due to malformed URLs, so ignore warnings
+		const restore = ignoreUnhandledRequests(['example.invalid']);
+
 		const results = await check({ path: 'test/fixtures/malformed' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
+
+		restore();
 	});
 
 	it('should detect relative urls with relative base', async () => {
@@ -140,13 +173,23 @@ describe('linkinator', () => {
 		];
 
 		for (const { fixture, nonBrokenUrl } of cases) {
-			const scope = nock('http://example.invalid')
-				.get('/pageBase/index')
-				.replyWithFile(200, fixture, {
-					'Content-Type': 'text/html; charset=UTF-8',
-				})
-				.head(nonBrokenUrl)
-				.reply(200);
+			let requestCount = 0;
+			server.use(
+				http.get('http://example.invalid/pageBase/index', async () => {
+					requestCount++;
+					const content = await fs.readFile(fixture, 'utf-8');
+					return HttpResponse.text(content, {
+						status: 200,
+						headers: {
+							'Content-Type': 'text/html; charset=UTF-8',
+						},
+					});
+				}),
+				http.head(`http://example.invalid${nonBrokenUrl}`, () => {
+					requestCount++;
+					return HttpResponse.json(null, { status: 200 });
+				}),
+			);
 
 			const results = await check({
 				path: 'http://example.invalid/pageBase/index',
@@ -157,20 +200,31 @@ describe('linkinator', () => {
 				results.links.filter((x) => x.state === LinkState.BROKEN).length,
 				1,
 			);
-			scope.done();
+			assert.strictEqual(requestCount, 2);
 		}
 	});
 
 	it('should detect relative urls with absolute base', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/pageBase/index')
-			.replyWithFile(200, 'test/fixtures/basetag/absolute.html', {
-				'Content-Type': 'text/html; charset=UTF-8',
-			});
-
-		const anotherScope = nock('http://another.example.invalid')
-			.head('/ok')
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/pageBase/index', async () => {
+				requestCount++;
+				const content = await fs.readFile(
+					'test/fixtures/basetag/absolute.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+			http.head('http://another.example.invalid/ok', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 
 		const results = await check({
 			path: 'http://example.invalid/pageBase/index',
@@ -181,11 +235,13 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
-		scope.done();
-		anotherScope.done();
+		assert.strictEqual(requestCount, 2);
 	});
 
 	it('should detect broken image links', async () => {
+		// This test expects some requests to fail, so ignore warnings for test domains
+		const restore = ignoreUnhandledRequests(['example.invalid']);
+
 		const results = await check({ path: 'test/fixtures/image' });
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
@@ -195,18 +251,26 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.OK).length,
 			2,
 		);
+
+		restore();
 	});
 
 	it('should perform a recursive scan', async () => {
 		// This test is making sure that we do a recursive scan of links,
 		// but also that we don't follow links to another site
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			path: 'test/fixtures/recurse',
 			recurse: true,
 		});
 		assert.strictEqual(results.links.length, 4);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should not recurse non-html files', async () => {
@@ -239,61 +303,94 @@ describe('linkinator', () => {
 	});
 
 	it('should retry with a GET after a HEAD', async () => {
-		const scopes = [
-			nock('http://example.invalid').head('/').reply(405),
-			nock('http://example.invalid').get('/').reply(200),
-		];
+		let headCount = 0;
+		let getCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				headCount++;
+				return HttpResponse.json(null, { status: 405 });
+			}),
+			http.get('http://example.invalid/', () => {
+				getCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
-		for (const x of scopes) {
-			x.done();
-		}
+		assert.ok(headCount > 0, 'HEAD mock should have been called');
+		assert.ok(getCount > 0, 'GET mock should have been called');
 	});
 
 	it('should only follow links on the same origin domain', async () => {
-		const scopes = [
-			nock('http://example.invalid')
-				.get('/')
-				.replyWithFile(200, path.resolve('test/fixtures/baseurl/index.html'), {
-					'content-type': 'text/html',
-				}),
-			nock('http://example.invalid.br').head('/deep.html').reply(200),
-		];
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/', async () => {
+				requestCount++;
+				const content = await fs.readFile(
+					path.resolve('test/fixtures/baseurl/index.html'),
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'content-type': 'text/html',
+					},
+				});
+			}),
+			http.head('http://example.invalid.br/deep.html', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			path: 'http://example.invalid',
 			recurse: true,
 		});
 		assert.strictEqual(results.links.length, 2);
 		assert.ok(results.passed);
-		for (const x of scopes) {
-			x.done();
-		}
+		assert.strictEqual(requestCount, 2);
 	});
 
 	it('should not attempt to validate preconnect or prefetch urls', async () => {
-		const scope = nock('http://example.invalid')
-			.head('/site.css')
-			.reply(200, '');
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/site.css', () => {
+				requestCount++;
+				return HttpResponse.text('', { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/prefetch' });
-		scope.done();
 		assert.ok(results.passed);
 		assert.strictEqual(results.links.length, 2);
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should attempt a GET request if a HEAD request fails on external links', async () => {
-		const scopes = [
-			nock('http://example.invalid').head('/').reply(403),
-			nock('http://example.invalid').get('/').reply(200),
-		];
+		let headCount = 0;
+		let getCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				headCount++;
+				return HttpResponse.json(null, { status: 403 });
+			}),
+			http.get('http://example.invalid/', () => {
+				getCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
-		for (const x of scopes) {
-			x.done();
-		}
+		assert.ok(headCount > 0, 'HEAD mock should have been called');
+		assert.ok(getCount > 0, 'GET mock should have been called');
 	});
 
 	it('should support a configurable timeout', async () => {
-		nock('http://example.invalid').head('/').delay(200).reply(200);
+		server.use(
+			http.head('http://example.invalid/', async () => {
+				await new Promise((resolve) => setTimeout(resolve, 200));
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			path: 'test/fixtures/basic',
 			timeout: 1,
@@ -338,13 +435,19 @@ describe('linkinator', () => {
 	});
 
 	it('should accept multiple filesystem paths', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			path: ['test/fixtures/basic', 'test/fixtures/image'],
 		});
 		assert.strictEqual(results.passed, false);
 		assert.strictEqual(results.links.length, 6);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should not allow mixed local and remote paths', async () => {
@@ -367,43 +470,80 @@ describe('linkinator', () => {
 		const options: CheckOptions = Object.freeze({
 			path: 'test/fixtures/basic',
 		});
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check(options);
 		assert.ok(results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 		assert.strictEqual(options.serverRoot, undefined);
 	});
 
 	it('should accept multiple http paths', async () => {
-		const scopes = [
-			nock('http://example.invalid')
-				.get('/')
-				.replyWithFile(200, 'test/fixtures/local/index.html', {
-					'Content-Type': 'text/html; charset=UTF-8',
-				}),
-			nock('http://example.invalid')
-				.get('/page2.html')
-				.replyWithFile(200, 'test/fixtures/local/page2.html', {
-					'Content-Type': 'text/html; charset=UTF-8',
-				}),
-			nock('http://fake2.local')
-				.get('/')
-				.replyWithFile(200, 'test/fixtures/local/index.html', {
-					'Content-Type': 'text/html; charset=UTF-8',
-				}),
-			nock('http://fake2.local')
-				.get('/page2.html')
-				.replyWithFile(200, 'test/fixtures/local/page2.html', {
-					'Content-Type': 'text/html; charset=UTF-8',
-				}),
-		];
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/', async () => {
+				requestCount++;
+				const content = await fs.readFile(
+					'test/fixtures/local/index.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+			http.get('http://example.invalid/page2.html', async () => {
+				requestCount++;
+				const content = await fs.readFile(
+					'test/fixtures/local/page2.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+			http.get('http://fake2.local/', async () => {
+				requestCount++;
+				const content = await fs.readFile(
+					'test/fixtures/local/index.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+			http.get('http://fake2.local/page2.html', async () => {
+				requestCount++;
+				const content = await fs.readFile(
+					'test/fixtures/local/page2.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+		);
 		const results = await check({
 			path: ['http://example.invalid', 'http://fake2.local'],
 		});
 		assert.ok(results.passed);
-		for (const x of scopes) {
-			x.done();
-		}
+		assert.strictEqual(requestCount, 4);
 	});
 
 	it('should print debug information when the env var is set', async () => {
@@ -444,32 +584,52 @@ describe('linkinator', () => {
 	});
 
 	it('should always send a human looking User-Agent', async () => {
-		const scopes = [
-			nock('http://example.invalid')
-				.get('/', undefined, {
-					reqheaders: { 'User-Agent': DEFAULT_USER_AGENT },
-				})
-				.replyWithFile(200, 'test/fixtures/local/index.html', {
-					'Content-Type': 'text/html; charset=UTF-8',
-				}),
-			nock('http://example.invalid')
-				.get('/page2.html', undefined, {
-					reqheaders: { 'User-Agent': DEFAULT_USER_AGENT },
-				})
-				.replyWithFile(200, 'test/fixtures/local/page2.html', {
-					'Content-Type': 'text/html; charset=UTF-8',
-				}),
-		];
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/', async ({ request }) => {
+				requestCount++;
+				// Check that User-Agent header is present
+				const userAgent = request.headers.get('user-agent');
+				assert.strictEqual(userAgent, DEFAULT_USER_AGENT);
+				const content = await fs.readFile(
+					'test/fixtures/local/index.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+			http.get('http://example.invalid/page2.html', async ({ request }) => {
+				requestCount++;
+				// Check that User-Agent header is present
+				const userAgent = request.headers.get('user-agent');
+				assert.strictEqual(userAgent, DEFAULT_USER_AGENT);
+				const content = await fs.readFile(
+					'test/fixtures/local/page2.html',
+					'utf-8',
+				);
+				return HttpResponse.text(content, {
+					status: 200,
+					headers: {
+						'Content-Type': 'text/html; charset=UTF-8',
+					},
+				});
+			}),
+		);
 		const results = await check({
 			path: 'http://example.invalid',
 		});
 		assert.ok(results.passed);
-		for (const x of scopes) {
-			x.done();
-		}
+		assert.strictEqual(requestCount, 2);
 	});
 
 	it('should surface call stacks on failures in the API', async () => {
+		// This test expects requests to fail, so ignore warnings for test domains
+		const restore = ignoreUnhandledRequests(['example.invalid']);
+
 		const results = await check({
 			path: 'http://example.invalid',
 		});
@@ -479,44 +639,65 @@ describe('linkinator', () => {
 			assert.fail('unexpected failure details');
 		}
 		const error = failureDetails[0] as Error;
-		assert.match(error.message, /Nock: Disallowed net connect for/);
+		// MSW doesn't block connections like nock, so we expect a different error
+		assert.match(error.message, /fetch failed|ENOTFOUND|getaddrinfo/);
+
+		restore();
 	});
 
 	it('should respect server root with globs', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/doll1')
-			.reply(200)
-			.get('/doll2')
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/doll1', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+			http.get('http://example.invalid/doll2', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			serverRoot: 'test/fixtures/nested',
 			path: '*/*.html',
 		});
 		assert.strictEqual(results.links.length, 4);
 		assert.ok(results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 2);
 	});
 
 	it('should respect absolute server root', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/doll1')
-			.reply(200)
-			.get('/doll2')
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/doll1', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+			http.get('http://example.invalid/doll2', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			serverRoot: path.resolve('test/fixtures/nested'),
 			path: '*/*.html',
 		});
 		assert.strictEqual(results.links.length, 4);
 		assert.ok(results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 2);
 	});
 
 	it('should scan links in <meta content="URL"> tags', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/twittercard' });
 		assert.ok(results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 		assert.strictEqual(results.links.length, 2);
 	});
 
@@ -538,17 +719,29 @@ describe('linkinator', () => {
 	});
 
 	it('should provide a relative path in the results', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.strictEqual(results.links.length, 2);
 		const [rootLink, fakeLink] = results.links;
 		assert.strictEqual(rootLink.url, path.join('test', 'fixtures', 'basic'));
 		assert.strictEqual(fakeLink.url, 'http://example.invalid/');
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should provide a server root relative path in the results', async () => {
-		const scope = nock('http://example.invalid').head('/').reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({
 			path: '.',
 			serverRoot: 'test/fixtures/basic',
@@ -557,7 +750,7 @@ describe('linkinator', () => {
 		const [rootLink, fakeLink] = results.links;
 		assert.strictEqual(rootLink.url, `.${path.sep}`);
 		assert.strictEqual(fakeLink.url, 'http://example.invalid/');
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should rewrite urls', async () => {
@@ -571,15 +764,6 @@ describe('linkinator', () => {
 			],
 		});
 		assert.ok(results.passed);
-	});
-
-	it('should report malformed links as broken', async () => {
-		const results = await check({ path: 'test/fixtures/malformed' });
-		assert.ok(!results.passed);
-		assert.strictEqual(
-			results.links.filter((x) => x.state === LinkState.BROKEN).length,
-			1,
-		);
 	});
 
 	it('should handle comma separated srcset', async () => {
@@ -597,12 +781,18 @@ describe('linkinator', () => {
 
 	it('should accept a custom user agent', async () => {
 		const userAgent = 'linkinator-test';
-		const scope = nock('http://example.invalid')
-			.head('/')
-			.matchHeader('user-agent', userAgent)
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', ({ request }) => {
+				requestCount++;
+				// Check that custom User-Agent header is present
+				const headerUserAgent = request.headers.get('user-agent');
+				assert.strictEqual(headerUserAgent, userAgent);
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 		const results = await check({ path: 'test/fixtures/basic', userAgent });
 		assert.ok(results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 });

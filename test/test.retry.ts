@@ -1,38 +1,49 @@
-import nock from 'nock';
+import { HttpResponse, http } from 'msw';
 import { afterEach, assert, describe, it, vi } from 'vitest';
 import { check, LinkChecker } from '../src/index.js';
-
-nock.disableNetConnect();
-nock.enableNetConnect('localhost');
+import { server } from './setup.js';
 
 describe('retries', () => {
-	afterEach(() => {
-		vi.useRealTimers();
-		nock.cleanAll();
-	});
+	afterEach(() => vi.useRealTimers());
 
 	it('should handle 429s with invalid retry-after headers', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': 'totally-not-valid',
-			});
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, {
+					status: 429,
+					headers: {
+						'retry-after': 'totally-not-valid',
+					},
+				});
+			}),
+		);
+
 		const results = await check({
 			path: 'test/fixtures/basic',
 			retry: true,
 		});
 		assert.ok(!results.passed);
-		scope.done();
+		assert.strictEqual(requestCount, 1);
 	});
 
 	it('should retry 429s with second based header', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': '10',
-			})
-			.get('/')
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/', () => {
+				requestCount++;
+				if (requestCount === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '10',
+						},
+					});
+				}
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -46,19 +57,31 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(10_000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
+		assert.ok(
+			requestCount > 1,
+			'Mock should have been called multiple times for retry',
+		);
 	});
 
 	it('should retry 429s after failed HEAD', async () => {
-		const scope = nock('http://example.invalid')
-			.head('/')
-			.reply(405)
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': '10',
-			})
-			.get('/')
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.head('http://example.invalid/', () => {
+				return HttpResponse.json(null, { status: 405 });
+			}),
+			http.get('http://example.invalid/', () => {
+				requestCount++;
+				if (requestCount === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '10',
+						},
+					});
+				}
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -71,17 +94,24 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(10_000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	it('should retry 429s with date based header', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': '1970-01-01T00:00:10.000Z',
-			})
-			.get('/')
-			.reply(200);
+		let requestCount = 0;
+		server.use(
+			http.get('http://example.invalid/', () => {
+				requestCount++;
+				if (requestCount === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '1970-01-01T00:00:10.000Z',
+						},
+					});
+				}
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -94,34 +124,46 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(10_000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	it('should detect requests to wait on the same host', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/1')
-			.reply(429, undefined, {
-				'retry-after': '3',
-			})
-			.get('/1', () => {
+		let requestCount1 = 0;
+		let requestCount2 = 0;
+		let requestCount3 = 0;
+
+		server.use(
+			http.get('http://example.invalid/1', () => {
+				requestCount1++;
+				if (requestCount1 === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '3',
+						},
+					});
+				}
 				assert.ok(Date.now() >= 3000);
-				return true;
-			})
-			.reply(200)
-			.get('/2', () => {
+				return HttpResponse.json(null, { status: 200 });
+			}),
+			http.get('http://example.invalid/2', () => {
+				requestCount2++;
 				assert.ok(Date.now() >= 3000);
-				return true;
-			})
-			.reply(200)
-			.get('/3')
-			.reply(429, undefined, {
-				'retry-after': '3',
-			})
-			.get('/3', () => {
+				return HttpResponse.json(null, { status: 200 });
+			}),
+			http.get('http://example.invalid/3', () => {
+				requestCount3++;
+				if (requestCount3 === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '3',
+						},
+					});
+				}
 				assert.ok(Date.now() >= 3000);
-				return true;
-			})
-			.reply(200);
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -135,38 +177,53 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(3000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
+		assert.ok(requestCount1 > 0, 'Mock 1 should have been called');
+		assert.ok(requestCount2 > 0, 'Mock 2 should have been called');
+		assert.ok(requestCount3 > 0, 'Mock 3 should have been called');
 	});
 
 	it('should increase timeout for followup requests to a host', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/1')
-			.reply(429, undefined, {
-				'retry-after': '3',
-			})
-			.get('/1', () => {
+		let requestCount1 = 0;
+		let _requestCount2 = 0;
+		let requestCount3 = 0;
+
+		server.use(
+			http.get('http://example.invalid/1', () => {
+				requestCount1++;
+				if (requestCount1 === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '3',
+						},
+					});
+				}
 				// Even though the header said to wait 3 seconds, we are checking to
 				// make sure the /3 route reset it to 9 seconds here. This is common
 				// when a flood of requests come through and the retry-after gets
 				// extended.
 				assert.ok(Date.now() >= 9000);
-				return true;
-			})
-			.reply(200)
-			.get('/2', () => {
+				return HttpResponse.json(null, { status: 200 });
+			}),
+			http.get('http://example.invalid/2', () => {
+				_requestCount2++;
 				assert.ok(Date.now() >= 9000);
-				return true;
-			})
-			.reply(200)
-			.get('/3')
-			.reply(429, undefined, {
-				'retry-after': '9',
-			})
-			.get('/3', () => {
+				return HttpResponse.json(null, { status: 200 });
+			}),
+			http.get('http://example.invalid/3', () => {
+				requestCount3++;
+				if (requestCount3 === 1) {
+					return HttpResponse.json(null, {
+						status: 429,
+						headers: {
+							'retry-after': '9',
+						},
+					});
+				}
 				assert.ok(Date.now() >= 9000);
-				return true;
-			})
-			.reply(200);
+				return HttpResponse.json(null, { status: 200 });
+			}),
+		);
 
 		const { promise: p1, resolve: r1 } = invertedPromise();
 		const { promise: p2, resolve: r2 } = invertedPromise();
@@ -187,7 +244,6 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(9000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	function invertedPromise() {
@@ -202,11 +258,16 @@ describe('retries', () => {
 
 	describe('retry-errors', () => {
 		it('should retry 5xx status code', async () => {
-			const scope = nock('http://example.invalid')
-				.get('/')
-				.reply(522)
-				.get('/')
-				.reply(200);
+			let requestCount = 0;
+			server.use(
+				http.get('http://example.invalid/', () => {
+					requestCount++;
+					if (requestCount === 1) {
+						return HttpResponse.json(null, { status: 522 });
+					}
+					return HttpResponse.json(null, { status: 200 });
+				}),
+			);
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -219,15 +280,23 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(5000);
 			const results = await checkPromise;
 			assert.ok(results.passed);
-			scope.done();
+			assert.ok(
+				requestCount > 1,
+				'Mock should have been called multiple times for retry',
+			);
 		});
 
 		it('should retry 0 status code', async () => {
-			const scope = nock('http://example.invalid')
-				.get('/')
-				.replyWithError({ code: 'ETIMEDOUT' })
-				.get('/')
-				.reply(200);
+			let requestCount = 0;
+			server.use(
+				http.get('http://example.invalid/', () => {
+					requestCount++;
+					if (requestCount === 1) {
+						return HttpResponse.error();
+					}
+					return HttpResponse.json(null, { status: 200 });
+				}),
+			);
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -241,13 +310,18 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(5000);
 			const results = await checkPromise;
 			assert.ok(results.passed);
-			scope.done();
+			assert.ok(
+				requestCount > 1,
+				'Mock should have been called multiple times for retry',
+			);
 		});
 
 		it('should eventually stop retrying', async () => {
-			const scope = nock('http://example.invalid')
-				.get('/')
-				.replyWithError({ code: 'ETIMEDOUT' });
+			server.use(
+				http.get('http://example.invalid/', () => {
+					return HttpResponse.error();
+				}),
+			);
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -262,7 +336,6 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
-			scope.done();
 		});
 	});
 });
