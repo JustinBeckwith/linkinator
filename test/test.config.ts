@@ -176,7 +176,6 @@ describe('config', () => {
 			const configPath = path.resolve(
 				'test/fixtures/config/linkinator.config.cjs',
 			);
-			console.log(configPath);
 			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',

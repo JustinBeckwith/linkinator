@@ -9,6 +9,15 @@ describe('retries', () => {
 	it('should handle 429s with invalid retry-after headers', async () => {
 		let requestCount = 0;
 		server.use(
+			http.head('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, {
+					status: 429,
+					headers: {
+						'retry-after': 'totally-not-valid',
+					},
+				});
+			}),
 			http.get('http://example.invalid/', () => {
 				requestCount++;
 				return HttpResponse.json(null, {
@@ -25,7 +34,7 @@ describe('retries', () => {
 			retry: true,
 		});
 		assert.ok(!results.passed);
-		assert.strictEqual(requestCount, 1);
+		assert.strictEqual(requestCount, 2);
 	});
 
 	it('should retry 429s with second based header', async () => {
@@ -289,9 +298,16 @@ describe('retries', () => {
 		it('should retry 0 status code', async () => {
 			let requestCount = 0;
 			server.use(
-				http.get('http://example.invalid/', () => {
+				http.head('http://example.invalid/', () => {
 					requestCount++;
 					if (requestCount === 1) {
+						return HttpResponse.error();
+					}
+					return HttpResponse.json(null, { status: 200 });
+				}),
+				http.get('http://example.invalid/', () => {
+					requestCount++;
+					if (requestCount === 2) {
 						return HttpResponse.error();
 					}
 					return HttpResponse.json(null, { status: 200 });
@@ -310,14 +326,14 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(5000);
 			const results = await checkPromise;
 			assert.ok(results.passed);
-			assert.ok(
-				requestCount > 1,
-				'Mock should have been called multiple times for retry',
-			);
+			assert.strictEqual(requestCount, 3);
 		});
 
 		it('should eventually stop retrying', async () => {
 			server.use(
+				http.head('http://example.invalid/', () => {
+					return HttpResponse.error();
+				}),
 				http.get('http://example.invalid/', () => {
 					return HttpResponse.error();
 				}),

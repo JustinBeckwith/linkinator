@@ -11,7 +11,7 @@ import {
 	LinkState,
 } from '../src/index.js';
 import { DEFAULT_USER_AGENT } from '../src/options.js';
-import { ignoreUnhandledRequests, server } from './setup.js';
+import { server } from './setup.js';
 
 describe('linkinator', () => {
 	afterEach(() => {
@@ -102,6 +102,10 @@ describe('linkinator', () => {
 				requestCount++;
 				return HttpResponse.json(null, { status: 404 });
 			}),
+			http.get('http://example.invalid/', () => {
+				requestCount++;
+				return HttpResponse.json(null, { status: 404 });
+			}),
 		);
 		const results = await check({ path: 'test/fixtures/broke' });
 		assert.ok(!results.passed);
@@ -109,7 +113,7 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
-		assert.equal(requestCount, 1);
+		assert.equal(requestCount, 2);
 	});
 
 	it('should handle relative links', async () => {
@@ -135,17 +139,12 @@ describe('linkinator', () => {
 	});
 
 	it('should report malformed links as broken', async () => {
-		// This test expects some requests to fail due to malformed URLs, so ignore warnings
-		const restore = ignoreUnhandledRequests(['example.invalid']);
-
 		const results = await check({ path: 'test/fixtures/malformed' });
 		assert.ok(!results.passed);
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
-
-		restore();
 	});
 
 	it('should detect relative urls with relative base', async () => {
@@ -239,9 +238,6 @@ describe('linkinator', () => {
 	});
 
 	it('should detect broken image links', async () => {
-		// This test expects some requests to fail, so ignore warnings for test domains
-		const restore = ignoreUnhandledRequests(['example.invalid']);
-
 		const results = await check({ path: 'test/fixtures/image' });
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
@@ -251,8 +247,6 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.OK).length,
 			2,
 		);
-
-		restore();
 	});
 
 	it('should perform a recursive scan', async () => {
@@ -627,22 +621,22 @@ describe('linkinator', () => {
 	});
 
 	it('should surface call stacks on failures in the API', async () => {
-		// This test expects requests to fail, so ignore warnings for test domains
-		const restore = ignoreUnhandledRequests(['example.invalid']);
-
+		server.use(
+			http.head('http://example.invalid/', () => {
+				throw HttpResponse.text('turbotastic', { status: 0 })
+			}),
+		);
 		const results = await check({
 			path: 'http://example.invalid',
 		});
 		assert.ok(!results.passed);
+		console.log(results.links[0].failureDetails);
 		const failureDetails = results.links[0].failureDetails;
 		if (!failureDetails || failureDetails.length === 0) {
 			assert.fail('unexpected failure details');
 		}
 		const error = failureDetails[0] as Error;
-		// MSW doesn't block connections like nock, so we expect a different error
-		assert.match(error.message, /fetch failed|ENOTFOUND|getaddrinfo/);
-
-		restore();
+		assert.match(error.message, /getaddrinfo/);
 	});
 
 	it('should respect server root with globs', async () => {
