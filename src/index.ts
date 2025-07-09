@@ -331,7 +331,7 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
-		// a network error likely occurred):
+		// a network error likely occurred) or 429 without retry-after data:
 		if (this.shouldRetryOnError(status, options)) {
 			return;
 		}
@@ -555,7 +555,9 @@ export class LinkChecker extends EventEmitter {
 	}
 
 	/**
-	 * If the response is a 5xx or synthetic 0 response retry N times.
+	 * If the response is a 5xx, synthetic 0 or 429 without retry-after header retry N times.
+	 * There are cases where we can get 429 but without retry-after data, for those cases we
+	 * are going to handle it as error so we can retry N times.
 	 * @param status Status returned by request or 0 if request threw.
 	 * @param opts CrawlOptions used during this request
 	 */
@@ -566,8 +568,8 @@ export class LinkChecker extends EventEmitter {
 			return false;
 		}
 
-		// Only retry 0 and >5xx status codes:
-		if (status > 0 && status < 500) {
+		// Only retry 0 and >5xx or 429 without retry-after header status codes:
+		if (status > 0 && status < 500 && status !== 429) {
 			return false;
 		}
 
