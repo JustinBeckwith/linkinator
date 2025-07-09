@@ -9,6 +9,7 @@ import {
 	check,
 } from '../src/index.js';
 import { DEFAULT_USER_AGENT } from '../src/options.js';
+import { invertedPromise } from './utils.js';
 
 nock.disableNetConnect();
 nock.enableNetConnect('localhost');
@@ -618,5 +619,113 @@ describe('linkinator', () => {
 		});
 		assert.ok(results.passed);
 		scope.done();
+	});
+
+	describe('element metadata', () => {
+		it('should provide <a> text in results', async () => {
+			const scope = nock('http://example.invalid').head('/').reply(404);
+			const results = await check({ path: 'test/fixtures/basic' });
+			assert.strictEqual(
+				results.links[1]?.elementMetadata?.text,
+				'just follow a link',
+			);
+			assert.ok(!results.passed);
+			scope.done();
+		});
+
+		it('should provide <blockquote> text in results', async () => {
+			const scope = nock('http://example.invalid').head('/').reply(404);
+			const results = await check({ path: 'test/fixtures/blockquote' });
+			assert.strictEqual(results.links[1]?.elementMetadata?.text, 'Quote Text');
+			assert.ok(!results.passed);
+			scope.done();
+		});
+
+		it('should provide <a> text in `link` event', async () => {
+			const scope = nock('http://example.invalid').head('/').reply(404);
+			const { promise, resolve } = invertedPromise();
+			const checker = new LinkChecker();
+			let count = 0;
+			checker.on('link', (e) => {
+				if (count === 1) {
+					assert.strictEqual(e.elementMetadata?.text, 'just follow a link');
+					resolve();
+				}
+				count++;
+			});
+			const results = await checker.check({ path: 'test/fixtures/basic' });
+			await promise;
+			assert.ok(!results.passed);
+			scope.done();
+		});
+
+		it('should provide alt text of <img> in results', async () => {
+			const results = await check({ path: 'test/fixtures/imageAlt' });
+			assert.strictEqual(results.links[1]?.elementMetadata?.alt, 'my image');
+			assert.ok(!results.passed);
+		});
+
+		it('should provide id, class, attributes of <iframe> in results', async () => {
+			const scope = nock('http://example.invalid')
+				.head('/1')
+				.reply(404)
+				.head('/2')
+				.reply(404);
+
+			const expectedMetadata = {
+				tag: 'iframe',
+				id: 'dashboard-id',
+				class: 'dashboard-class',
+				name: 'dashboard',
+				title: 'Dashboard',
+			};
+
+			const results = await check({ path: 'test/fixtures/iframe' });
+
+			// Check that both links were queried and both contain metadata
+			assert.strictEqual(results.links[1]?.url, 'http://example.invalid/2');
+			assert.strictEqual(results.links[2]?.url, 'http://example.invalid/1');
+			assert.deepEqual(results.links[1]?.elementMetadata, expectedMetadata);
+			assert.deepEqual(results.links[2]?.elementMetadata, expectedMetadata);
+
+			assert.ok(!results.passed);
+			scope.done();
+		});
+
+		it('should provide id, class, attributes of <iframe> in `link` event', async () => {
+			const scope = nock('http://example.invalid')
+				.head('/1')
+				.reply(404)
+				.head('/2')
+				.reply(404);
+
+			const expectedMetadata = {
+				tag: 'iframe',
+				id: 'dashboard-id',
+				class: 'dashboard-class',
+				name: 'dashboard',
+				title: 'Dashboard',
+			};
+
+			const { promise, resolve } = invertedPromise();
+			const checker = new LinkChecker();
+			let count = 0;
+			checker.on('link', (e) => {
+				if (count === 1) {
+					assert.strictEqual(e.url, 'http://example.invalid/2');
+					assert.deepEqual(e.elementMetadata, expectedMetadata);
+				}
+				if (count === 2) {
+					assert.strictEqual(e.url, 'http://example.invalid/1');
+					assert.deepEqual(e.elementMetadata, expectedMetadata);
+					resolve();
+				}
+				count++;
+			});
+			const results = await checker.check({ path: 'test/fixtures/iframe' });
+			await promise;
+			assert.ok(!results.passed);
+			scope.done();
+		});
 	});
 });

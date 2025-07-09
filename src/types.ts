@@ -4,11 +4,37 @@ export enum LinkState {
 	SKIPPED = 'SKIPPED',
 }
 
-export type RetryInfo = {
+export type RetryAfterHeaderInfo = {
+	type: 'retry-after';
 	url: string;
-	secondsUntilRetry: number;
 	status: number;
+	secondsUntilRetry: number;
+	retryAfterRaw: string;
 };
+
+export type RetryNoHeaderInfo = {
+	type: 'retry-no-header';
+	url: string;
+	status: number;
+	secondsUntilRetry: number;
+	currentAttempt: number;
+	maxAttempts: number;
+};
+
+export type RetryErrorInfo = {
+	type: 'retry-error';
+	url: string;
+	status: number;
+	secondsUntilRetry: number;
+	currentAttempt: number;
+	maxAttempts: number;
+	jitter: number;
+};
+
+export type RetryInfo =
+	| RetryAfterHeaderInfo
+	| RetryNoHeaderInfo
+	| RetryErrorInfo;
 
 export type FailureDetails =
 	| {
@@ -30,6 +56,12 @@ export type LinkResult = {
 	state: LinkState;
 	parent?: string;
 	failureDetails?: Array<FailureDetails>;
+	elementMetadata?: ElementMetadata;
+};
+
+export type ElementMetadata = {
+	tag: string;
+	[key: string]: string;
 };
 
 export type CrawlResult = {

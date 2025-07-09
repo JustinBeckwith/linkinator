@@ -31,7 +31,7 @@
 		"meow": "^13.0.0",
 		"mime": "^4.0.0",
 		"server-destroy": "^1.0.1",
-		"srcset": "^5.0.0"
+		"srcset": "^5.0.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",

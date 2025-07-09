@@ -12,10 +12,14 @@ import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
 import {
 	type CrawlResult,
+	type ElementMetadata,
 	type FailureDetails,
 	type LinkResult,
 	LinkState,
+	type RetryAfterHeaderInfo,
+	type RetryErrorInfo,
 	type RetryInfo,
+	type RetryNoHeaderInfo,
 } from './types.js';
 import { createFetchOptions, isHtml, mapUrl } from './utils.js';
 
@@ -39,6 +43,7 @@ export type CrawlOptions = {
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
 	extraHeaders: { [key: string]: string };
+	elementMetadata?: ElementMetadata;
 };
 
 /**
@@ -273,6 +278,7 @@ export class LinkChecker extends EventEmitter {
 			state,
 			parent: mapUrl(opts.parent, opts.checkOptions),
 			failureDetails: failures,
+			elementMetadata: opts.elementMetadata,
 		};
 		opts.results.push(result);
 		this.emit('link', result);
@@ -291,6 +297,8 @@ export class LinkChecker extends EventEmitter {
 			return false;
 		}
 
+		let retryDetails: RetryAfterHeaderInfo | RetryNoHeaderInfo;
+
 		const retryAfterRaw = response.headers.get('retry-after');
 
 		let retryAfter: number;
@@ -305,6 +313,14 @@ export class LinkChecker extends EventEmitter {
 					return false;
 				}
 			}
+
+			retryDetails = {
+				type: 'retry-after',
+				url: options.url.href,
+				status: response.status,
+				secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+				retryAfterRaw,
+			};
 		} else if (options.retryNoHeader && retryAfterRaw === null) {
 			// No `retry-after` response header, use preconfigured delay and retry count
 			const maxRetries = options.retryNoHeaderCount;
@@ -318,6 +334,15 @@ export class LinkChecker extends EventEmitter {
 			options.retryNoHeaderCache.set(options.url.href, currentRetries + 1);
 
 			retryAfter = Date.now() + options.retryNoHeaderDelay;
+
+			retryDetails = {
+				type: 'retry-no-header',
+				url: options.url.href,
+				status: response.status,
+				secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
+				currentAttempt: currentRetries,
+				maxAttempts: maxRetries,
+			};
 		} else {
 			return false;
 		}
@@ -337,11 +362,6 @@ export class LinkChecker extends EventEmitter {
 			// Make sure delay is always >= 0
 			delay: Math.max(0, retryAfter - Date.now()),
 		});
-		const retryDetails: RetryInfo = {
-			url: options.url.href,
-			status: response.status,
-			secondsUntilRetry: Math.round((retryAfter - Date.now()) / 1000),
-		};
 		this.emit('retry', retryDetails);
 		return true;
 	}
@@ -379,18 +399,17 @@ export class LinkChecker extends EventEmitter {
 		const retryAfter =
 			2 ** currentRetries * 1000 + Math.random() * options.retryErrorsJitter;
 
-		options.queue.add(
-			async () => {
-				await this.crawl(options);
-			},
-			{
-				delay: retryAfter,
-			},
-		);
-		const retryDetails: RetryInfo = {
+		options.queue.add(() => this.crawl(options), {
+			delay: retryAfter,
+		});
+		const retryDetails: RetryErrorInfo = {
+			type: 'retry-error',
 			url: options.url.href,
 			status,
 			secondsUntilRetry: Math.round(retryAfter / 1000),
+			currentAttempt: currentRetries,
+			maxAttempts: maxRetries,
+			jitter: options.retryErrorsJitter,
 		};
 		this.emit('retry', retryDetails);
 		return true;
@@ -416,11 +435,12 @@ export class LinkChecker extends EventEmitter {
 			// If there was some sort of problem parsing the link while
 			// creating a new URL obj, treat it as a broken link.
 			if (!result.url) {
-				const r = {
+				const r: LinkResult = {
 					url: mapUrl(result.link, options.checkOptions),
 					status: 0,
 					state: LinkState.BROKEN,
 					parent: mapUrl(options.url.href, options.checkOptions),
+					elementMetadata: result.metadata,
 				};
 				options.results.push(r);
 				this.emit('link', r);
@@ -469,6 +489,7 @@ export class LinkChecker extends EventEmitter {
 						retryErrorsCount: options.retryErrorsCount,
 						retryErrorsJitter: options.retryErrorsJitter,
 						extraHeaders: options.extraHeaders,
+						elementMetadata: result.metadata,
 					});
 				});
 			}
@@ -503,6 +524,7 @@ export class LinkChecker extends EventEmitter {
 				status: 0,
 				state: LinkState.SKIPPED,
 				parent: mapUrl(options.parent, options.checkOptions),
+				elementMetadata: options.elementMetadata,
 			};
 			options.results.push(r);
 			this.emit('link', r);
@@ -523,6 +545,7 @@ export class LinkChecker extends EventEmitter {
 				url: mapUrl(options.url.href, options.checkOptions),
 				state: LinkState.SKIPPED,
 				parent: options.parent,
+				elementMetadata: options.elementMetadata,
 			};
 			options.results.push(result);
 			this.emit('link', result);
@@ -547,6 +570,7 @@ export class LinkChecker extends EventEmitter {
 					url: mapUrl(options.url.href, options.checkOptions),
 					state: LinkState.SKIPPED,
 					parent: mapUrl(options.parent, options.checkOptions),
+					elementMetadata: options.elementMetadata,
 				};
 				options.results.push(result);
 				this.emit('link', result);
