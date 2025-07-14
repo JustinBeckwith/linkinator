@@ -184,21 +184,24 @@ export class LinkChecker extends EventEmitter {
 		// a network error likely occurred):
 		if (this.shouldRetryOnError(status, opts)) return;
 
+		// Recurse if body is HTML and crawling is enabled
+		const willRecurse = await this.maybeRecurse(opts, response);
+		if (willRecurse) {
+			return;
+		}
+
 		const state =
 			status >= 200 && status < 300 ? LinkState.OK : LinkState.BROKEN;
 		this.emitResult(opts, state, status, failures);
-
-		// Recurse if body is HTML and crawling is enabled
-		await this.maybeRecurse(opts, response);
 	}
 
 	// Perform fetch, handle retry on 429, collect failures
 	private async requestWithRetry(opts: CrawlOptions): Promise<{
-		response?: Response;
+		response: Response | null;
 		failures: FailureDetails[];
-		willBeRetried?: boolean;
+		willBeRetried: boolean;
 	}> {
-		let response: Response | undefined;
+		let response: Response | null = null;
 		const failures: FailureDetails[] = [];
 		const fetchOptions = createFetchOptions(opts);
 
@@ -208,7 +211,7 @@ export class LinkChecker extends EventEmitter {
 				...fetchOptions,
 			});
 			if (this.shouldRetryAfter(response, opts)) {
-				return { response: undefined, failures, willBeRetried: true };
+				return { response: null, failures, willBeRetried: true };
 			}
 			if (response.status === 405) {
 				response = await fetch(opts.url.href, {
@@ -216,7 +219,7 @@ export class LinkChecker extends EventEmitter {
 					...fetchOptions,
 				});
 				if (this.shouldRetryAfter(response, opts)) {
-					return { response: undefined, failures, willBeRetried: true };
+					return { response: null, failures, willBeRetried: true };
 				}
 			}
 		} catch (error) {
@@ -241,7 +244,7 @@ export class LinkChecker extends EventEmitter {
 					...fetchOptions,
 				});
 				if (this.shouldRetryAfter(response, opts)) {
-					return { response: undefined, failures, willBeRetried: true };
+					return { response: null, failures, willBeRetried: true };
 				}
 			}
 		} catch (error) {
@@ -262,7 +265,7 @@ export class LinkChecker extends EventEmitter {
 			});
 		}
 
-		return { response, failures };
+		return { response, failures, willBeRetried: false };
 	}
 
 	// Helper to emit and record link results
@@ -420,10 +423,10 @@ export class LinkChecker extends EventEmitter {
 	 */
 	private async maybeRecurse(
 		options: CrawlOptions,
-		response: Response | undefined,
-	): Promise<void> {
+		response: Response | null,
+	): Promise<boolean> {
 		if (!options.crawl || !response || !isHtml(response)) {
-			return;
+			return false;
 		}
 
 		// If we need to go deeper, scan the next level of depth for links and crawl
@@ -494,6 +497,7 @@ export class LinkChecker extends EventEmitter {
 				});
 			}
 		}
+		return true;
 	}
 
 	private async shouldSkip(options: CrawlOptions): Promise<boolean> {
