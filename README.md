@@ -81,7 +81,7 @@ $ linkinator LOCATIONS [ --arguments ]
         where the server is started.  Defaults to the path passed in [LOCATION].
 
     --skip, -s
-        List of urls in regexy form to not include in the check.
+        List of urls in regexy form to not include in the check. Can be repeated multiple times.
 
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
@@ -124,6 +124,12 @@ Aw, snap.  I didn't want that to check *those* links.  Let's skip em:
 
 ```sh
 npx linkinator ./docs --skip www.googleapis.com
+```
+
+Need to skip multiple patterns? Just use `--skip` multiple times:
+
+```sh
+npx linkinator ./docs --skip www.googleapis.com --skip example.com --skip github.com
 ```
 
 The `--skip` parameter will accept any regex! You can do more complex matching, or even tell it to only scan links with a given domain:
@@ -175,7 +181,15 @@ All options are optional. It should look like this:
   "retryErrorsJitter": 5,
   "urlRewriteSearch": "/pattern/",
   "urlRewriteReplace": "replacement",
-  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)",
+  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)"
+}
+```
+
+For skipping multiple URL patterns, use an array:
+
+```json
+{
+  "skip": ["www.googleapis.com", "example.com", "github.com"]
 }
 ```
 
