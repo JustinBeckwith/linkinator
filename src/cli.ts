@@ -11,7 +11,7 @@ import {
 	LinkState,
 	type RetryInfo,
 } from './index.js';
-import { Format, LogLevel, Logger } from './logger.js';
+import { Format, Logger, LogLevel } from './logger.js';
 
 const cli = meow(
 	`
@@ -66,6 +66,7 @@ const cli = meow(
 
       --skip, -s
           List of urls in regexy form to not include in the check.
+          Can be specified multiple times.
 
       --timeout
           Request timeout in ms.  Defaults to 0 (no timeout).
@@ -91,6 +92,7 @@ const cli = meow(
       $ linkinator https://www.google.com
       $ linkinator . --recurse
       $ linkinator . --skip www.googleapis.com
+      $ linkinator . --skip example.com --skip github.com
       $ linkinator . --format CSV
 `,
 	{
@@ -181,8 +183,21 @@ async function main() {
 				const failureDetails = link.failureDetails
 					? JSON.stringify(link.failureDetails, null, 2)
 					: '';
+				// Helper function to escape CSV fields only when needed
+				const escapeCsvField = (field: string): string => {
+					if (!field) return '';
+					// Quote if field contains comma, quote, or newline
+					if (
+						field.includes(',') ||
+						field.includes('"') ||
+						field.includes('\n')
+					) {
+						return `"${field.replace(/"/g, '""')}"`;
+					}
+					return field;
+				};
 				console.log(
-					`"${link.url}",${link.status},${link.state},"${link.parent || ''}","${failureDetails}"`,
+					`${escapeCsvField(link.url)},${link.status},${link.state},${escapeCsvField(link.parent || '')},${escapeCsvField(failureDetails)}`,
 				);
 			}
 		}

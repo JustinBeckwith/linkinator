@@ -2,11 +2,10 @@
 
 > A super simple site crawler and broken link checker.
 
-[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.org/package/linkinator)
+[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.com/package/linkinator)
 [![codecov](https://img.shields.io/codecov/c/github/JustinBeckwith/linkinator/main)](https://app.codecov.io/gh/JustinBeckwith/linkinator)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
-
 
 Behold my latest inator! The `linkinator` provides an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
 
@@ -55,9 +54,6 @@ $ linkinator LOCATIONS [ --arguments ]
     --help
         Show this command.
 
-    --include, -i
-        List of urls in regexy form to include.  The opposite of --skip.
-
     --markdown
         Automatically parse and scan markdown if scanning from a location on disk.
 
@@ -82,7 +78,7 @@ $ linkinator LOCATIONS [ --arguments ]
         where the server is started.  Defaults to the path passed in [LOCATION].
 
     --skip, -s
-        List of urls in regexy form to not include in the check.
+        List of urls in regexy form to not include in the check. Can be repeated multiple times.
 
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
@@ -92,6 +88,7 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --url-rewrite-replace
         Expression used to replace search content.  Must be used with --url-rewrite-search.
+        Example: --url-rewrite-search "https://example\.com" --url-rewrite-replace "http://localhost:3000"
 
     --user-agent
         The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
@@ -125,6 +122,12 @@ Aw, snap.  I didn't want that to check *those* links.  Let's skip em:
 
 ```sh
 npx linkinator ./docs --skip www.googleapis.com
+```
+
+Need to skip multiple patterns? Just use `--skip` multiple times:
+
+```sh
+npx linkinator ./docs --skip www.googleapis.com --skip example.com --skip github.com
 ```
 
 The `--skip` parameter will accept any regex! You can do more complex matching, or even tell it to only scan links with a given domain:
@@ -174,9 +177,17 @@ All options are optional. It should look like this:
   "retryErrors": true,
   "retryErrorsCount": 3,
   "retryErrorsJitter": 5,
-  "urlRewriteSearch": "/pattern/",
-  "urlRewriteReplace": "replacement",
-  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)",
+  "urlRewriteSearch": "https://example\\.com",
+  "urlRewriteReplace": "http://localhost:3000",
+  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)"
+}
+```
+
+For skipping multiple URL patterns, use an array:
+
+```json
+{
+  "skip": ["www.googleapis.com", "example.com", "github.com"]
 }
 ```
 
@@ -224,9 +235,17 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 where the server is started.  Defaults to the path passed in `path`.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
-- `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
+- `linksToSkip` (array | function) - An array of regular expression strings that should be skipped (e.g., `['example.com', 'github.com', '^http://']`), OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
-- `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement.
+- `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement. Use this to rewrite URLs before they are checked. For example, to rewrite a production URL to a local development URL:
+  ```javascript
+  urlRewriteExpressions: [
+    {
+      pattern: /https:\/\/example\.com/,
+      replacement: 'http://localhost:3000'
+    }
+  ]
+  ```
 - `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
 
 ### linkinator.LinkChecker()
@@ -315,9 +334,11 @@ async function complex() {
     path: 'http://example.com',
     // port: 8673,
     // recurse: true,
+    // Skip multiple URL patterns using an array of regex strings
     // linksToSkip: [
-    //   'https://jbeckwith.com/some/link',
-    //   'http://example.com'
+    //   'example.com/skip-this',
+    //   'github.com',
+    //   '^https://restricted'
     // ]
   });
 
@@ -333,6 +354,31 @@ async function complex() {
 }
 
 complex();
+```
+
+#### Skipping links example
+
+```js
+import { LinkChecker } from 'linkinator';
+
+async function skipExample() {
+  const checker = new LinkChecker();
+
+  // Skip multiple URL patterns using an array
+  const result = await checker.check({
+    path: 'https://example.com',
+    recurse: true,
+    linksToSkip: [
+      'www.google.com',           // Skip all Google links
+      'example.com/skip-me',      // Skip specific paths
+      '^https://internal.corp'    // Skip all internal corp links
+    ]
+  });
+
+  console.log(`Scanned ${result.links.length} links`);
+}
+
+skipExample();
 ```
 
 ## Tips & Tricks
@@ -366,6 +412,18 @@ The `--verbosity` flag offers preset options for controlling the output, but you
 ```sh
 npx linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
 ```
+
+### Cloudflare Bot Protection
+
+Some websites use Cloudflare bot protection, which may return a `403` status code with a JavaScript challenge page when detecting automated tools. Linkinator automatically detects this scenario by checking for the `cf-mitigated` response header.
+
+When Cloudflare bot protection is detected, linkinator treats the link as valid (status `200`, state `OK`) rather than broken. This is because:
+
+- The link itself is valid and works for human users
+- The `403` is specifically for bot traffic, not a broken or missing page
+- Marking it as broken would create false positives in your link checks
+
+If you need to verify these links work for actual users, test them manually in a browser.
 
 ## License
 

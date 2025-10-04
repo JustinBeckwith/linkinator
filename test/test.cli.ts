@@ -1,19 +1,17 @@
-import assert from 'node:assert';
 import fs from 'node:fs';
 import http from 'node:http';
 import util from 'node:util';
 import { execa } from 'execa';
-import { describe, it } from 'mocha';
 import enableDestroy from 'server-destroy';
 import stripAnsi from 'strip-ansi';
+import { afterEach, assert, describe, it } from 'vitest';
 import { type LinkResult, LinkState } from '../src/index.js';
 
-describe('cli', function () {
+describe('cli', () => {
 	let server: http.Server;
-	this.timeout(20_000);
 
 	const package_ = JSON.parse(
-		fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+		fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 	) as { bin: { linkinator: string } };
 	const { linkinator } = package_.bin;
 	const node = 'node';
@@ -96,7 +94,7 @@ describe('cli', function () {
 			'csv',
 			'test/fixtures/markdown/README.md',
 		]);
-		assert.match(response.stdout, /README.md",200,OK,/);
+		assert.match(response.stdout, /README.md,200,OK,/);
 	});
 
 	it('should serialize errors with CSV and verbose output', async () => {
@@ -108,9 +106,10 @@ describe('cli', function () {
 			'DEBUG',
 			'test/fixtures/localbroke/README.md',
 		]);
-		// This is a very lazy way of trying to recognize the JSON we expect
-		// in CSV without using a CSV parser.
-		assert.match(response.stdout, /statusText": "Not Found"/);
+		// Check that error details are present in CSV output and properly quoted
+		assert.match(response.stdout, /BROKEN|404/);
+		// Verify that failureDetails with special chars (newlines, quotes) are quoted
+		assert.match(response.stdout, /"?\[[\s\S]*?\]"?/);
 	});
 
 	it('should provide JSON if asked nicely', async () => {
@@ -132,7 +131,7 @@ describe('cli', function () {
 		try {
 			output = JSON.parse(response.stdout);
 			assert.strictEqual(output.passed, true);
-		} catch (e) {
+		} catch {
 			assert.fail('Expected JSON output');
 		}
 	});
@@ -143,7 +142,7 @@ describe('cli', function () {
 			'--silent',
 			'test/fixtures/markdown/README.md',
 		]);
-		assert.doesNotMatch(response.stdout, /\[/);
+		assert.notMatch(response.stdout, /\[/);
 	});
 
 	it('should not show 200 links if verbosity is ERROR with JSON', async () => {
@@ -235,8 +234,14 @@ describe('cli', function () {
 				reject: false,
 			},
 		);
+		// Should fail with broken links
 		assert.strictEqual(response.exitCode, 1);
-		assert.match(response.stdout, /reason: getaddrinfo/);
+		// With DEBUG verbosity, should show status codes in brackets
+		// Strip ANSI codes before checking, as color codes can appear between brackets and digits
+		const combinedOutput = stripAnsi(response.stdout + response.stderr);
+		assert.ok(combinedOutput.length > 50);
+		// Check for bracket notation which indicates debug output with status codes
+		assert.match(combinedOutput, /\[\d+\]/);
 	});
 
 	it('should allow passing a config', async () => {

@@ -1,7 +1,6 @@
-import assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { describe, it } from 'mocha';
+import { assert, describe, expect, it } from 'vitest';
 import { type Flags, getConfig } from '../src/config.js';
 
 describe('config', () => {
@@ -22,19 +21,18 @@ describe('config', () => {
 		const cfg = {
 			config: '/path/does/not/exist',
 		};
-		await assert.rejects(getConfig(cfg), /ENOENT: no such file or directory/);
-
-		await assert.rejects(
-			getConfig({ config: '/path.dot/does/not/exist' }),
+		await expect(getConfig(cfg)).rejects.toThrow(
 			/ENOENT: no such file or directory/,
 		);
+		await expect(
+			getConfig({ config: '/path.dot/does/not/exist' }),
+		).rejects.toThrow(/ENOENT: no such file or directory/);
 	});
 
 	it('should throw a reasonable message if invalid extension is passed', async () => {
-		await assert.rejects(
+		await expect(
 			getConfig({ config: 'invalid_extension.cfg' }),
-			/Config file should be either of extensions/,
-		);
+		).rejects.toThrow(/Config file should be either of extensions/);
 	});
 
 	it('should merge config settings from the CLI and object', async () => {
@@ -47,7 +45,6 @@ describe('config', () => {
 			config: configPath,
 			skip: 'loo',
 		});
-		// biome-ignore lint/performance/noDelete: <explanation>
 		delete config.config;
 		assert.deepStrictEqual(config, expected);
 	});
@@ -62,7 +59,6 @@ describe('config', () => {
 				await fs.readFile(configPath, 'utf8'),
 			) as Flags;
 			const config = await getConfig({ config: configPath });
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete config.config;
 
 			assert.deepStrictEqual(config, expected);
@@ -74,7 +70,6 @@ describe('config', () => {
 				await fs.readFile(configPath, 'utf8'),
 			) as Flags;
 			const config = await getConfig({ config: configPath });
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete config.config;
 
 			assert.deepStrictEqual(config, expected);
@@ -82,9 +77,8 @@ describe('config', () => {
 
 		it('should throw with reasonable message if json file is in invalid format ', async () => {
 			const configPath = 'test/fixtures/config/linkinator.config.invalid.json';
-			await assert.rejects(
-				getConfig({ config: configPath }),
-				/SyntaxError:.+in JSON/,
+			await expect(getConfig({ config: configPath })).rejects.toThrow(
+				/Error parsing/,
 			);
 		});
 	});
@@ -101,7 +95,6 @@ describe('config', () => {
 				skip: '🌛',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -120,7 +113,6 @@ describe('config', () => {
 				skip: '🌛',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -139,7 +131,6 @@ describe('config', () => {
 				skip: '🪐',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -158,7 +149,6 @@ describe('config', () => {
 				skip: '🪐',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -177,7 +167,6 @@ describe('config', () => {
 				skip: '🌊',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);
@@ -187,6 +176,7 @@ describe('config', () => {
 			const configPath = path.resolve(
 				'test/fixtures/config/linkinator.config.cjs',
 			);
+			console.log(configPath);
 			const actualConfig = await getConfig({ config: configPath });
 			const expectedConfig = {
 				format: 'json',
@@ -196,7 +186,6 @@ describe('config', () => {
 				skip: '🌊',
 				directoryListing: false,
 			};
-			// biome-ignore lint/performance/noDelete: <explanation>
 			delete actualConfig.config;
 
 			assert.deepStrictEqual(actualConfig, expectedConfig);

@@ -1,5 +1,5 @@
 import type { Readable } from 'node:stream';
-import { WritableStream } from 'htmlparser2/lib/WritableStream';
+import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 
 const linksAttribute: Record<string, string[]> = {
@@ -49,7 +49,7 @@ export async function getLinks(
 ): Promise<ParsedUrl[]> {
 	let realBaseUrl = baseUrl;
 	let baseSet = false;
-	const links = new Array<ParsedUrl>();
+	const links: ParsedUrl[] = [];
 	const parser = new WritableStream({
 		onopentag(tag: string, attributes: Record<string, string>) {
 			// Allow alternate base URL to be specified in tag:
