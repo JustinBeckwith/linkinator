@@ -179,8 +179,21 @@ async function main() {
 				const failureDetails = link.failureDetails
 					? JSON.stringify(link.failureDetails, null, 2)
 					: '';
+				// Helper function to escape CSV fields only when needed
+				const escapeCsvField = (field: string): string => {
+					if (!field) return '';
+					// Quote if field contains comma, quote, or newline
+					if (
+						field.includes(',') ||
+						field.includes('"') ||
+						field.includes('\n')
+					) {
+						return `"${field.replace(/"/g, '""')}"`;
+					}
+					return field;
+				};
 				console.log(
-					`"${link.url}",${link.status},${link.state},"${link.parent || ''}","${failureDetails}"`,
+					`${escapeCsvField(link.url)},${link.status},${link.state},${escapeCsvField(link.parent || '')},${escapeCsvField(failureDetails)}`,
 				);
 			}
 		}

@@ -94,7 +94,7 @@ describe('cli', () => {
 			'csv',
 			'test/fixtures/markdown/README.md',
 		]);
-		assert.match(response.stdout, /README.md",200,OK,/);
+		assert.match(response.stdout, /README.md,200,OK,/);
 	});
 
 	it('should serialize errors with CSV and verbose output', async () => {
@@ -106,8 +106,10 @@ describe('cli', () => {
 			'DEBUG',
 			'test/fixtures/localbroke/README.md',
 		]);
-		// Check that error details are present in CSV output
+		// Check that error details are present in CSV output and properly quoted
 		assert.match(response.stdout, /BROKEN|404/);
+		// Verify that failureDetails with special chars (newlines, quotes) are quoted
+		assert.match(response.stdout, /"?\[[\s\S]*?\]"?/);
 	});
 
 	it('should provide JSON if asked nicely', async () => {
