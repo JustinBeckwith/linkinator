@@ -635,4 +635,20 @@ describe('linkinator', () => {
 		const results = await check({ path: 'test/fixtures/basic', userAgent });
 		assert.ok(results.passed);
 	});
+
+	it('should treat Cloudflare bot protection as OK', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		// Simulate Cloudflare bot protection response
+		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(403, '', {
+			headers: {
+				'cf-mitigated': 'challenge',
+				server: 'cloudflare',
+			},
+		});
+		const results = await check({ path: 'test/fixtures/basic' });
+		// Should pass because Cloudflare 403 with cf-mitigated is treated as OK
+		assert.ok(results.passed);
+		assert.strictEqual(results.links[0].status, 200);
+		assert.strictEqual(results.links[0].state, LinkState.OK);
+	});
 });

@@ -593,9 +593,23 @@ async function makeRequest(
 		timeout?: number;
 	} = {},
 ): Promise<HttpResponse> {
+	// Build browser-like headers to avoid bot detection
+	const defaultHeaders: Record<string, string> = {
+		Accept:
+			'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+		'Accept-Language': 'en-US,en;q=0.9',
+		'Accept-Encoding': 'gzip, deflate, br',
+		'Cache-Control': 'no-cache',
+		Pragma: 'no-cache',
+		'Sec-Fetch-Dest': 'document',
+		'Sec-Fetch-Mode': 'navigate',
+		'Sec-Fetch-Site': 'none',
+		'Upgrade-Insecure-Requests': '1',
+	};
+
 	const requestOptions: RequestInit = {
 		method,
-		headers: options.headers,
+		headers: { ...defaultHeaders, ...options.headers },
 		redirect: 'follow',
 	};
 
@@ -611,8 +625,17 @@ async function makeRequest(
 		headers[key] = value;
 	});
 
+	let status = response.status;
+
+	// Special handling for Cloudflare bot protection
+	// If we get a 403 with cf-mitigated header, the site exists but blocks bots
+	// Treat this as a successful check since the link is valid for humans
+	if (status === 403 && headers['cf-mitigated']) {
+		status = 200;
+	}
+
 	return {
-		status: response.status,
+		status,
 		headers,
 		body: (response.body ?? undefined) as ReadableStream | undefined,
 	};
