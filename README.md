@@ -2,7 +2,7 @@
 
 > A super simple site crawler and broken link checker.
 
-[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.org/package/linkinator)
+[![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.com/package/linkinator)
 [![codecov](https://img.shields.io/codecov/c/github/JustinBeckwith/linkinator/main)](https://app.codecov.io/gh/JustinBeckwith/linkinator)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
@@ -365,6 +365,18 @@ The `--verbosity` flag offers preset options for controlling the output, but you
 ```sh
 npx linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
 ```
+
+### Cloudflare Bot Protection
+
+Some websites use Cloudflare bot protection, which may return a `403` status code with a JavaScript challenge page when detecting automated tools. Linkinator automatically detects this scenario by checking for the `cf-mitigated` response header.
+
+When Cloudflare bot protection is detected, linkinator treats the link as valid (status `200`, state `OK`) rather than broken. This is because:
+
+- The link itself is valid and works for human users
+- The `403` is specifically for bot traffic, not a broken or missing page
+- Marking it as broken would create false positives in your link checks
+
+If you need to verify these links work for actual users, test them manually in a browser.
 
 ## License
 
