@@ -651,4 +651,19 @@ describe('linkinator', () => {
 		assert.strictEqual(results.links[0].status, 200);
 		assert.strictEqual(results.links[0].state, LinkState.OK);
 	});
+
+	it('should check alternate and canonical link tags', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(200, '');
+		mockPool.intercept({ path: '/es', method: 'HEAD' }).reply(200, '');
+		const results = await check({ path: 'test/fixtures/alternate' });
+		assert.ok(results.passed);
+		// Should check: 1 page + 2 unique URLs (http://example.invalid/ and /es) = 3 total
+		// Note: The 4 link tags contain only 2 unique URLs since canonical and some alternates point to /
+		assert.strictEqual(results.links.length, 3);
+		assert.strictEqual(
+			results.links.filter((x) => x.state === LinkState.OK).length,
+			3,
+		);
+	});
 });
