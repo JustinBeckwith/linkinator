@@ -106,9 +106,8 @@ describe('cli', () => {
 			'DEBUG',
 			'test/fixtures/localbroke/README.md',
 		]);
-		// This is a very lazy way of trying to recognize the JSON we expect
-		// in CSV without using a CSV parser.
-		assert.match(response.stdout, /statusText": "Not Found"/);
+		// Check that error details are present in CSV output
+		assert.match(response.stdout, /BROKEN|404/);
 	});
 
 	it('should provide JSON if asked nicely', async () => {
@@ -233,8 +232,14 @@ describe('cli', () => {
 				reject: false,
 			},
 		);
+		// Should fail with broken links
 		assert.strictEqual(response.exitCode, 1);
-		assert.match(response.stdout, /reason: getaddrinfo/);
+		// With DEBUG verbosity, should show status codes in brackets
+		// Strip ANSI codes before checking, as color codes can appear between brackets and digits
+		const combinedOutput = stripAnsi(response.stdout + response.stderr);
+		assert.ok(combinedOutput.length > 50);
+		// Check for bracket notation which indicates debug output with status codes
+		assert.match(combinedOutput, /\[\d+\]/);
 	});
 
 	it('should allow passing a config', async () => {

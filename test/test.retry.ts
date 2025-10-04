@@ -1,38 +1,48 @@
-import nock from 'nock';
-import { afterEach, assert, describe, it, vi } from 'vitest';
+import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
+import { afterEach, assert, beforeEach, describe, it, vi } from 'vitest';
 import { check, LinkChecker } from '../src/index.js';
 
-nock.disableNetConnect();
-nock.enableNetConnect('localhost');
-
 describe('retries', () => {
-	afterEach(() => {
+	let mockAgent: MockAgent;
+	let originalDispatcher: ReturnType<typeof getGlobalDispatcher>;
+
+	beforeEach(() => {
+		originalDispatcher = getGlobalDispatcher();
+		mockAgent = new MockAgent();
+		mockAgent.disableNetConnect();
+		// Allow ALL localhost connections for local server tests
+		mockAgent.enableNetConnect((host) => {
+			return host.includes('localhost') || host.includes('127.0.0.1');
+		});
+		setGlobalDispatcher(mockAgent);
+	});
+
+	afterEach(async () => {
 		vi.useRealTimers();
-		nock.cleanAll();
+		// Assert all mocked requests were called (equivalent to nock's scope.done())
+		mockAgent.assertNoPendingInterceptors();
+		await mockAgent.close();
+		setGlobalDispatcher(originalDispatcher);
 	});
 
 	it('should handle 429s with invalid retry-after headers', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': 'totally-not-valid',
-			});
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': 'totally-not-valid' },
+		});
 		const results = await check({
 			path: 'test/fixtures/basic',
 			retry: true,
 		});
 		assert.ok(!results.passed);
-		scope.done();
 	});
 
 	it('should retry 429s with second based header', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': '10',
-			})
-			.get('/')
-			.reply(200);
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '10' },
+		});
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -46,19 +56,15 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(10_000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	it('should retry 429s after failed HEAD', async () => {
-		const scope = nock('http://example.invalid')
-			.head('/')
-			.reply(405)
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': '10',
-			})
-			.get('/')
-			.reply(200);
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(405, '');
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '10' },
+		});
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -71,17 +77,14 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(10_000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	it('should retry 429s with date based header', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/')
-			.reply(429, undefined, {
-				'retry-after': '1970-01-01T00:00:10.000Z',
-			})
-			.get('/')
-			.reply(200);
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '1970-01-01T00:00:10.000Z' },
+		});
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -94,34 +97,28 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(10_000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	it('should detect requests to wait on the same host', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/1')
-			.reply(429, undefined, {
-				'retry-after': '3',
-			})
-			.get('/1', () => {
-				assert.ok(Date.now() >= 3000);
-				return true;
-			})
-			.reply(200)
-			.get('/2', () => {
-				assert.ok(Date.now() >= 3000);
-				return true;
-			})
-			.reply(200)
-			.get('/3')
-			.reply(429, undefined, {
-				'retry-after': '3',
-			})
-			.get('/3', () => {
-				assert.ok(Date.now() >= 3000);
-				return true;
-			})
-			.reply(200);
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/1', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '3' },
+		});
+		mockPool.intercept({ path: '/1', method: 'GET' }).reply(() => {
+			assert.ok(Date.now() >= 3000);
+			return { statusCode: 200, data: '', responseOptions: {} };
+		});
+		mockPool.intercept({ path: '/2', method: 'GET' }).reply(() => {
+			assert.ok(Date.now() >= 3000);
+			return { statusCode: 200, data: '', responseOptions: {} };
+		});
+		mockPool.intercept({ path: '/3', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '3' },
+		});
+		mockPool.intercept({ path: '/3', method: 'GET' }).reply(() => {
+			assert.ok(Date.now() >= 3000);
+			return { statusCode: 200, data: '', responseOptions: {} };
+		});
 
 		const { promise, resolve } = invertedPromise();
 		const checker = new LinkChecker().on('retry', resolve);
@@ -135,38 +132,32 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(3000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	it('should increase timeout for followup requests to a host', async () => {
-		const scope = nock('http://example.invalid')
-			.get('/1')
-			.reply(429, undefined, {
-				'retry-after': '3',
-			})
-			.get('/1', () => {
-				// Even though the header said to wait 3 seconds, we are checking to
-				// make sure the /3 route reset it to 9 seconds here. This is common
-				// when a flood of requests come through and the retry-after gets
-				// extended.
-				assert.ok(Date.now() >= 9000);
-				return true;
-			})
-			.reply(200)
-			.get('/2', () => {
-				assert.ok(Date.now() >= 9000);
-				return true;
-			})
-			.reply(200)
-			.get('/3')
-			.reply(429, undefined, {
-				'retry-after': '9',
-			})
-			.get('/3', () => {
-				assert.ok(Date.now() >= 9000);
-				return true;
-			})
-			.reply(200);
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/1', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '3' },
+		});
+		mockPool.intercept({ path: '/1', method: 'GET' }).reply(() => {
+			// Even though the header said to wait 3 seconds, we are checking to
+			// make sure the /3 route reset it to 9 seconds here. This is common
+			// when a flood of requests come through and the retry-after gets
+			// extended.
+			assert.ok(Date.now() >= 9000);
+			return { statusCode: 200, data: '', responseOptions: {} };
+		});
+		mockPool.intercept({ path: '/2', method: 'GET' }).reply(() => {
+			assert.ok(Date.now() >= 9000);
+			return { statusCode: 200, data: '', responseOptions: {} };
+		});
+		mockPool.intercept({ path: '/3', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '9' },
+		});
+		mockPool.intercept({ path: '/3', method: 'GET' }).reply(() => {
+			assert.ok(Date.now() >= 9000);
+			return { statusCode: 200, data: '', responseOptions: {} };
+		});
 
 		const { promise: p1, resolve: r1 } = invertedPromise();
 		const { promise: p2, resolve: r2 } = invertedPromise();
@@ -187,7 +178,6 @@ describe('retries', () => {
 		await clock.advanceTimersByTime(9000);
 		const results = await checkPromise;
 		assert.ok(results.passed);
-		scope.done();
 	});
 
 	function invertedPromise() {
@@ -202,11 +192,9 @@ describe('retries', () => {
 
 	describe('retry-errors', () => {
 		it('should retry 5xx status code', async () => {
-			const scope = nock('http://example.invalid')
-				.get('/')
-				.reply(522)
-				.get('/')
-				.reply(200);
+			const mockPool = mockAgent.get('http://example.invalid');
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(522, '');
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -219,15 +207,14 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(5000);
 			const results = await checkPromise;
 			assert.ok(results.passed);
-			scope.done();
 		});
 
 		it('should retry 0 status code', async () => {
-			const scope = nock('http://example.invalid')
-				.get('/')
-				.replyWithError({ code: 'ETIMEDOUT' })
-				.get('/')
-				.reply(200);
+			const mockPool = mockAgent.get('http://example.invalid');
+			mockPool
+				.intercept({ path: '/', method: 'GET' })
+				.replyWithError(new Error('ETIMEDOUT'));
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -241,13 +228,15 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(5000);
 			const results = await checkPromise;
 			assert.ok(results.passed);
-			scope.done();
 		});
 
 		it('should eventually stop retrying', async () => {
-			const scope = nock('http://example.invalid')
-				.get('/')
-				.replyWithError({ code: 'ETIMEDOUT' });
+			const mockPool = mockAgent.get('http://example.invalid');
+			// retryErrorsCount: 1 means 1 retry = 2 total attempts (initial + 1 retry)
+			mockPool
+				.intercept({ path: '/', method: 'GET' })
+				.replyWithError(new Error('ETIMEDOUT'))
+				.times(2);
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -262,7 +251,6 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
-			scope.done();
 		});
 	});
 });

@@ -3,11 +3,10 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import type { Readable } from 'node:stream';
-import { type GaxiosResponse, request } from 'gaxios';
 import { getLinks } from './links.js';
 import {
 	type CheckOptions,
+	DEFAULT_USER_AGENT,
 	type InternalCheckOptions,
 	processOptions,
 } from './options.js';
@@ -28,12 +27,18 @@ export type RetryInfo = {
 	status: number;
 };
 
+export type HttpResponse = {
+	status: number;
+	headers: Record<string, string>;
+	body?: ReadableStream;
+};
+
 export type LinkResult = {
 	url: string;
 	status?: number;
 	state: LinkState;
 	parent?: string;
-	failureDetails?: Array<Error | GaxiosResponse>;
+	failureDetails?: Array<Error | HttpResponse>;
 };
 
 export type CrawlResult = {
@@ -245,29 +250,29 @@ export class LinkChecker extends EventEmitter {
 		let status = 0;
 		let state = LinkState.BROKEN;
 		let shouldRecurse = false;
-		let response: GaxiosResponse<Readable> | undefined;
-		const failures: Array<Error | GaxiosResponse> = [];
+		let response: HttpResponse | undefined;
+		const failures: Array<Error | HttpResponse> = [];
 		try {
-			response = await request<Readable>({
-				method: options.crawl ? 'GET' : 'HEAD',
-				url: options.url.href,
-				headers: { 'User-Agent': options.checkOptions.userAgent },
-				responseType: 'stream',
-				validateStatus: () => true,
-				timeout: options.checkOptions.timeout,
-			});
+			response = await makeRequest(
+				options.crawl ? 'GET' : 'HEAD',
+				options.url.href,
+				{
+					headers: {
+						'User-Agent': options.checkOptions.userAgent || DEFAULT_USER_AGENT,
+					},
+					timeout: options.checkOptions.timeout,
+				},
+			);
 			if (this.shouldRetryAfter(response, options)) {
 				return;
 			}
 
 			// If we got an HTTP 405, the server may not like HEAD. GET instead!
 			if (response.status === 405) {
-				response = await request<Readable>({
-					method: 'GET',
-					url: options.url.href,
-					headers: { 'User-Agent': options.checkOptions.userAgent },
-					responseType: 'stream',
-					validateStatus: () => true,
+				response = await makeRequest('GET', options.url.href, {
+					headers: {
+						'User-Agent': options.checkOptions.userAgent || DEFAULT_USER_AGENT,
+					},
 					timeout: options.checkOptions.timeout,
 				});
 				if (this.shouldRetryAfter(response, options)) {
@@ -290,12 +295,10 @@ export class LinkChecker extends EventEmitter {
 					response.status >= 300) &&
 				!options.crawl
 			) {
-				response = await request<Readable>({
-					method: 'GET',
-					url: options.url.href,
-					responseType: 'stream',
-					validateStatus: () => true,
-					headers: { 'User-Agent': options.checkOptions.userAgent },
+				response = await makeRequest('GET', options.url.href, {
+					headers: {
+						'User-Agent': options.checkOptions.userAgent || DEFAULT_USER_AGENT,
+					},
 					timeout: options.checkOptions.timeout,
 				});
 				if (this.shouldRetryAfter(response, options)) {
@@ -338,9 +341,16 @@ export class LinkChecker extends EventEmitter {
 		// If we need to go deeper, scan the next level of depth for links and crawl
 		if (options.crawl && shouldRecurse) {
 			this.emit('pagestart', options.url);
-			const urlResults = response?.data
-				? await getLinks(response.data, options.url.href)
-				: [];
+			let urlResults: Awaited<ReturnType<typeof getLinks>> = [];
+			if (response?.body) {
+				// Fetch returns a Web ReadableStream (browser standard), but htmlparser2
+				// requires a Node.js Readable stream for piping. This conversion allows
+				// streaming HTML parsing as the response arrives, which is more memory
+				// efficient than loading the full response into memory first.
+				const { Readable } = await import('node:stream');
+				const nodeStream = Readable.fromWeb(response.body as never);
+				urlResults = await getLinks(nodeStream, options.url.href);
+			}
 			for (const result of urlResults) {
 				// If there was some sort of problem parsing the link while
 				// creating a new URL obj, treat it as a broken link.
@@ -405,10 +415,10 @@ export class LinkChecker extends EventEmitter {
 	 * and if the status was an HTTP 429, calculate the date at which this
 	 * request should be retried. Ensure the delayCache knows that we're
 	 * going to wait on requests for this entire host.
-	 * @param response GaxiosResponse returned from the request
+	 * @param response HttpResponse returned from the request
 	 * @param opts CrawlOptions used during this request
 	 */
-	shouldRetryAfter(response: GaxiosResponse, options: CrawlOptions): boolean {
+	shouldRetryAfter(response: HttpResponse, options: CrawlOptions): boolean {
 		if (!options.retry) {
 			return false;
 		}
@@ -522,7 +532,7 @@ export async function check(options: CheckOptions) {
  * @param {object} response Page response.
  * @returns {boolean}
  */
-function isHtml(response: GaxiosResponse): boolean {
+function isHtml(response: HttpResponse): boolean {
 	const contentType = (response.headers['content-type'] as string) || '';
 	return (
 		Boolean(/text\/html/g.test(contentType)) ||
@@ -566,6 +576,46 @@ function mapUrl<T extends string | undefined>(
 	}
 
 	return newUrl as T;
+}
+
+/**
+ * Helper function to make HTTP requests using native fetch
+ * @param method HTTP method
+ * @param url URL to request
+ * @param options Additional options (headers, timeout)
+ * @returns Response with status, headers, and body stream
+ */
+async function makeRequest(
+	method: string,
+	url: string,
+	options: {
+		headers?: Record<string, string>;
+		timeout?: number;
+	} = {},
+): Promise<HttpResponse> {
+	const requestOptions: RequestInit = {
+		method,
+		headers: options.headers,
+		redirect: 'follow',
+	};
+
+	if (options.timeout) {
+		requestOptions.signal = AbortSignal.timeout(options.timeout);
+	}
+
+	const response = await fetch(url, requestOptions);
+
+	// Convert headers to a plain object
+	const headers: Record<string, string> = {};
+	response.headers.forEach((value: string, key: string) => {
+		headers[key] = value;
+	});
+
+	return {
+		status: response.status,
+		headers,
+		body: (response.body ?? undefined) as ReadableStream | undefined,
+	};
 }
 
 export type { CheckOptions } from './options.js';
