@@ -24,7 +24,6 @@
 	"dependencies": {
 		"chalk": "^5.0.0",
 		"escape-html": "^1.0.3",
-		"gaxios": "^6.0.0",
 		"glob": "^10.3.10",
 		"htmlparser2": "^10.0.0",
 		"marked": "^16.0.0",
@@ -40,10 +39,10 @@
 		"@vitest/coverage-v8": "^3.2.4",
 		"execa": "^9.0.0",
 		"husky": "^9.0.11",
-		"nock": "^13.2.1",
 		"semantic-release": "^24.0.0",
 		"strip-ansi": "^7.0.1",
 		"typescript": "^5.5.2",
+		"undici": "^7.16.0",
 		"vitest": "^3.2.4"
 	},
 	"engines": {
