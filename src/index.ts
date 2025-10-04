@@ -52,6 +52,8 @@ type CrawlOptions = {
 	crawl: boolean;
 	results: LinkResult[];
 	cache: Set<string>;
+	relationshipCache: Set<string>;
+	pendingChecks: Map<string, Promise<void>>;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
 	checkOptions: CheckOptions;
@@ -123,19 +125,25 @@ export class LinkChecker extends EventEmitter {
 
 		const results: LinkResult[] = [];
 		const initCache = new Set<string>();
+		const relationshipCache = new Set<string>();
+		const pendingChecks = new Map<string, Promise<void>>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
 
 		for (const path of options.path) {
 			const url = new URL(path);
 			initCache.add(url.href);
-			queue.add(async () => {
+
+			// Create a promise for this starting page so other pages can wait for it
+			const crawlPromise = (async () => {
 				await this.crawl({
 					url,
 					crawl: true,
 					checkOptions: options,
 					results,
 					cache: initCache,
+					relationshipCache,
+					pendingChecks,
 					delayCache,
 					retryErrorsCache,
 					queue,
@@ -145,7 +153,13 @@ export class LinkChecker extends EventEmitter {
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
 					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
 				});
-			});
+			})();
+
+			// Store the promise
+			pendingChecks.set(url.href, crawlPromise);
+
+			// Queue the crawl
+			queue.add(() => crawlPromise);
 		}
 
 		await queue.onIdle();
@@ -380,11 +394,27 @@ export class LinkChecker extends EventEmitter {
 					}
 				}
 
-				// Ensure the url hasn't already been touched, largely to avoid a
-				// very large queue length and runaway memory consumption
-				if (!options.cache.has(result.url.href)) {
+				// Create a unique key for this URL-parent relationship
+				// Use the current page (options.url.href) as the parent in the relationship
+				const relationshipKey = `${result.url.href}|${options.url.href}`;
+
+				// Check if we've already reported this specific relationship
+				if (options.relationshipCache.has(relationshipKey)) {
+					continue;
+				}
+
+				// Mark this relationship as seen
+				options.relationshipCache.add(relationshipKey);
+
+				// Check if URL has been HTTP-checked before
+				const inCache = options.cache.has(result.url.href);
+
+				if (!inCache) {
+					// URL hasn't been checked, add to cache and create a promise for the check
 					options.cache.add(result.url.href);
-					options.queue.add(async () => {
+
+					// Create a promise that will resolve when the check completes
+					const checkPromise = (async () => {
 						if (result.url === undefined) {
 							throw new Error('url is undefined');
 						}
@@ -392,6 +422,8 @@ export class LinkChecker extends EventEmitter {
 							url: result.url,
 							crawl: crawl ?? false,
 							cache: options.cache,
+							relationshipCache: options.relationshipCache,
+							pendingChecks: options.pendingChecks,
 							delayCache: options.delayCache,
 							retryErrorsCache: options.retryErrorsCache,
 							results: options.results,
@@ -404,6 +436,43 @@ export class LinkChecker extends EventEmitter {
 							retryErrorsCount: options.retryErrorsCount,
 							retryErrorsJitter: options.retryErrorsJitter,
 						});
+					})();
+
+					// Store the promise so other parents can wait for it
+					options.pendingChecks.set(result.url.href, checkPromise);
+
+					// Queue the check
+					options.queue.add(() => checkPromise);
+				} else {
+					// URL is being checked or has been checked
+					// Wait for the existing check to complete, then reuse the result
+					const urlHref = result.url.href;
+					const parentHref = options.url.href;
+					const pendingCheck = options.pendingChecks.get(urlHref);
+
+					// Always queue the reuse operation to ensure proper sequencing
+					options.queue.add(async () => {
+						// If there's a pending check, wait for it
+						if (pendingCheck) {
+							await pendingCheck;
+						}
+
+						// Now the result should be in the results array
+						const cachedResult = options.results.find(
+							(r) => r.url === mapUrl(urlHref, options.checkOptions),
+						);
+
+						if (cachedResult) {
+							const reusedResult: LinkResult = {
+								url: cachedResult.url,
+								status: cachedResult.status,
+								state: cachedResult.state,
+								parent: mapUrl(parentHref, options.checkOptions),
+								failureDetails: cachedResult.failureDetails,
+							};
+							options.results.push(reusedResult);
+							this.emit('link', reusedResult);
+						}
 					});
 				}
 			}
