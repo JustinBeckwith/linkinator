@@ -235,7 +235,13 @@ describe('linkinator', () => {
 			path: 'test/fixtures/recurse',
 			recurse: true,
 		});
-		assert.strictEqual(results.links.length, 4);
+		// Expected results:
+		// 1. index.html (starting page, parent: undefined)
+		// 2. first.html (from index.html)
+		// 3. / (from first.html, points back to index - now reported with parent)
+		// 4. second.html (from first.html)
+		// 5. http://example.invalid (from second.html, external link)
+		assert.strictEqual(results.links.length, 5);
 	});
 
 	it('should not recurse non-html files', async () => {
@@ -444,10 +450,39 @@ describe('linkinator', () => {
 			path: 'test/fixtures/markdown/**/*.md',
 		});
 		assert.ok(results.passed);
-		assert.strictEqual(results.links.length, 6);
-		const licenseLink = results.links.find((x) => x.url.endsWith('LICENSE.md'));
-		assert.ok(licenseLink);
-		assert.strictEqual(licenseLink.url, 'test/fixtures/markdown/LICENSE.md');
+		// Expected results:
+		// 1. README.md (starting page)
+		// 2. LICENSE.md (starting page)
+		// 3. deep/deep.md (starting page)
+		// 4. unlinked.md (starting page)
+		// 5. LICENSE.md (from README.md)
+		// 6. LICENSE.md (from unlinked.md)
+		// 7. LICENSE.md (from deep/deep.md)
+		// 8. boo.jpg (from README.md)
+		// 9. mailto link (from LICENSE.md)
+		assert.strictEqual(results.links.length, 9);
+		const licenseLinks = results.links.filter((x) =>
+			x.url.endsWith('LICENSE.md'),
+		);
+		// LICENSE.md should appear 4 times: once as a starting page, then from README.md, unlinked.md, and deep/deep.md
+		assert.strictEqual(licenseLinks.length, 4);
+		// Verify LICENSE.md is reported with different parents
+		const licenseLinkParents = licenseLinks
+			.map((x) => x.parent)
+			.filter((p) => p !== undefined);
+		assert.strictEqual(licenseLinkParents.length, 3);
+		assert.ok(
+			licenseLinkParents.some((p) => p?.includes('README.md')),
+			'LICENSE.md should be reported from README.md',
+		);
+		assert.ok(
+			licenseLinkParents.some((p) => p?.includes('unlinked.md')),
+			'LICENSE.md should be reported from unlinked.md',
+		);
+		assert.ok(
+			licenseLinkParents.some((p) => p?.includes('deep.md')),
+			'LICENSE.md should be reported from deep/deep.md',
+		);
 	});
 
 	it('should autoscan markdown if specifically in path', async () => {
@@ -664,6 +699,45 @@ describe('linkinator', () => {
 		assert.strictEqual(
 			results.links.filter((x) => x.state === LinkState.OK).length,
 			3,
+		);
+	});
+
+	it('should report broken links for all parent pages', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/broken123', method: 'HEAD' }).reply(404, '');
+		mockPool.intercept({ path: '/broken456', method: 'HEAD' }).reply(404, '');
+		mockPool.intercept({ path: '/broken789', method: 'HEAD' }).reply(404, '');
+		const results = await check({
+			path: [
+				'test/fixtures/repeated-broken-link/pageA.html',
+				'test/fixtures/repeated-broken-link/pageB.html',
+			],
+		});
+		assert.ok(!results.passed);
+
+		// We should have 6 results: 2 pages + 4 broken links (broken123 appears twice)
+		// pageA.html with parent undefined
+		// pageB.html with parent undefined
+		// broken123 with parent pageA.html
+		// broken456 with parent pageA.html
+		// broken123 with parent pageB.html (this is the key - same broken link, different parent)
+		// broken789 with parent pageB.html
+		assert.strictEqual(results.links.length, 6);
+
+		// Check that broken123 appears twice with different parents
+		const broken123Links = results.links.filter(
+			(x) => x.url === 'http://example.invalid/broken123',
+		);
+		assert.strictEqual(broken123Links.length, 2);
+
+		const parents = broken123Links.map((x) => x.parent).sort();
+		assert.ok(
+			parents[0]?.includes('pageA.html'),
+			'broken123 should be reported for pageA.html',
+		);
+		assert.ok(
+			parents[1]?.includes('pageB.html'),
+			'broken123 should be reported for pageB.html',
 		);
 	});
 });
