@@ -91,6 +91,7 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --url-rewrite-replace
         Expression used to replace search content.  Must be used with --url-rewrite-search.
+        Example: --url-rewrite-search "https://example\.com" --url-rewrite-replace "http://localhost:3000"
 
     --user-agent
         The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
@@ -179,8 +180,8 @@ All options are optional. It should look like this:
   "retryErrors": true,
   "retryErrorsCount": 3,
   "retryErrorsJitter": 5,
-  "urlRewriteSearch": "/pattern/",
-  "urlRewriteReplace": "replacement",
+  "urlRewriteSearch": "https://example\\.com",
+  "urlRewriteReplace": "http://localhost:3000",
   "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)"
 }
 ```
@@ -239,7 +240,15 @@ where the server is started.  Defaults to the path passed in `path`.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped (e.g., `['example.com', 'github.com', '^http://']`), OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
-- `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement.
+- `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement. Use this to rewrite URLs before they are checked. For example, to rewrite a production URL to a local development URL:
+  ```javascript
+  urlRewriteExpressions: [
+    {
+      pattern: /https:\/\/example\.com/,
+      replacement: 'http://localhost:3000'
+    }
+  ]
+  ```
 - `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
 
 ### linkinator.LinkChecker()
