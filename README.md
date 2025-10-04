@@ -237,7 +237,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 where the server is started.  Defaults to the path passed in `path`.
 - `timeout` (number) - By default, requests made by linkinator do not time out (or follow the settings of the OS).  This option (in milliseconds) will fail requests after the configured amount of time.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
-- `linksToSkip` (array | function) - An array of regular expression strings that should be skipped, OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
+- `linksToSkip` (array | function) - An array of regular expression strings that should be skipped (e.g., `['example.com', 'github.com', '^http://']`), OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
 - `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement.
 - `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
@@ -328,9 +328,11 @@ async function complex() {
     path: 'http://example.com',
     // port: 8673,
     // recurse: true,
+    // Skip multiple URL patterns using an array of regex strings
     // linksToSkip: [
-    //   'https://jbeckwith.com/some/link',
-    //   'http://example.com'
+    //   'example.com/skip-this',
+    //   'github.com',
+    //   '^https://restricted'
     // ]
   });
 
@@ -346,6 +348,31 @@ async function complex() {
 }
 
 complex();
+```
+
+#### Skipping links example
+
+```js
+import { LinkChecker } from 'linkinator';
+
+async function skipExample() {
+  const checker = new LinkChecker();
+
+  // Skip multiple URL patterns using an array
+  const result = await checker.check({
+    path: 'https://example.com',
+    recurse: true,
+    linksToSkip: [
+      'www.google.com',           // Skip all Google links
+      'example.com/skip-me',      // Skip specific paths
+      '^https://internal.corp'    // Skip all internal corp links
+    ]
+  });
+
+  console.log(`Scanned ${result.links.length} links`);
+}
+
+skipExample();
 ```
 
 ## Tips & Tricks
