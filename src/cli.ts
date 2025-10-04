@@ -66,6 +66,7 @@ const cli = meow(
 
       --skip, -s
           List of urls in regexy form to not include in the check.
+          Can be specified multiple times.
 
       --timeout
           Request timeout in ms.  Defaults to 0 (no timeout).
@@ -88,6 +89,7 @@ const cli = meow(
       $ linkinator https://www.google.com
       $ linkinator . --recurse
       $ linkinator . --skip www.googleapis.com
+      $ linkinator . --skip example.com --skip github.com
       $ linkinator . --format CSV
 `,
 	{
