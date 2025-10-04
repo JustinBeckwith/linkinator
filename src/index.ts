@@ -459,7 +459,7 @@ export class LinkChecker extends EventEmitter {
 
 						// Now the result should be in the results array
 						const cachedResult = options.results.find(
-							(r) => r.url === mapUrl(urlHref, options.checkOptions)
+							(r) => r.url === mapUrl(urlHref, options.checkOptions),
 						);
 
 						if (cachedResult) {
