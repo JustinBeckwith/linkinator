@@ -54,9 +54,6 @@ $ linkinator LOCATIONS [ --arguments ]
     --help
         Show this command.
 
-    --include, -i
-        List of urls in regexy form to include.  The opposite of --skip.
-
     --markdown
         Automatically parse and scan markdown if scanning from a location on disk.
 
