@@ -1,32 +1,10 @@
 # Changelog
 
-## [8.0.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.1.2...linkinator-v8.0.0) (2025-10-05)
-
-
-### ⚠ BREAKING CHANGES
-
-* this drops support for node.js 18, and makes a significant change to the underlying HTTP transport.
-* release 7.0 ([#689](https://github.com/JustinBeckwith/linkinator/issues/689))
-* release 7.0 actually ([#688](https://github.com/JustinBeckwith/linkinator/issues/688))
-* cut 7.0 release ([#687](https://github.com/JustinBeckwith/linkinator/issues/687))
-* drop support for node 18 ([#670](https://github.com/JustinBeckwith/linkinator/issues/670))
-* This module now requires node.js 18 and up. It includes a variety of related changes:
-    - Migrate from gts to xo for linting and code formatting
-    - Upgrade multiple deps to the latest version that were blocked on node 16
-    - Drop the codecov dependency and move to the github action
-    - Update the tsconfig to target Node16 for the module strategy
-* Require Node.js 16 and up.  Version 4.1.3 accidentally had this change so I had to move the dist tag back.
-* require node.js 16 and up ([#550](https://github.com/JustinBeckwith/linkinator/issues/550))
-* The commits in #507 and #506 both had breaking changes.  They included dropping support for Node.js 12.x and updating the CSV export to be streaming, and to use a new way of writing the CSV file.  This is an empty to commit using the `BREAKING CHANGE` format in the commit message to ensure a release is triggered.
-* stream CSV results ([#507](https://github.com/JustinBeckwith/linkinator/issues/507))
-* drop support for nodejs 12.x ([#506](https://github.com/JustinBeckwith/linkinator/issues/506))
-* this module now requires node.js 12 and above, and has moved to es modules by default.
-* This module now requires Node.js 10.x or greater. Please upgrade to a LTS release of node.js.
+## [7.1.3](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.1.2...linkinator-v7.1.3) (2025-10-05)
 
 ### release
 
 * cut 7.0 release ([#687](https://github.com/JustinBeckwith/linkinator/issues/687)) ([c39b0f0](https://github.com/JustinBeckwith/linkinator/commit/c39b0f07f5f3010385e48870b00feb877a76230a))
-
 
 ### Features
 
