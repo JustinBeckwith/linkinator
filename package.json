@@ -16,6 +16,7 @@
 		"prepare": "husky && npm run build",
 		"coverage": "vitest run --coverage",
 		"build": "tsc -p .",
+		"build-binaries": "bun build ./build/src/cli.js --compile --minify --sourcemap --target=bun --outfile ./build/binaries/linkinator-linux && bun build ./build/src/cli.js --compile --minify --sourcemap --target=bun-windows --outfile ./build/binaries/linkinator-win.exe && bun build ./build/src/cli.js --compile --minify --sourcemap --target=bun-darwin --outfile ./build/binaries/linkinator-macos",
 		"test": "vitest",
 		"fix": "biome check --write .",
 		"lint": "biome check .",
