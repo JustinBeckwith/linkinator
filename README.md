@@ -17,11 +17,17 @@ Behold my latest inator! The `linkinator` provides an API and CLI for crawling w
 
 ## Installation
 
+### Node.js / npm
+
 ```sh
 npm install linkinator
 ```
 
-Not into the whole node.js or npm thing?  You can also download a standalone binary that bundles node, linkinator, and anything else you need.  See [releases](https://github.com/JustinBeckwith/linkinator/releases).
+### Standalone Binaries (no Node.js required)
+
+Don't have Node.js installed? No problem! Browse all releases at [github.com/JustinBeckwith/linkinator/releases](https://github.com/JustinBeckwith/linkinator/releases).
+
+These binaries are completely standalone - no runtime dependencies needed. Just download, make executable (Linux/macOS), and run!
 
 ## Command Usage
 
