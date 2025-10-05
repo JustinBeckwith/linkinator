@@ -65,6 +65,8 @@ jobs:
     needs: [test, lint]
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
       id-token: write
     steps:
       - uses: actions/checkout@v5
@@ -83,6 +85,8 @@ jobs:
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+          NPM_TOKEN: "placeholder-for-oidc"
       - name: Upload binaries to release
         if: success()
         run: |
