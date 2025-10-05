@@ -242,10 +242,12 @@ async function main() {
 	if (format === Format.JSON) {
 		result.links = filteredResults;
 		console.log(JSON.stringify(result, null, 2));
+		gracefulExit(result.passed ? 0 : 1);
 		return;
 	}
 
 	if (format === Format.CSV) {
+		gracefulExit(result.passed ? 0 : 1);
 		return;
 	}
 
@@ -337,7 +339,8 @@ async function main() {
 				)} links in ${chalk.cyan(total.toString())} seconds.`,
 			),
 		);
-		process.exit(1);
+		gracefulExit(1);
+		return;
 	}
 
 	logger.error(
@@ -347,6 +350,22 @@ async function main() {
 			)} links in ${chalk.cyan(total.toString())} seconds.`,
 		),
 	);
+	gracefulExit(0);
+}
+
+/**
+ * Exit the process gracefully with a timeout fallback.
+ * This allows Node.js a brief moment to clean up resources (like closing
+ * connection pools) but forces exit after 100ms to prevent hanging.
+ */
+function gracefulExit(code: number): void {
+	process.exitCode = code;
+	// Schedule a forced exit after 100ms in case resources don't clean up
+	const exitTimer = setTimeout(() => {
+		process.exit(code);
+	}, 100);
+	// If the process exits naturally before the timeout, clear the timer
+	exitTimer.unref();
 }
 
 function parseVerbosity(flags: Flags): LogLevel {

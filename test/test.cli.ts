@@ -98,18 +98,24 @@ describe('cli', () => {
 	});
 
 	it('should serialize errors with CSV and verbose output', async () => {
-		const response = await execa(node, [
-			linkinator,
-			'--format',
-			'csv',
-			'--verbosity',
-			'DEBUG',
-			'test/fixtures/localbroke/README.md',
-		]);
+		const response = await execa(
+			node,
+			[
+				linkinator,
+				'--format',
+				'csv',
+				'--verbosity',
+				'DEBUG',
+				'test/fixtures/localbroke/README.md',
+			],
+			{ reject: false },
+		);
 		// Check that error details are present in CSV output and properly quoted
 		assert.match(response.stdout, /BROKEN|404/);
 		// Verify that failureDetails with special chars (newlines, quotes) are quoted
 		assert.match(response.stdout, /"?\[[\s\S]*?\]"?/);
+		// Should exit with code 1 since there are broken links
+		assert.equal(response.exitCode, 1);
 	});
 
 	it('should provide JSON if asked nicely', async () => {
