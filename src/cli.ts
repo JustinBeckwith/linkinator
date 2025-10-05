@@ -242,11 +242,11 @@ async function main() {
 	if (format === Format.JSON) {
 		result.links = filteredResults;
 		console.log(JSON.stringify(result, null, 2));
-		return;
+		process.exit(result.passed ? 0 : 1);
 	}
 
 	if (format === Format.CSV) {
-		return;
+		process.exit(result.passed ? 0 : 1);
 	}
 
 	// Build a collection scanned links, collated by the parent link used in
@@ -347,6 +347,7 @@ async function main() {
 			)} links in ${chalk.cyan(total.toString())} seconds.`,
 		),
 	);
+	process.exit(0);
 }
 
 function parseVerbosity(flags: Flags): LogLevel {
