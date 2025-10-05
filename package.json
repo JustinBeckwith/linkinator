@@ -1,7 +1,7 @@
 {
 	"name": "linkinator",
 	"description": "Find broken links, missing images, etc in your HTML. Scurry around your site and find all those broken links.",
-	"version": "0.0.0",
+	"version": "8.0.0",
 	"license": "MIT",
 	"repository": "JustinBeckwith/linkinator",
 	"author": "Justin Beckwith",
