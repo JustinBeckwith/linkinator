@@ -242,11 +242,13 @@ async function main() {
 	if (format === Format.JSON) {
 		result.links = filteredResults;
 		console.log(JSON.stringify(result, null, 2));
-		process.exit(result.passed ? 0 : 1);
+		process.exitCode = result.passed ? 0 : 1;
+		return;
 	}
 
 	if (format === Format.CSV) {
-		process.exit(result.passed ? 0 : 1);
+		process.exitCode = result.passed ? 0 : 1;
+		return;
 	}
 
 	// Build a collection scanned links, collated by the parent link used in
@@ -337,7 +339,8 @@ async function main() {
 				)} links in ${chalk.cyan(total.toString())} seconds.`,
 			),
 		);
-		process.exit(1);
+		process.exitCode = 1;
+		return;
 	}
 
 	logger.error(
@@ -347,7 +350,7 @@ async function main() {
 			)} links in ${chalk.cyan(total.toString())} seconds.`,
 		),
 	);
-	process.exit(0);
+	process.exitCode = 0;
 }
 
 function parseVerbosity(flags: Flags): LogLevel {
