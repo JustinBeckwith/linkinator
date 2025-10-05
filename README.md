@@ -25,13 +25,7 @@ npm install linkinator
 
 ### Standalone Binaries (no Node.js required)
 
-Don't have Node.js installed? No problem! Download a standalone executable for your platform:
-
-- **[Download for Linux](https://github.com/JustinBeckwith/linkinator/releases/latest/download/linkinator-linux)**
-- **[Download for macOS](https://github.com/JustinBeckwith/linkinator/releases/latest/download/linkinator-macos)**
-- **[Download for Windows](https://github.com/JustinBeckwith/linkinator/releases/latest/download/linkinator-win.exe)**
-
-Or browse all releases at [github.com/JustinBeckwith/linkinator/releases](https://github.com/JustinBeckwith/linkinator/releases).
+Don't have Node.js installed? No problem! Browse all releases at [github.com/JustinBeckwith/linkinator/releases](https://github.com/JustinBeckwith/linkinator/releases).
 
 These binaries are completely standalone - no runtime dependencies needed. Just download, make executable (Linux/macOS), and run!
 
