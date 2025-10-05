@@ -31,6 +31,7 @@ export type HttpResponse = {
 	status: number;
 	headers: Record<string, string>;
 	body?: ReadableStream;
+	url?: string;
 };
 
 export type LinkResult = {
@@ -363,7 +364,11 @@ export class LinkChecker extends EventEmitter {
 				// efficient than loading the full response into memory first.
 				const { Readable } = await import('node:stream');
 				const nodeStream = Readable.fromWeb(response.body as never);
-				urlResults = await getLinks(nodeStream, options.url.href);
+				// Use the final URL after redirects (if available) as the base for resolving
+				// relative links. This ensures relative links are resolved correctly even when
+				// the original URL doesn't have a trailing slash but redirects to one.
+				const baseUrl = response.url || options.url.href;
+				urlResults = await getLinks(nodeStream, baseUrl);
 			}
 			for (const result of urlResults) {
 				// If there was some sort of problem parsing the link while
@@ -707,6 +712,7 @@ async function makeRequest(
 		status,
 		headers,
 		body: (response.body ?? undefined) as ReadableStream | undefined,
+		url: response.url,
 	};
 }
 

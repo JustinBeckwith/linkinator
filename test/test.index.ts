@@ -740,4 +740,49 @@ describe('linkinator', () => {
 			'broken123 should be reported for pageB.html',
 		);
 	});
+
+	it('should resolve relative links correctly when URL has trailing slash', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		// Test that when a URL has a trailing slash, relative links like ../../manage/api-keys
+		// are resolved correctly relative to that directory
+		const htmlContent = `
+			<html>
+				<body>
+					<a href="../../manage/api-keys">API Keys</a>
+					<a href="../../manage/branches/">Branches</a>
+				</body>
+			</html>
+		`;
+		mockPool
+			.intercept({
+				path: '/docs/reference/api-reference/',
+				method: 'GET',
+			})
+			.reply(200, htmlContent, {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/docs/manage/api-keys', method: 'HEAD' })
+			.reply(200, '');
+		mockPool
+			.intercept({ path: '/docs/manage/branches/', method: 'HEAD' })
+			.reply(200, '');
+
+		const results = await check({
+			path: 'http://example.invalid/docs/reference/api-reference/',
+			recurse: true,
+		});
+
+		assert.ok(results.passed, 'All links should be valid');
+		// Should find: the page itself + 2 relative links
+		assert.strictEqual(results.links.length, 3);
+		// Verify the links were resolved correctly relative to the trailing slash URL
+		const apiKeysLink = results.links.find((x) =>
+			x.url.includes('manage/api-keys'),
+		);
+		assert.ok(
+			apiKeysLink,
+			'Should find the api-keys link resolved relative to trailing slash',
+		);
+	});
 });
