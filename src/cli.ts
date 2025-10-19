@@ -167,8 +167,15 @@ async function main() {
 			}
 
 			case LinkState.SKIPPED: {
-				state = `[${chalk.grey('SKP')}]`;
-				logger.info(`${state} ${chalk.gray(link.url)}`);
+				if (link.status === 999 || link.status === 403) {
+					state = `[${chalk.grey(link.status.toString())}]`;
+					logger.info(
+						`${state} ${chalk.gray(link.url)} ${chalk.dim('(bot-protected)')}`,
+					);
+				} else {
+					state = `[${chalk.grey('SKP')}]`;
+					logger.info(`${state} ${chalk.gray(link.url)}`);
+				}
 				break;
 			}
 		}
@@ -316,8 +323,15 @@ async function main() {
 				}
 
 				case LinkState.SKIPPED: {
-					state = `[${chalk.grey('SKP')}]`;
-					logger.info(`  ${state} ${chalk.gray(link.url)}`);
+					if (link.status === 999 || link.status === 403) {
+						state = `[${chalk.grey(link.status.toString())}]`;
+						logger.info(
+							`  ${state} ${chalk.gray(link.url)} ${chalk.dim('(bot-protected)')}`,
+						);
+					} else {
+						state = `[${chalk.grey('SKP')}]`;
+						logger.info(`  ${state} ${chalk.gray(link.url)}`);
+					}
 					break;
 				}
 			}

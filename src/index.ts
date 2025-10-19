@@ -336,8 +336,22 @@ export class LinkChecker extends EventEmitter {
 			return;
 		}
 
+		// Special handling for bot protection responses
+		// Status 999: Used by LinkedIn and other sites to block automated requests
+		// Status 403 with cf-mitigated: Cloudflare bot protection challenge
+		// Since we cannot distinguish between valid and invalid URLs when blocked,
+		// treat these as skipped rather than broken.
+		if (status === 999) {
+			state = LinkState.SKIPPED;
+		} else if (
+			status === 403 &&
+			response !== undefined &&
+			response.headers['cf-mitigated']
+		) {
+			state = LinkState.SKIPPED;
+		}
 		// Assume any 2xx status is 👌
-		if (status >= 200 && status < 300) {
+		else if (status >= 200 && status < 300) {
 			state = LinkState.OK;
 		} else if (response !== undefined) {
 			failures.push(response);
@@ -699,14 +713,7 @@ async function makeRequest(
 		headers[key] = value;
 	});
 
-	let status = response.status;
-
-	// Special handling for Cloudflare bot protection
-	// If we get a 403 with cf-mitigated header, the site exists but blocks bots
-	// Treat this as a successful check since the link is valid for humans
-	if (status === 403 && headers['cf-mitigated']) {
-		status = 200;
-	}
+	const status = response.status;
 
 	return {
 		status,
