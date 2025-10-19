@@ -108,6 +108,21 @@ describe('linkinator', () => {
 		);
 	});
 
+	it('should skip links with 999 status (bot-protected)', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(999, '');
+		const results = await check({ path: 'test/fixtures/basic' });
+		assert.ok(results.passed);
+		assert.strictEqual(
+			results.links.filter((x) => x.state === LinkState.SKIPPED).length,
+			1,
+		);
+		const skippedLink = results.links.find(
+			(x) => x.state === LinkState.SKIPPED,
+		);
+		assert.strictEqual(skippedLink?.status, 999);
+	});
+
 	it('should handle relative links', async () => {
 		const results = await check({
 			path: 'test/fixtures/relative',
@@ -671,7 +686,7 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
-	it('should treat Cloudflare bot protection as OK', async () => {
+	it('should skip Cloudflare bot protection (403 with cf-mitigated)', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		// Simulate Cloudflare bot protection response
 		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(403, '', {
@@ -681,10 +696,16 @@ describe('linkinator', () => {
 			},
 		});
 		const results = await check({ path: 'test/fixtures/basic' });
-		// Should pass because Cloudflare 403 with cf-mitigated is treated as OK
+		// Should pass because Cloudflare 403 with cf-mitigated is skipped, not broken
 		assert.ok(results.passed);
-		assert.strictEqual(results.links[0].status, 200);
-		assert.strictEqual(results.links[0].state, LinkState.OK);
+		assert.strictEqual(
+			results.links.filter((x) => x.state === LinkState.SKIPPED).length,
+			1,
+		);
+		const skippedLink = results.links.find(
+			(x) => x.state === LinkState.SKIPPED,
+		);
+		assert.strictEqual(skippedLink?.status, 403);
 	});
 
 	it('should check alternate and canonical link tags', async () => {

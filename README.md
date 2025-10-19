@@ -419,17 +419,45 @@ The `--verbosity` flag offers preset options for controlling the output, but you
 npx linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.links | .[] | select(.state | contains("BROKEN"))'
 ```
 
-### Cloudflare Bot Protection
+### Bot Protection (Status 403 and 999)
 
-Some websites use Cloudflare bot protection, which may return a `403` status code with a JavaScript challenge page when detecting automated tools. Linkinator automatically detects this scenario by checking for the `cf-mitigated` response header.
+Many websites use bot protection systems that block automated tools like linkinator. When bot protection is detected, linkinator **skips** these links rather than marking them as broken or valid, since it cannot verify whether the URL is actually valid or broken.
 
-When Cloudflare bot protection is detected, linkinator treats the link as valid (status `200`, state `OK`) rather than broken. This is because:
+#### How Linkinator Handles Bot Protection
 
-- The link itself is valid and works for human users
-- The `403` is specifically for bot traffic, not a broken or missing page
-- Marking it as broken would create false positives in your link checks
+Bot-protected links are treated as **skipped** (state `SKIPPED`):
 
-If you need to verify these links work for actual users, test them manually in a browser.
+- The link appears with `[403] (bot-protected)` or `[999] (bot-protected)` in the output
+- It does NOT count as a broken link or cause checks to fail
+- It is not counted in the "scanned links" total
+- Only visible at INFO verbosity level or higher
+
+This approach is taken because:
+
+- We cannot distinguish between valid and invalid URLs when blocked
+- The link may work perfectly for human users in browsers
+- There's no way to verify the link without browser automation
+- Marking it as broken would create false positives
+
+#### Cloudflare Bot Protection (Status 403)
+
+Cloudflare bot protection returns a `403` status code with the `cf-mitigated` response header when detecting automated tools. Linkinator automatically detects this scenario and skips these links.
+
+**Example sites:** Any site using Cloudflare's bot management features
+
+#### LinkedIn and Other Sites (Status 999)
+
+LinkedIn and some other sites return a non-standard `999` status code to block automated requests. This status code is used regardless of whether the URL is valid or invalid.
+
+**Example:** LinkedIn returns `999` for both valid and non-existent profile URLs, making verification impossible.
+
+#### Workaround Options
+
+1. **Accept the skip** (recommended) - The default behavior won't fail your builds
+2. **Skip the domain entirely** - Use `--skip "example.com"` to hide these from output
+3. **Manual verification** - Test these links manually in a browser when needed
+
+To verify these links work for actual users, test them manually in a browser.
 
 ## License
 
