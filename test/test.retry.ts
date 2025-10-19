@@ -254,13 +254,10 @@ describe('retries', () => {
 		});
 
 		it('should handle 429s without retry-after header as retry error', async () => {
-			const scope = nock('http://example.invalid')
-				.head('/')
-				.reply(429)
-				.get('/')
-				.reply(429)
-				.get('/')
-				.reply(200);
+			const mockPool = mockAgent.get('http://example.invalid');
+			mockPool.intercept({ path: '/', method: 'HEAD' }).reply(429, '');
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '');
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
 
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
@@ -273,11 +270,11 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10_000);
 			const results = await checkPromise;
 			assert.ok(results.passed);
-			scope.done();
 		});
 
 		it('should stop retrying 429s without retry-after header', async () => {
-			const scope = nock('http://example.invalid').get('/').reply(429);
+			const mockPool = mockAgent.get('http://example.invalid');
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '');
 			const { promise, resolve } = invertedPromise();
 			const checker = new LinkChecker().on('retry', resolve);
 			const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -291,7 +288,6 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
-			scope.done();
 		});
 	});
 });
