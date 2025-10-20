@@ -146,7 +146,24 @@ async function main() {
 	const header = flags.header ?? [];
 	const headers = Object.fromEntries(
 		header.map((item) => {
-			const [key, value] = item.split(':');
+			const colonIndex = item.indexOf(':');
+			if (colonIndex === -1) {
+				throw new Error(
+					`Invalid header format: "${item}". Use "Header-Name:value" format.`,
+				);
+			}
+			const key = item.slice(0, colonIndex).trim();
+			const value = item.slice(colonIndex + 1).trim();
+			if (!key) {
+				throw new Error(
+					`Invalid header format: "${item}". Header name cannot be empty.`,
+				);
+			}
+			if (value === undefined || value === '') {
+				throw new Error(
+					`Invalid header format: "${item}". Header value cannot be empty.`,
+				);
+			}
 			return [key, value];
 		}),
 	);
