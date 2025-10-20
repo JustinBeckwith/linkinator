@@ -99,6 +99,46 @@ describe('retries', () => {
 		assert.ok(results.passed);
 	});
 
+	it('should retry 429s with non-standard seconds format (3s)', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '3s' },
+		});
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
+
+		const { promise, resolve } = invertedPromise();
+		const checker = new LinkChecker().on('retry', resolve);
+		const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
+		const checkPromise = checker.check({
+			path: 'test/fixtures/basic',
+			retry: true,
+		});
+		await promise;
+		await clock.advanceTimersByTime(3000);
+		const results = await checkPromise;
+		assert.ok(results.passed);
+	});
+
+	it('should retry 429s with non-standard minutes and seconds format (1m1s)', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '', {
+			headers: { 'retry-after': '1m1s' },
+		});
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(200, '');
+
+		const { promise, resolve } = invertedPromise();
+		const checker = new LinkChecker().on('retry', resolve);
+		const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
+		const checkPromise = checker.check({
+			path: 'test/fixtures/basic',
+			retry: true,
+		});
+		await promise;
+		await clock.advanceTimersByTime(61_000);
+		const results = await checkPromise;
+		assert.ok(results.passed);
+	});
+
 	it('should detect requests to wait on the same host', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		mockPool.intercept({ path: '/1', method: 'GET' }).reply(429, '', {

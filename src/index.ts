@@ -297,6 +297,7 @@ export class LinkChecker extends EventEmitter {
 				response = await makeRequest('GET', options.url.href, {
 					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
+					redirect: redirectMode,
 				});
 				if (this.shouldRetryAfter(response, options)) {
 					return;
@@ -321,6 +322,7 @@ export class LinkChecker extends EventEmitter {
 				response = await makeRequest('GET', options.url.href, {
 					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
+					redirect: redirectMode,
 				});
 				if (this.shouldRetryAfter(response, options)) {
 					return;
@@ -555,6 +557,30 @@ export class LinkChecker extends EventEmitter {
 	}
 
 	/**
+	 * Parse the retry-after header value into a timestamp.
+	 * Supports standard formats (seconds, HTTP date) and non-standard formats (30s, 1m30s).
+	 * @param retryAfterRaw Raw retry-after header value
+	 * @returns Timestamp in milliseconds when to retry, or NaN if invalid
+	 */
+	private parseRetryAfter(retryAfterRaw: string): number {
+		// Try parsing as seconds
+		let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
+		if (!Number.isNaN(retryAfter)) return retryAfter;
+
+		// Try parsing as HTTP date
+		retryAfter = Date.parse(retryAfterRaw);
+		if (!Number.isNaN(retryAfter)) return retryAfter;
+
+		// Handle non-standard formats like "30s" or "1m30s"
+		const matches = retryAfterRaw.match(/^(?:(\d+)m)?(\d+)s$/);
+		if (!matches) return Number.NaN;
+
+		return (
+			(Number(matches[1] || 0) * 60 + Number(matches[2])) * 1000 + Date.now()
+		);
+	}
+
+	/**
 	 * Check the incoming response for a `retry-after` header.  If present,
 	 * and if the status was an HTTP 429, calculate the date at which this
 	 * request should be retried. Ensure the delayCache knows that we're
@@ -572,14 +598,9 @@ export class LinkChecker extends EventEmitter {
 			return false;
 		}
 
-		// The `retry-after` header can come in either <seconds> or
-		// A specific date to go check.
-		let retryAfter = Number(retryAfterRaw) * 1000 + Date.now();
+		const retryAfter = this.parseRetryAfter(retryAfterRaw);
 		if (Number.isNaN(retryAfter)) {
-			retryAfter = Date.parse(retryAfterRaw);
-			if (Number.isNaN(retryAfter)) {
-				return false;
-			}
+			return false;
 		}
 
 		// Check to see if there is already a request to wait for this host
