@@ -1,5 +1,23 @@
 # Changelog
 
+## [7.2.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.1.3...linkinator-v7.2.0) (2025-10-20)
+
+
+### Features
+
+* add --allow-insecure-certs flag for local development ([#716](https://github.com/JustinBeckwith/linkinator/issues/716)) ([6aa769c](https://github.com/JustinBeckwith/linkinator/commit/6aa769c77e7d66f408278acd84a9510629e37dd5))
+* add --require-https flag for HTTPS enforcement ([#715](https://github.com/JustinBeckwith/linkinator/issues/715)) ([439451f](https://github.com/JustinBeckwith/linkinator/commit/439451f8ceb930807c1e10a2fdb4539e2ef42b1e))
+* add support for custom HTTP headers ([#711](https://github.com/JustinBeckwith/linkinator/issues/711)) ([14f4ebf](https://github.com/JustinBeckwith/linkinator/commit/14f4ebf5f31e67ab6e7dfcdbd6187969f4a2b158))
+* handle 429s without retry-after header as error ([#674](https://github.com/JustinBeckwith/linkinator/issues/674)) ([9280037](https://github.com/JustinBeckwith/linkinator/commit/92800372567767c45bcfa406e7f5d7e03fb6eed9))
+* introduce flag for managing redirects ([#712](https://github.com/JustinBeckwith/linkinator/issues/712)) ([27824d4](https://github.com/JustinBeckwith/linkinator/commit/27824d451c1c4f9d1dfe822809474539c72c1a5e))
+* support non-standard retry-after header formats ([#713](https://github.com/JustinBeckwith/linkinator/issues/713)) ([8f9ca39](https://github.com/JustinBeckwith/linkinator/commit/8f9ca39f1a1b967670b6a19f4abc75f85570925a))
+
+
+### Bug Fixes
+
+* address LinkedIn and Cloudflare bot protection as skipped ([#709](https://github.com/JustinBeckwith/linkinator/issues/709)) ([bc08e2b](https://github.com/JustinBeckwith/linkinator/commit/bc08e2bad2b27768af2bef16fe1c13e28e902d8b))
+* preserve query parameters in directory redirects ([#714](https://github.com/JustinBeckwith/linkinator/issues/714)) ([689c20f](https://github.com/JustinBeckwith/linkinator/commit/689c20fe119975e2726bb926be96a1a50152bae0))
+
 ## [7.1.3](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.1.2...linkinator-v7.1.3) (2025-10-05)
 
 ### release
