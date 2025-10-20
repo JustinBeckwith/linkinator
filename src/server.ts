@@ -75,11 +75,18 @@ async function handleRequest(
 		const isDirectory = stats.isDirectory();
 		if (isDirectory) {
 			// This means we got a path with no / at the end!
+			// Create a proper redirect URL that preserves query parameters
+			// Fix for issue #595 - thanks to @maddsua for the solution in PR #596
+			const redirectUrl = new URL(url);
+			if (!redirectUrl.pathname.endsWith('/')) {
+				redirectUrl.pathname += '/';
+			}
+
 			const document = "<html><body>Redirectin'</body></html>";
 			response.statusCode = 301;
 			response.setHeader('Content-Type', 'text/html; charset=UTF-8');
 			response.setHeader('Content-Length', Buffer.byteLength(document));
-			response.setHeader('Location', `${request.url}/`);
+			response.setHeader('Location', redirectUrl.href);
 			response.end(document);
 			return;
 		}
