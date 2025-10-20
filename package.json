@@ -31,7 +31,8 @@
 		"meow": "^14.0.0",
 		"mime": "^4.0.0",
 		"server-destroy": "^1.0.1",
-		"srcset": "^5.0.0"
+		"srcset": "^5.0.0",
+		"undici": "^7.16.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.4",
@@ -42,7 +43,6 @@
 		"husky": "^9.0.11",
 		"strip-ansi": "^7.0.1",
 		"typescript": "^5.5.2",
-		"undici": "^7.16.0",
 		"vitest": "^3.2.4"
 	},
 	"engines": {

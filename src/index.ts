@@ -3,6 +3,7 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
+import { Agent } from 'undici';
 import { getLinks } from './links.js';
 import {
 	type CheckOptions,
@@ -294,6 +295,7 @@ export class LinkChecker extends EventEmitter {
 					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
+					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
 				},
 			);
 			if (this.shouldRetryAfter(response, options)) {
@@ -306,6 +308,7 @@ export class LinkChecker extends EventEmitter {
 					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
+					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
 				});
 				if (this.shouldRetryAfter(response, options)) {
 					return;
@@ -331,6 +334,7 @@ export class LinkChecker extends EventEmitter {
 					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
+					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
 				});
 				if (this.shouldRetryAfter(response, options)) {
 					return;
@@ -772,7 +776,7 @@ function mapUrl<T extends string | undefined>(
  * Helper function to make HTTP requests using native fetch
  * @param method HTTP method
  * @param url URL to request
- * @param options Additional options (headers, timeout)
+ * @param options Additional options (headers, timeout, allowInsecureCerts)
  * @returns Response with status, headers, and body stream
  */
 async function makeRequest(
@@ -782,6 +786,7 @@ async function makeRequest(
 		headers?: Record<string, string>;
 		timeout?: number;
 		redirect?: 'follow' | 'manual';
+		allowInsecureCerts?: boolean;
 	} = {},
 ): Promise<HttpResponse> {
 	// Build browser-like headers to avoid bot detection
@@ -806,6 +811,18 @@ async function makeRequest(
 
 	if (options.timeout) {
 		requestOptions.signal = AbortSignal.timeout(options.timeout);
+	}
+
+	// If allowInsecureCerts is enabled, use a custom undici dispatcher
+	// that doesn't validate certificates
+	if (options.allowInsecureCerts) {
+		const agent = new Agent({
+			connect: {
+				rejectUnauthorized: false,
+			},
+		});
+		// @ts-expect-error - dispatcher is a valid option for fetch in Node.js but not in the types
+		requestOptions.dispatcher = agent;
 	}
 
 	const response = await fetch(url, requestOptions);

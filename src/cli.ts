@@ -59,6 +59,10 @@ const cli = meow(
           Enforce HTTPS links. Options are 'off' (default, accepts both HTTP and HTTPS),
           'warn' (accepts both but emits warnings for HTTP), or 'error' (treats HTTP links as broken).
 
+      --allow-insecure-certs
+          Allow invalid or self-signed SSL certificates. Useful for local development with
+          untrusted certificates. Defaults to false.
+
       --retry,
           Automatically retry requests that return HTTP 429 responses and include
           a 'retry-after' header. Defaults to false.
@@ -120,6 +124,7 @@ const cli = meow(
 			directoryListing: { type: 'boolean' },
 			redirects: { type: 'string', choices: ['allow', 'warn', 'error'] },
 			requireHttps: { type: 'string', choices: ['off', 'warn', 'error'] },
+			allowInsecureCerts: { type: 'boolean' },
 			retry: { type: 'boolean' },
 			retryErrors: { type: 'boolean' },
 			retryErrorsCount: { type: 'number', default: 5 },
@@ -263,6 +268,7 @@ async function main() {
 		directoryListing: flags.directoryListing,
 		redirects: flags.redirects,
 		requireHttps: flags.requireHttps,
+		allowInsecureCerts: flags.allowInsecureCerts,
 		retry: flags.retry,
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
