@@ -88,4 +88,14 @@ describe('server', () => {
 		assert.strictEqual(response.status, 200);
 		assert.strictEqual(data, contents);
 	});
+
+	it('should handle query strings when path requires redirect to directory', async () => {
+		// This reproduces issue #595 - /checkout?services=setup-cctv
+		// where /checkout is a directory that should redirect to /checkout/
+		const url = `${rootUrl}/checkout?services=setup-cctv`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(data, '<html><body>Checkout page</body></html>');
+	});
 });
