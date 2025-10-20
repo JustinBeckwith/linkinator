@@ -26,6 +26,7 @@ export type CheckOptions = {
 	userAgent?: string;
 	headers?: Record<string, string>;
 	redirects?: 'allow' | 'warn' | 'error';
+	requireHttps?: 'off' | 'warn' | 'error';
 };
 
 export type InternalCheckOptions = {
@@ -92,6 +93,9 @@ export async function processOptions(
 
 	// Default to 'allow' for redirect handling
 	options.redirects = options.redirects ?? 'allow';
+
+	// Default to 'off' for HTTPS requirement
+	options.requireHttps = options.requireHttps ?? 'off';
 
 	// Expand globs into paths
 	if (!isUrlType) {

@@ -55,6 +55,10 @@ const cli = meow(
           Control how redirects are handled. Options are 'allow' (default, follows redirects),
           'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
 
+      --require-https
+          Enforce HTTPS links. Options are 'off' (default, accepts both HTTP and HTTPS),
+          'warn' (accepts both but emits warnings for HTTP), or 'error' (treats HTTP links as broken).
+
       --retry,
           Automatically retry requests that return HTTP 429 responses and include
           a 'retry-after' header. Defaults to false.
@@ -115,6 +119,7 @@ const cli = meow(
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
 			redirects: { type: 'string', choices: ['allow', 'warn', 'error'] },
+			requireHttps: { type: 'string', choices: ['off', 'warn', 'error'] },
 			retry: { type: 'boolean' },
 			retryErrors: { type: 'boolean' },
 			retryErrorsCount: { type: 'number', default: 5 },
@@ -257,6 +262,7 @@ async function main() {
 		serverRoot: flags.serverRoot,
 		directoryListing: flags.directoryListing,
 		redirects: flags.redirects,
+		requireHttps: flags.requireHttps,
 		retry: flags.retry,
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),

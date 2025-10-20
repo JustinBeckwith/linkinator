@@ -33,6 +33,10 @@ export type RedirectInfo = {
 	isNonStandard: boolean;
 };
 
+export type HttpInsecureInfo = {
+	url: string;
+};
+
 export type HttpResponse = {
 	status: number;
 	headers: Record<string, string>;
@@ -80,6 +84,10 @@ export class LinkChecker extends EventEmitter {
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
 	on(event: 'redirect', listener: (details: RedirectInfo) => void): this;
+	on(
+		event: 'httpInsecure',
+		listener: (details: HttpInsecureInfo) => void,
+	): this;
 	// biome-ignore lint/suspicious/noExplicitAny: this can in fact be generic
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
@@ -413,6 +421,21 @@ export class LinkChecker extends EventEmitter {
 			state = LinkState.OK;
 		} else if (response !== undefined) {
 			failures.push(response);
+		}
+
+		// Handle HTTPS enforcement
+		const isHttpUrl = originalUrl.startsWith('http://');
+		if (isHttpUrl && options.checkOptions.requireHttps === 'error') {
+			// Treat HTTP as broken in error mode
+			state = LinkState.BROKEN;
+			failures.push(
+				new Error(`HTTP link detected (${originalUrl}) but HTTPS is required`),
+			);
+		} else if (isHttpUrl && options.checkOptions.requireHttps === 'warn') {
+			// Emit warning about HTTP link in warn mode
+			this.emit('httpInsecure', {
+				url: originalUrl,
+			});
 		}
 
 		const result: LinkResult = {
