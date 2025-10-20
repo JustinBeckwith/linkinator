@@ -27,6 +27,7 @@ export type CheckOptions = {
 	headers?: Record<string, string>;
 	redirects?: 'allow' | 'warn' | 'error';
 	requireHttps?: 'off' | 'warn' | 'error';
+	allowInsecureCerts?: boolean;
 };
 
 export type InternalCheckOptions = {

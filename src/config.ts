@@ -16,6 +16,7 @@ export type Flags = {
 	directoryListing?: boolean;
 	redirects?: 'allow' | 'warn' | 'error';
 	requireHttps?: 'off' | 'warn' | 'error';
+	allowInsecureCerts?: boolean;
 	retry?: boolean;
 	retryErrors?: boolean;
 	retryErrorsCount?: number;
