@@ -56,7 +56,10 @@ $ linkinator LOCATIONS [ --arguments ]
 
     --format, -f
         Return the data in CSV or JSON format.
-
+    
+    --header, -h
+	  		List of additional headers to be include in the request. use key:value notation.
+        
     --help
         Show this command.
 
@@ -253,6 +256,7 @@ where the server is started.  Defaults to the path passed in `path`.
   ]
   ```
 - `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
+- `headers` (object) - Custom HTTP headers to include in all requests. Object with header names as keys and values as strings. These headers are merged with the default headers (including User-Agent). Example: `{ 'Authorization': 'Bearer token', 'X-Custom': 'value' }`.
 
 ### linkinator.LinkChecker()
 
@@ -385,6 +389,64 @@ async function skipExample() {
 }
 
 skipExample();
+```
+
+#### Custom headers example
+
+Pass custom HTTP headers for authentication or other purposes:
+
+```js
+import { LinkChecker } from 'linkinator';
+
+async function customHeadersExample() {
+  const checker = new LinkChecker();
+
+  const result = await checker.check({
+    path: 'https://example.com',
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN_HERE',
+      'X-Custom-Header': 'custom-value',
+      'X-API-Key': 'your-api-key'
+    }
+  });
+
+  console.log(`Scan completed: ${result.passed ? 'PASSED' : 'FAILED'}`);
+}
+
+customHeadersExample();
+```
+
+**CLI Usage:**
+
+```sh
+# Single header
+npx linkinator https://example.com --header "Authorization:Bearer YOUR_TOKEN"
+
+# Multiple headers
+npx linkinator https://example.com \
+  --header "Authorization:Bearer YOUR_TOKEN" \
+  --header "X-API-Key:your-api-key"
+
+# Header values can contain colons (e.g., timestamps)
+npx linkinator https://example.com --header "X-Timestamp:2024-01-01T00:00:00Z"
+```
+
+**Common use cases:**
+
+- **Authentication**: Pass JWT tokens or API keys to check authenticated pages
+- **Custom User-Agent**: Override the default user agent (also available via `--user-agent` flag)
+- **API requirements**: Send headers required by API endpoints
+- **Testing**: Simulate different client configurations
+
+**Config file:**
+
+```json
+{
+  "header": [
+    "Authorization:Bearer YOUR_TOKEN",
+    "X-Custom-Header:value"
+  ]
+}
 ```
 
 ## Tips & Tricks

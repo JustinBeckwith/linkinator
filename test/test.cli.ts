@@ -19,6 +19,7 @@ describe('cli', () => {
 	afterEach(async () => {
 		if (server) {
 			await util.promisify(server.destroy)();
+			server = undefined as unknown as http.Server;
 		}
 	});
 
@@ -331,5 +332,84 @@ describe('cli', () => {
 			response.stdout,
 			new RegExp(`Retrying: http://localhost:${port}/`),
 		);
+	});
+
+	describe('custom headers', () => {
+		it('should parse header with colon in value', async () => {
+			const response = await execa(
+				node,
+				[
+					linkinator,
+					'test/fixtures/basic',
+					'--header',
+					'X-Timestamp:2024-01-01T00:00:00Z',
+				],
+				{ reject: false },
+			);
+			// Should not throw an error about invalid format
+			assert.notMatch(response.stderr, /Invalid header format/);
+		});
+
+		it('should fail on malformed header without colon', async () => {
+			const response = await execa(
+				node,
+				[linkinator, 'test/fixtures/basic', '--header', 'InvalidHeader'],
+				{ reject: false },
+			);
+			assert.match(
+				response.stderr,
+				/Invalid header format.*Use.*Header-Name:value/,
+			);
+		});
+
+		it('should fail on header with empty name', async () => {
+			const response = await execa(
+				node,
+				[linkinator, 'test/fixtures/basic', '--header', ':value'],
+				{ reject: false },
+			);
+			assert.match(response.stderr, /Header name cannot be empty/);
+		});
+
+		it('should fail on header with empty value', async () => {
+			const response = await execa(
+				node,
+				[linkinator, 'test/fixtures/basic', '--header', 'X-Empty:'],
+				{ reject: false },
+			);
+			assert.match(response.stderr, /Header value cannot be empty/);
+		});
+
+		it('should accept multiple headers', async () => {
+			const response = await execa(
+				node,
+				[
+					linkinator,
+					'test/fixtures/basic',
+					'--header',
+					'X-Custom-1:value1',
+					'--header',
+					'X-Custom-2:value2',
+				],
+				{ reject: false },
+			);
+			// Should not throw any header format errors
+			assert.notMatch(response.stderr, /Invalid header format/);
+		});
+
+		it('should trim whitespace from header names and values', async () => {
+			const response = await execa(
+				node,
+				[
+					linkinator,
+					'test/fixtures/basic',
+					'--header',
+					'  X-Header  :  value with spaces  ',
+				],
+				{ reject: false },
+			);
+			// Should not throw an error
+			assert.notMatch(response.stderr, /Invalid header format/);
+		});
 	});
 });

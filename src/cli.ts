@@ -38,6 +38,9 @@ const cli = meow(
       --format, -f
           Return the data in CSV or JSON format.
 
+	  --header, -h
+	  		List of additional headers to be include in the request. use key:value notation.
+
       --help
           Show this command.
 
@@ -77,8 +80,8 @@ const cli = meow(
       --url-rewrite-replace
           Expression used to replace search content.  Must be used with --url-rewrite-search.
 
-			--user-agent
-					The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+	--user-agent
+		  The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
 
       --verbosity
           Override the default verbosity for this command. Available options are
@@ -112,6 +115,7 @@ const cli = meow(
 			retryErrorsJitter: { type: 'number', default: 3000 },
 			urlRewriteSearch: { type: 'string' },
 			urlReWriteReplace: { type: 'string' },
+			header: { type: 'string', shortFlag: 'h', isMultiple: true },
 		},
 		booleanDefault: undefined,
 	},
@@ -139,6 +143,30 @@ async function main() {
 	const verbosity = parseVerbosity(flags);
 	const format = parseFormat(flags);
 	const logger = new Logger(verbosity, format);
+	const header = flags.header ?? [];
+	const headers = Object.fromEntries(
+		header.map((item) => {
+			const colonIndex = item.indexOf(':');
+			if (colonIndex === -1) {
+				throw new Error(
+					`Invalid header format: "${item}". Use "Header-Name:value" format.`,
+				);
+			}
+			const key = item.slice(0, colonIndex).trim();
+			const value = item.slice(colonIndex + 1).trim();
+			if (!key) {
+				throw new Error(
+					`Invalid header format: "${item}". Header name cannot be empty.`,
+				);
+			}
+			if (value === undefined || value === '') {
+				throw new Error(
+					`Invalid header format: "${item}". Header value cannot be empty.`,
+				);
+			}
+			return [key, value];
+		}),
+	);
 
 	logger.error(`🏊‍♂️ crawling ${cli.input.join(' ')}`);
 
@@ -217,6 +245,7 @@ async function main() {
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
 		retryErrorsJitter: Number(flags.retryErrorsJitter),
+		headers,
 	};
 	if (flags.skip) {
 		if (typeof flags.skip === 'string') {

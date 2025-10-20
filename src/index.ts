@@ -6,7 +6,6 @@ import process from 'node:process';
 import { getLinks } from './links.js';
 import {
 	type CheckOptions,
-	DEFAULT_USER_AGENT,
 	type InternalCheckOptions,
 	processOptions,
 } from './options.js';
@@ -272,9 +271,7 @@ export class LinkChecker extends EventEmitter {
 				options.crawl ? 'GET' : 'HEAD',
 				options.url.href,
 				{
-					headers: {
-						'User-Agent': options.checkOptions.userAgent || DEFAULT_USER_AGENT,
-					},
+					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
 				},
 			);
@@ -285,9 +282,7 @@ export class LinkChecker extends EventEmitter {
 			// If we got an HTTP 405, the server may not like HEAD. GET instead!
 			if (response.status === 405) {
 				response = await makeRequest('GET', options.url.href, {
-					headers: {
-						'User-Agent': options.checkOptions.userAgent || DEFAULT_USER_AGENT,
-					},
+					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
 				});
 				if (this.shouldRetryAfter(response, options)) {
@@ -311,9 +306,7 @@ export class LinkChecker extends EventEmitter {
 				!options.crawl
 			) {
 				response = await makeRequest('GET', options.url.href, {
-					headers: {
-						'User-Agent': options.checkOptions.userAgent || DEFAULT_USER_AGENT,
-					},
+					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
 				});
 				if (this.shouldRetryAfter(response, options)) {

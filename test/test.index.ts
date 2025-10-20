@@ -551,6 +551,102 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
+	it('should pass custom headers in requests', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'HEAD',
+				headers: (headers) => {
+					// Verify that custom headers are present
+					return (
+						headers['x-my-header'] === 'my-value' &&
+						headers.authorization === 'Bearer token123'
+					);
+				},
+			})
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/basic',
+			headers: {
+				'X-My-Header': 'my-value',
+				Authorization: 'Bearer token123',
+			},
+		});
+		assert.ok(results.passed);
+	});
+
+	it('should merge custom headers with User-Agent', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'HEAD',
+				headers: (headers) => {
+					// Verify that both User-Agent and custom headers are present
+					return (
+						headers['user-agent']?.includes('Mozilla') &&
+						headers['x-custom'] === 'test-value'
+					);
+				},
+			})
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/basic',
+			headers: {
+				'X-Custom': 'test-value',
+			},
+		});
+		assert.ok(results.passed);
+	});
+
+	it('should pass headers in GET fallback requests', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		// First HEAD request returns 405
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'HEAD',
+			})
+			.reply(405, '');
+		// GET fallback should also have custom headers
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'GET',
+				headers: (headers) => {
+					return headers['x-fallback-test'] === 'fallback-value';
+				},
+			})
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/basic',
+			headers: {
+				'X-Fallback-Test': 'fallback-value',
+			},
+		});
+		assert.ok(results.passed);
+	});
+
+	it('should allow custom User-Agent override', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'HEAD',
+				headers: (headers) => {
+					// Custom User-Agent should override the default
+					return headers['user-agent'] === 'CustomBot/1.0';
+				},
+			})
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/basic',
+			userAgent: 'CustomBot/1.0',
+		});
+		assert.ok(results.passed);
+	});
+
 	it('should surface call stacks on failures in the API', async () => {
 		const results = await check({
 			path: 'http://example.invalid',
