@@ -12,9 +12,13 @@ describe('certificate validation', () => {
 			});
 
 			// The link should be broken due to certificate error
-			const mainPage = results.links.find((link) =>
-				link.url.includes('self-signed.badssl.com'),
-			);
+			const mainPage = results.links.find((link) => {
+				try {
+					return new URL(link.url).hostname === 'self-signed.badssl.com';
+				} catch {
+					return false;
+				}
+			});
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
@@ -31,9 +35,13 @@ describe('certificate validation', () => {
 				allowInsecureCerts: false,
 			});
 
-			const mainPage = results.links.find((link) =>
-				link.url.includes('google.com'),
-			);
+			const mainPage = results.links.find((link) => {
+				try {
+					return new URL(link.url).hostname === 'www.google.com';
+				} catch {
+					return false;
+				}
+			});
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
@@ -53,9 +61,13 @@ describe('certificate validation', () => {
 			});
 
 			// The link should be OK when ignoring cert errors
-			const mainPage = results.links.find((link) =>
-				link.url.includes('self-signed.badssl.com'),
-			);
+			const mainPage = results.links.find((link) => {
+				try {
+					return new URL(link.url).hostname === 'self-signed.badssl.com';
+				} catch {
+					return false;
+				}
+			});
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
@@ -72,9 +84,13 @@ describe('certificate validation', () => {
 				allowInsecureCerts: true,
 			});
 
-			const mainPage = results.links.find((link) =>
-				link.url.includes('google.com'),
-			);
+			const mainPage = results.links.find((link) => {
+				try {
+					return new URL(link.url).hostname === 'www.google.com';
+				} catch {
+					return false;
+				}
+			});
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
