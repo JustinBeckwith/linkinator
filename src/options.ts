@@ -25,6 +25,7 @@ export type CheckOptions = {
 	urlRewriteExpressions?: UrlRewriteExpression[];
 	userAgent?: string;
 	headers?: Record<string, string>;
+	redirects?: 'allow' | 'warn' | 'error';
 };
 
 export type InternalCheckOptions = {
@@ -58,6 +59,9 @@ export async function processOptions(
 		options.directoryListing = false;
 	}
 
+	// Default redirects to 'allow'
+	options.redirects = options.redirects ?? 'allow';
+
 	// Ensure we do not mix http:// and file system paths.  The paths passed in
 	// must all be filesystem paths, or HTTP paths.
 	let isUrlType: boolean | undefined;
@@ -85,6 +89,9 @@ export async function processOptions(
 		...(options.headers ?? {}),
 	};
 	options.serverRoot &&= path.normalize(options.serverRoot);
+
+	// Default to 'allow' for redirect handling
+	options.redirects = options.redirects ?? 'allow';
 
 	// Expand globs into paths
 	if (!isUrlType) {

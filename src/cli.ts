@@ -9,6 +9,7 @@ import {
 	LinkChecker,
 	type LinkResult,
 	LinkState,
+	type RedirectInfo,
 	type RetryInfo,
 } from './index.js';
 import { Format, Logger, LogLevel } from './logger.js';
@@ -49,6 +50,10 @@ const cli = meow(
 
       --recurse, -r
           Recursively follow links on the same root domain.
+
+      --redirects
+          Control how redirects are handled. Options are 'allow' (default, follows redirects),
+          'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
 
       --retry,
           Automatically retry requests that return HTTP 429 responses and include
@@ -109,6 +114,7 @@ const cli = meow(
 			serverRoot: { type: 'string' },
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
+			redirects: { type: 'string', choices: ['allow', 'warn', 'error'] },
 			retry: { type: 'boolean' },
 			retryErrors: { type: 'boolean' },
 			retryErrorsCount: { type: 'number', default: 5 },
@@ -129,7 +135,9 @@ async function main() {
 		return;
 	}
 
-	flags = await getConfig(cli.flags);
+	// Type assertion needed because meow's type for cli.flags uses generic string
+	// but meow validates the 'choices' at runtime to ensure it's one of the valid values
+	flags = await getConfig(cli.flags as Flags);
 	if (
 		(flags.urlRewriteReplace && !flags.urlRewriteSearch) ||
 		(flags.urlRewriteSearch && !flags.urlRewriteReplace)
@@ -178,6 +186,13 @@ async function main() {
 
 	checker.on('retry', (info: RetryInfo) => {
 		logger.warn(`Retrying: ${info.url} in ${info.secondsUntilRetry} seconds.`);
+	});
+	checker.on('redirect', (info: RedirectInfo) => {
+		const nonStandardNote = info.isNonStandard ? ' (non-standard)' : '';
+		const target = info.targetUrl ? ` → ${info.targetUrl}` : '';
+		logger.warn(
+			`${chalk.yellow('[REDIRECT]')} ${chalk.gray(info.url)}${target} ${chalk.dim(`(${info.status}${nonStandardNote})`)}`,
+		);
 	});
 	checker.on('link', (link: LinkResult) => {
 		let state = '';
@@ -241,6 +256,7 @@ async function main() {
 		concurrency: Number(flags.concurrency),
 		serverRoot: flags.serverRoot,
 		directoryListing: flags.directoryListing,
+		redirects: flags.redirects,
 		retry: flags.retry,
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),

@@ -26,6 +26,13 @@ export type RetryInfo = {
 	status: number;
 };
 
+export type RedirectInfo = {
+	url: string;
+	targetUrl?: string;
+	status: number;
+	isNonStandard: boolean;
+};
+
 export type HttpResponse = {
 	status: number;
 	headers: Record<string, string>;
@@ -72,6 +79,7 @@ export class LinkChecker extends EventEmitter {
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
+	on(event: 'redirect', listener: (details: RedirectInfo) => void): this;
 	// biome-ignore lint/suspicious/noExplicitAny: this can in fact be generic
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
 		return super.on(event, listener);
@@ -266,6 +274,10 @@ export class LinkChecker extends EventEmitter {
 		let shouldRecurse = false;
 		let response: HttpResponse | undefined;
 		const failures: Array<Error | HttpResponse> = [];
+		const originalUrl = options.url.href;
+		const redirectMode =
+			options.checkOptions.redirects === 'error' ? 'manual' : 'follow';
+
 		try {
 			response = await makeRequest(
 				options.crawl ? 'GET' : 'HEAD',
@@ -273,6 +285,7 @@ export class LinkChecker extends EventEmitter {
 				{
 					headers: options.checkOptions.headers,
 					timeout: options.checkOptions.timeout,
+					redirect: redirectMode,
 				},
 			);
 			if (this.shouldRetryAfter(response, options)) {
@@ -329,6 +342,9 @@ export class LinkChecker extends EventEmitter {
 			return;
 		}
 
+		// Detect if this was a redirect
+		const redirect = detectRedirect(status, originalUrl, response);
+
 		// Special handling for bot protection responses
 		// Status 999: Used by LinkedIn and other sites to block automated requests
 		// Status 403 with cf-mitigated: Cloudflare bot protection challenge
@@ -343,8 +359,55 @@ export class LinkChecker extends EventEmitter {
 		) {
 			state = LinkState.SKIPPED;
 		}
-		// Assume any 2xx status is 👌
+		// Handle 'error' mode - treat any redirect as broken
+		else if (
+			options.checkOptions.redirects === 'error' &&
+			redirect.isRedirect
+		) {
+			state = LinkState.BROKEN;
+			const targetInfo = redirect.targetUrl ? ` to ${redirect.targetUrl}` : '';
+			failures.push({
+				status,
+				headers: response?.headers || {},
+			});
+			failures.push(
+				new Error(
+					`Redirect detected (${originalUrl}${targetInfo}) but redirects are disabled`,
+				),
+			);
+		}
+		// Handle 'warn' mode - allow but warn on redirects
+		else if (options.checkOptions.redirects === 'warn') {
+			// Check if a redirect happened (either 3xx status or URL changed)
+			if (redirect.isRedirect || redirect.wasFollowed) {
+				// Emit warning about redirect
+				this.emit('redirect', {
+					url: originalUrl,
+					targetUrl: redirect.targetUrl,
+					// Report actual redirect status if we have it, otherwise 200
+					status: redirect.isRedirect ? status : 200,
+					isNonStandard: redirect.isNonStandard,
+				});
+			}
+			// Still check final status for success/failure
+			if (status >= 200 && status < 300) {
+				state = LinkState.OK;
+			} else if (
+				redirect.isRedirect &&
+				redirect.wasFollowed &&
+				response?.body
+			) {
+				// Non-standard redirect with content - treat as OK even in warn mode
+				state = LinkState.OK;
+			} else if (response !== undefined) {
+				failures.push(response);
+			}
+		}
+		// Handle 'allow' mode (default) - accept 2xx or non-standard redirects with content
 		else if (status >= 200 && status < 300) {
+			state = LinkState.OK;
+		} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
+			// Non-standard redirect with content - treat as OK in allow mode
 			state = LinkState.OK;
 		} else if (response !== undefined) {
 			failures.push(response);
@@ -674,6 +737,7 @@ async function makeRequest(
 	options: {
 		headers?: Record<string, string>;
 		timeout?: number;
+		redirect?: 'follow' | 'manual';
 	} = {},
 ): Promise<HttpResponse> {
 	// Build browser-like headers to avoid bot detection
@@ -693,7 +757,7 @@ async function makeRequest(
 	const requestOptions: RequestInit = {
 		method,
 		headers: { ...defaultHeaders, ...options.headers },
-		redirect: 'follow',
+		redirect: options.redirect ?? 'follow',
 	};
 
 	if (options.timeout) {
@@ -715,6 +779,40 @@ async function makeRequest(
 		headers,
 		body: (response.body ?? undefined) as ReadableStream | undefined,
 		url: response.url,
+	};
+}
+
+/**
+ * Helper function to detect if a redirect occurred
+ * @param status HTTP status code
+ * @param originalUrl Original URL requested
+ * @param response HTTP response object
+ * @returns Redirect detection details
+ */
+function detectRedirect(
+	status: number,
+	originalUrl: string,
+	response?: HttpResponse,
+): {
+	isRedirect: boolean;
+	wasFollowed: boolean;
+	isNonStandard: boolean;
+	targetUrl?: string;
+} {
+	const isRedirectStatus = status >= 300 && status < 400;
+	const urlChanged = response?.url && response.url !== originalUrl;
+	const hasLocation = Boolean(response?.headers.location);
+	const hasBody = response?.body !== undefined;
+
+	// Non-standard redirect: 3xx status without Location header or with body
+	const isNonStandard =
+		isRedirectStatus && (!hasLocation || (hasBody && !hasLocation));
+
+	return {
+		isRedirect: isRedirectStatus,
+		wasFollowed: Boolean(urlChanged || (isRedirectStatus && hasBody)),
+		isNonStandard,
+		targetUrl: response?.url || response?.headers.location,
 	};
 }
 

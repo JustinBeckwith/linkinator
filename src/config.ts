@@ -14,6 +14,7 @@ export type Flags = {
 	markdown?: boolean;
 	serverRoot?: string;
 	directoryListing?: boolean;
+	redirects?: 'allow' | 'warn' | 'error';
 	retry?: boolean;
 	retryErrors?: boolean;
 	retryErrorsCount?: number;
@@ -26,9 +27,9 @@ export type Flags = {
 const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
 type ConfigExtensions = (typeof validConfigExtensions)[number];
 
-export async function getConfig(flags: Flags) {
+export async function getConfig(flags: Flags): Promise<Flags> {
 	// Check to see if a config file path was passed
-	let config: Flags;
+	let config: Partial<Flags>;
 	if (flags.config) {
 		config = await parseConfigFile(flags.config);
 	} else {
