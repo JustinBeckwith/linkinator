@@ -62,16 +62,26 @@ function parseMetaRefresh(content: string): string | null {
 export async function getLinks(
 	source: Readable,
 	baseUrl: string,
+	checkCss = false,
 ): Promise<ParsedUrl[]> {
 	let realBaseUrl = baseUrl;
 	let baseSet = false;
 	const links: ParsedUrl[] = [];
+	let isInStyleTag = false;
+	let styleTagContent = '';
+
 	const parser = new WritableStream({
 		onopentag(tag: string, attributes: Record<string, string>) {
 			// Allow alternate base URL to be specified in tag:
 			if (tag === 'base' && !baseSet) {
 				realBaseUrl = getBaseUrl(attributes.href, baseUrl);
 				baseSet = true;
+			}
+
+			// Track when we enter a <style> tag (only if checkCss is enabled)
+			if (tag === 'style' && checkCss) {
+				isInStyleTag = true;
+				styleTagContent = '';
 			}
 
 			// ignore href properties for link tags where rel is likely to fail
@@ -98,6 +108,14 @@ export async function getLinks(
 				}
 			}
 
+			// Check for inline style attribute with url() references (only if checkCss is enabled)
+			if (attributes.style && checkCss) {
+				const urls = extractUrlsFromCss(attributes.style);
+				for (const url of urls) {
+					links.push(parseLink(url, realBaseUrl));
+				}
+			}
+
 			if (tagAttribute[tag]) {
 				for (const attribute of tagAttribute[tag]) {
 					const linkString = attributes[attribute];
@@ -107,6 +125,23 @@ export async function getLinks(
 						}
 					}
 				}
+			}
+		},
+		ontext(text: string) {
+			// Collect text content when inside a <style> tag
+			if (isInStyleTag) {
+				styleTagContent += text;
+			}
+		},
+		onclosetag(tag: string) {
+			// When we close a <style> tag, extract URLs from the collected CSS
+			if (tag === 'style' && isInStyleTag) {
+				isInStyleTag = false;
+				const urls = extractUrlsFromCss(styleTagContent);
+				for (const url of urls) {
+					links.push(parseLink(url, realBaseUrl));
+				}
+				styleTagContent = '';
 			}
 		},
 	});
@@ -161,4 +196,79 @@ function parseLink(link: string, baseUrl: string): ParsedUrl {
 	} catch (error) {
 		return { link, error: error as Error };
 	}
+}
+
+/**
+ * Extracts URLs from CSS content.
+ * Finds URLs in:
+ * - @import rules: @import url(...) or @import "..."
+ * - url() functions in property values: background: url(...)
+ * @param source Readable stream of CSS content
+ * @param baseUrl Base URL for resolving relative URLs
+ * @returns Array of parsed URLs found in the CSS
+ */
+export async function getCssLinks(
+	source: Readable,
+	baseUrl: string,
+): Promise<ParsedUrl[]> {
+	const links: ParsedUrl[] = [];
+	const chunks: Buffer[] = [];
+
+	// Read the entire CSS content
+	for await (const chunk of source) {
+		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+	}
+	const cssContent = Buffer.concat(chunks).toString('utf-8');
+
+	// Extract URLs from the CSS content
+	const urls = extractUrlsFromCss(cssContent);
+
+	for (const url of urls) {
+		links.push(parseLink(url, baseUrl));
+	}
+
+	return links;
+}
+
+/**
+ * Extracts all URLs from CSS content string.
+ * Handles @import statements and url() functions.
+ * @param css CSS content as string
+ * @returns Array of URL strings found in the CSS
+ */
+function extractUrlsFromCss(css: string): string[] {
+	const urls: string[] = [];
+
+	// Remove CSS comments /* ... */
+	const cleanCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+	// Match @import statements
+	// Formats: @import url("..."); @import url('...'); @import url(...);
+	//          @import "..."; @import '...';
+	const importRegex =
+		/@import\s+(?:url\(\s*['"]?([^'")]+)['"]?\s*\)|['"]([^'"]+)['"])/gi;
+	let match: RegExpExecArray | null;
+	match = importRegex.exec(cleanCss);
+	while (match !== null) {
+		const url = match[1] || match[2];
+		if (url) {
+			urls.push(url.trim());
+		}
+		match = importRegex.exec(cleanCss);
+	}
+
+	// Match url() functions in CSS properties
+	// Formats: url("...") url('...') url(...)
+	const urlRegex = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
+	match = urlRegex.exec(cleanCss);
+	while (match !== null) {
+		const url = match[1];
+		if (url && !url.startsWith('data:')) {
+			// Skip data URLs
+			urls.push(url.trim());
+		}
+		match = urlRegex.exec(cleanCss);
+	}
+
+	return urls;
 }

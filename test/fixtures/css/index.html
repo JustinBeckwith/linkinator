@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>CSS URL Test</title>
+	<!-- External stylesheet -->
+	<link rel="stylesheet" href="styles.css">
+
+	<!-- Inline style tag with URLs -->
+	<style>
+		body {
+			background-image: url('http://example.invalid/bg-inline.jpg');
+		}
+		.header {
+			background: url("http://example.invalid/header-bg.png") no-repeat;
+		}
+		/* Import in style tag */
+		@import url("http://example.invalid/imported.css");
+		@import "http://example.invalid/imported2.css";
+	</style>
+</head>
+<body>
+	<!-- Inline style attribute -->
+	<div style="background-image: url('http://example.invalid/div-bg.jpg')">
+		<h1>CSS URL Testing</h1>
+	</div>
+
+	<!-- Multiple URLs in one style attribute -->
+	<div style="background: url(http://example.invalid/bg1.png), url('http://example.invalid/bg2.png');">
+		<p>Multiple backgrounds</p>
+	</div>
+
+	<!-- Regular link for comparison -->
+	<a href="http://example.invalid/regular-link">Regular Link</a>
+</body>
+</html>

@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
 import { Agent } from 'undici';
-import { getLinks } from './links.js';
+import { getCssLinks, getLinks } from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -347,7 +347,34 @@ export class LinkChecker extends EventEmitter {
 
 		if (response !== undefined) {
 			status = response.status;
-			shouldRecurse = isHtml(response);
+			shouldRecurse =
+				isHtml(response) ||
+				(isCss(response) && options.checkOptions.checkCss === true);
+		}
+
+		// If we want to recurse into a CSS file and we used HEAD, we need to do a GET
+		// to get the body for parsing URLs (only if checkCss is enabled)
+		if (
+			shouldRecurse &&
+			response !== undefined &&
+			isCss(response) &&
+			!response.body &&
+			options.crawl &&
+			options.checkOptions.checkCss
+		) {
+			try {
+				response = await makeRequest('GET', options.url.href, {
+					headers: options.checkOptions.headers,
+					timeout: options.checkOptions.timeout,
+					redirect: redirectMode,
+					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+				});
+				if (response !== undefined) {
+					status = response.status;
+				}
+			} catch (error) {
+				failures.push(error as Error);
+			}
 		}
 
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
@@ -467,7 +494,17 @@ export class LinkChecker extends EventEmitter {
 				// relative links. This ensures relative links are resolved correctly even when
 				// the original URL doesn't have a trailing slash but redirects to one.
 				const baseUrl = response.url || options.url.href;
-				urlResults = await getLinks(nodeStream, baseUrl);
+
+				// Parse HTML or CSS depending on content type
+				if (isHtml(response)) {
+					urlResults = await getLinks(
+						nodeStream,
+						baseUrl,
+						options.checkOptions.checkCss,
+					);
+				} else if (isCss(response) && options.checkOptions.checkCss) {
+					urlResults = await getCssLinks(nodeStream, baseUrl);
+				}
 			}
 			for (const result of urlResults) {
 				// If there was some sort of problem parsing the link while
@@ -732,6 +769,11 @@ function isHtml(response: HttpResponse): boolean {
 		Boolean(/text\/html/g.test(contentType)) ||
 		Boolean(/application\/xhtml\+xml/g.test(contentType))
 	);
+}
+
+function isCss(response: HttpResponse): boolean {
+	const contentType = (response.headers['content-type'] as string) || '';
+	return Boolean(/text\/css/g.test(contentType));
 }
 
 /**
