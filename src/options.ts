@@ -28,6 +28,7 @@ export type CheckOptions = {
 	redirects?: 'allow' | 'warn' | 'error';
 	requireHttps?: 'off' | 'warn' | 'error';
 	allowInsecureCerts?: boolean;
+	checkCss?: boolean;
 };
 
 export type InternalCheckOptions = {

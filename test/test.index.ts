@@ -780,7 +780,7 @@ describe('linkinator', () => {
 		assert.strictEqual(metaRefreshLinks.length, 3);
 	});
 
-	it('should extract URLs from inline CSS in style attributes and tags', async () => {
+	it('should extract URLs from inline CSS in style attributes and tags when checkCss is enabled', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		// Mock all CSS-related URLs
 		mockPool.intercept({ path: '/div-bg.jpg', method: 'HEAD' }).reply(200, '');
@@ -802,7 +802,7 @@ describe('linkinator', () => {
 			.intercept({ path: '/regular-link', method: 'HEAD' })
 			.reply(200, '');
 
-		const results = await check({ path: 'test/fixtures/css' });
+		const results = await check({ path: 'test/fixtures/css', checkCss: true });
 		assert.ok(results.passed);
 
 		// Count URLs extracted from inline styles
@@ -820,6 +820,28 @@ describe('linkinator', () => {
 		assert.ok(
 			inlineStyleUrls.length >= 8,
 			`Expected at least 8 URLs from inline styles, found ${inlineStyleUrls.length}`,
+		);
+	});
+
+	it('should NOT extract URLs from inline CSS when checkCss is disabled', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({ path: '/regular-link', method: 'HEAD' })
+			.reply(200, '');
+
+		const results = await check({ path: 'test/fixtures/css', checkCss: false });
+		assert.ok(results.passed);
+
+		// Count URLs extracted - should only find regular link, not CSS URLs
+		const exampleInvalidUrls = results.links.filter((link) =>
+			link.url?.includes('example.invalid'),
+		);
+
+		// Should only find the regular anchor link, not CSS URLs
+		assert.strictEqual(
+			exampleInvalidUrls.length,
+			1,
+			`Expected only 1 URL (regular link), found ${exampleInvalidUrls.length}`,
 		);
 	});
 

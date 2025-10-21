@@ -51,6 +51,11 @@ const cli = meow(
       --recurse, -r
           Recursively follow links on the same root domain.
 
+      --check-css
+          Extract and check URLs found in CSS properties (inline styles, <style> tags, and external CSS files).
+          This includes url() functions, @import statements, and other CSS URL references.
+          Defaults to false.
+
       --redirects
           Control how redirects are handled. Options are 'allow' (default, follows redirects),
           'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
@@ -119,6 +124,7 @@ const cli = meow(
 			silent: { type: 'boolean' },
 			timeout: { type: 'number' },
 			markdown: { type: 'boolean' },
+			checkCss: { type: 'boolean' },
 			serverRoot: { type: 'string' },
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
@@ -263,6 +269,7 @@ async function main() {
 		recurse: flags.recurse,
 		timeout: Number(flags.timeout),
 		markdown: flags.markdown,
+		checkCss: flags.checkCss,
 		concurrency: Number(flags.concurrency),
 		serverRoot: flags.serverRoot,
 		directoryListing: flags.directoryListing,

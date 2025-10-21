@@ -347,17 +347,20 @@ export class LinkChecker extends EventEmitter {
 
 		if (response !== undefined) {
 			status = response.status;
-			shouldRecurse = isHtml(response) || isCss(response);
+			shouldRecurse =
+				isHtml(response) ||
+				(isCss(response) && options.checkOptions.checkCss === true);
 		}
 
 		// If we want to recurse into a CSS file and we used HEAD, we need to do a GET
-		// to get the body for parsing URLs
+		// to get the body for parsing URLs (only if checkCss is enabled)
 		if (
 			shouldRecurse &&
 			response !== undefined &&
 			isCss(response) &&
 			!response.body &&
-			options.crawl
+			options.crawl &&
+			options.checkOptions.checkCss
 		) {
 			try {
 				response = await makeRequest('GET', options.url.href, {
@@ -494,8 +497,12 @@ export class LinkChecker extends EventEmitter {
 
 				// Parse HTML or CSS depending on content type
 				if (isHtml(response)) {
-					urlResults = await getLinks(nodeStream, baseUrl);
-				} else if (isCss(response)) {
+					urlResults = await getLinks(
+						nodeStream,
+						baseUrl,
+						options.checkOptions.checkCss,
+					);
+				} else if (isCss(response) && options.checkOptions.checkCss) {
 					urlResults = await getCssLinks(nodeStream, baseUrl);
 				}
 			}

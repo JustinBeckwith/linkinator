@@ -62,6 +62,7 @@ function parseMetaRefresh(content: string): string | null {
 export async function getLinks(
 	source: Readable,
 	baseUrl: string,
+	checkCss = false,
 ): Promise<ParsedUrl[]> {
 	let realBaseUrl = baseUrl;
 	let baseSet = false;
@@ -77,8 +78,8 @@ export async function getLinks(
 				baseSet = true;
 			}
 
-			// Track when we enter a <style> tag
-			if (tag === 'style') {
+			// Track when we enter a <style> tag (only if checkCss is enabled)
+			if (tag === 'style' && checkCss) {
 				isInStyleTag = true;
 				styleTagContent = '';
 			}
@@ -107,8 +108,8 @@ export async function getLinks(
 				}
 			}
 
-			// Check for inline style attribute with url() references
-			if (attributes.style) {
+			// Check for inline style attribute with url() references (only if checkCss is enabled)
+			if (attributes.style && checkCss) {
 				const urls = extractUrlsFromCss(attributes.style);
 				for (const url of urls) {
 					links.push(parseLink(url, realBaseUrl));

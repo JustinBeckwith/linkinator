@@ -12,6 +12,7 @@ export type Flags = {
 	verbosity?: string;
 	timeout?: number;
 	markdown?: boolean;
+	checkCss?: boolean;
 	serverRoot?: string;
 	directoryListing?: boolean;
 	redirects?: 'allow' | 'warn' | 'error';
