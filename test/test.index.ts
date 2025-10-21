@@ -516,7 +516,7 @@ describe('linkinator', () => {
 		).rejects.toThrow(/returned 0 results/);
 	});
 
-	it('should always send a human looking User-Agent', async () => {
+	it('should send Node.js default User-Agent by default', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		const indexContent = fs.readFileSync(
 			'test/fixtures/local/index.html',
@@ -530,7 +530,10 @@ describe('linkinator', () => {
 			.intercept({
 				path: '/',
 				method: 'GET',
-				headers: { 'user-agent': DEFAULT_USER_AGENT },
+				headers: (headers) => {
+					// Verify Node.js default User-Agent is sent (not a browser UA)
+					return headers['user-agent'] === 'node';
+				},
 			})
 			.reply(200, indexContent, {
 				headers: { 'content-type': 'text/html; charset=UTF-8' },
@@ -539,7 +542,9 @@ describe('linkinator', () => {
 			.intercept({
 				path: '/page2.html',
 				method: 'GET',
-				headers: { 'user-agent': DEFAULT_USER_AGENT },
+				headers: (headers) => {
+					return headers['user-agent'] === 'node';
+				},
 			})
 			.reply(200, page2Content, {
 				headers: { 'content-type': 'text/html; charset=UTF-8' },
@@ -576,7 +581,7 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
-	it('should merge custom headers with User-Agent', async () => {
+	it('should merge custom headers with User-Agent when provided', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		mockPool
 			.intercept({
@@ -593,6 +598,7 @@ describe('linkinator', () => {
 			.reply(200, '');
 		const results = await check({
 			path: 'test/fixtures/basic',
+			userAgent: DEFAULT_USER_AGENT,
 			headers: {
 				'X-Custom': 'test-value',
 			},
