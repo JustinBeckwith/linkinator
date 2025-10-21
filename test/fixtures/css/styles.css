@@ -1,0 +1,69 @@
+/* External stylesheet with various URL patterns */
+
+/* Import statements */
+@import url("http://example.invalid/import-from-external.css");
+@import 'http://example.invalid/import-from-external2.css';
+@import url(http://example.invalid/import-from-external3.css);
+
+/* Background images */
+.container {
+	background-image: url('http://example.invalid/container-bg.jpg');
+	background: url("http://example.invalid/container-bg2.jpg") center;
+}
+
+/* Multiple background images */
+.multi-bg {
+	background-image:
+		url(http://example.invalid/layer1.png),
+		url('http://example.invalid/layer2.png'),
+		url("http://example.invalid/layer3.png");
+}
+
+/* Border images */
+.bordered {
+	border-image: url(http://example.invalid/border.png) 30 round;
+}
+
+/* List styles */
+ul.custom {
+	list-style-image: url('http://example.invalid/bullet.svg');
+}
+
+/* Cursor */
+.clickable {
+	cursor: url(http://example.invalid/cursor.cur), pointer;
+}
+
+/* Content property */
+.icon::before {
+	content: url("http://example.invalid/icon.svg");
+}
+
+/* Mask and clip-path */
+.masked {
+	mask-image: url(http://example.invalid/mask.svg);
+	-webkit-mask-image: url(http://example.invalid/mask-webkit.svg);
+}
+
+/* Filter */
+.filtered {
+	filter: url(http://example.invalid/filter.svg#blur);
+}
+
+/* Relative URL (should resolve against base URL) */
+.relative {
+	background-image: url('relative-image.jpg');
+}
+
+/* Data URL (should be ignored) */
+.data-url {
+	background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==);
+}
+
+/* URL with fragments */
+.with-fragment {
+	background: url(http://example.invalid/sprite.svg#icon);
+}
+
+/* Comments should be ignored */
+/* background: url(http://example.invalid/in-comment.jpg); */
