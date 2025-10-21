@@ -36,7 +36,7 @@ export type InternalCheckOptions = {
 } & CheckOptions;
 
 export const DEFAULT_USER_AGENT =
-	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36';
+	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /**
  * Validate the provided flags all work with each other.
@@ -85,11 +85,17 @@ export async function processOptions(
 		);
 	}
 
-	options.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
-	options.headers = {
-		'User-Agent': options.userAgent,
-		...(options.headers ?? {}),
-	};
+	// Only set User-Agent if explicitly provided by user
+	// Using Node.js's default "node" User-Agent works better with modern sites
+	// that have bot detection (they may redirect browser UAs into auth loops)
+	if (options.userAgent) {
+		options.headers = {
+			'User-Agent': options.userAgent,
+			...(options.headers ?? {}),
+		};
+	} else {
+		options.headers = options.headers ?? {};
+	}
 	options.serverRoot &&= path.normalize(options.serverRoot);
 
 	// Default to 'allow' for redirect handling
