@@ -43,6 +43,22 @@ export type ParsedUrl = {
 	url?: URL;
 };
 
+/**
+ * Parses meta refresh content to extract the URL.
+ * Meta refresh format: "0;url=https://example.com" or "0; url=https://example.com"
+ * @param content The content attribute value from a meta refresh tag
+ * @returns The extracted URL or null if parsing fails
+ */
+function parseMetaRefresh(content: string): string | null {
+	// Meta refresh format: "delay;url=URL" or "delay; url=URL"
+	// The delay can be any number, URL parameter can have optional spaces
+	const match = content.match(/^\s*\d+\s*;\s*url\s*=\s*(.+)/i);
+	if (match?.[1]) {
+		return match[1].trim();
+	}
+	return null;
+}
+
 export async function getLinks(
 	source: Readable,
 	baseUrl: string,
@@ -67,6 +83,14 @@ export async function getLinks(
 			// Only for <meta content=""> tags, only validate the url if
 			// the content actually looks like a url
 			if (tag === 'meta' && attributes.content) {
+				// Handle meta refresh redirects: <meta http-equiv="refresh" content="0;url=https://example.com">
+				if (attributes['http-equiv']?.toLowerCase() === 'refresh') {
+					const refreshUrl = parseMetaRefresh(attributes.content);
+					if (refreshUrl) {
+						links.push(parseLink(refreshUrl, realBaseUrl));
+					}
+					return;
+				}
 				try {
 					new URL(attributes.content);
 				} catch {

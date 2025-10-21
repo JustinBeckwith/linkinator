@@ -760,6 +760,20 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
+	it('should extract URLs from meta refresh tags', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/redirected', method: 'HEAD' }).reply(200, '');
+		mockPool.intercept({ path: '/delayed', method: 'HEAD' }).reply(200, '');
+		mockPool.intercept({ path: '/uppercase', method: 'HEAD' }).reply(200, '');
+		const results = await check({ path: 'test/fixtures/metarefresh' });
+		assert.ok(results.passed);
+		// Should find 3 meta refresh URLs
+		const metaRefreshLinks = results.links.filter((link) =>
+			link.url?.includes('example.invalid'),
+		);
+		assert.strictEqual(metaRefreshLinks.length, 3);
+	});
+
 	it('should handle encoded urls', async () => {
 		const results = await check({
 			serverRoot: 'test/fixtures/urlpatterns',
