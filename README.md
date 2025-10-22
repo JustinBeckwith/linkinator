@@ -74,6 +74,23 @@ $ linkinator LOCATIONS [ --arguments ]
         This includes url() functions, @import statements, and other CSS URL references.
         Defaults to false.
 
+    --check-fragments
+        Validate fragment identifiers (URL anchors like #section-name) exist on the target HTML page.
+        Invalid fragments will be marked as broken. Only checks server-rendered HTML (not JavaScript-added fragments).
+        Defaults to false.
+
+    --redirects
+        Control how redirects are handled. Options are 'allow' (default, follows redirects),
+        'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
+
+    --require-https
+        Enforce HTTPS links. Options are 'off' (default, accepts both HTTP and HTTPS),
+        'warn' (accepts both but emits warnings for HTTP), or 'error' (treats HTTP links as broken).
+
+    --allow-insecure-certs
+        Allow invalid or self-signed SSL certificates. Useful for local development with
+        untrusted certificates. Defaults to false.
+
     --retry,
         Automatically retry requests that return HTTP 429 responses and include
         a 'retry-after' header. Defaults to false.
@@ -198,15 +215,21 @@ All options are optional. It should look like this:
   "verbosity": "error",
   "timeout": 0,
   "markdown": true,
+  "checkCss": true,
+  "checkFragments": true,
   "serverRoot": "./",
   "directoryListing": true,
+  "redirects": "allow",
+  "requireHttps": "off",
+  "allowInsecureCerts": false,
   "retry": true,
   "retryErrors": true,
   "retryErrorsCount": 3,
   "retryErrorsJitter": 5,
   "urlRewriteSearch": "https://example\\.com",
   "urlRewriteReplace": "http://localhost:3000",
-  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)"
+  "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)",
+  "header": ["Authorization:Bearer TOKEN", "X-Custom-Header:value"]
 }
 ```
 
@@ -239,8 +262,8 @@ jobs:
   linkinator:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: JustinBeckwith/linkinator-action@v1
+      - uses: actions/checkout@v4
+      - uses: JustinBeckwith/linkinator-action@v2
         with:
           paths: README.md
 ```
@@ -504,41 +527,20 @@ npx linkinator https://jbeckwith.com --verbosity DEBUG --format JSON | jq '.link
 
 Many websites use bot protection systems that block automated tools like linkinator. When bot protection is detected, linkinator **skips** these links rather than marking them as broken or valid, since it cannot verify whether the URL is actually valid or broken.
 
-#### How Linkinator Handles Bot Protection
-
-Bot-protected links are treated as **skipped** (state `SKIPPED`):
-
 - The link appears with `[403] (bot-protected)` or `[999] (bot-protected)` in the output
 - It does NOT count as a broken link or cause checks to fail
 - It is not counted in the "scanned links" total
 - Only visible at INFO verbosity level or higher
 
-This approach is taken because:
-
-- We cannot distinguish between valid and invalid URLs when blocked
-- The link may work perfectly for human users in browsers
-- There's no way to verify the link without browser automation
-- Marking it as broken would create false positives
+This approach is taken because we cannot distinguish between valid and invalid URLs when blocked.  
 
 #### Cloudflare Bot Protection (Status 403)
 
 Cloudflare bot protection returns a `403` status code with the `cf-mitigated` response header when detecting automated tools. Linkinator automatically detects this scenario and skips these links.
 
-**Example sites:** Any site using Cloudflare's bot management features
-
 #### LinkedIn and Other Sites (Status 999)
 
 LinkedIn and some other sites return a non-standard `999` status code to block automated requests. This status code is used regardless of whether the URL is valid or invalid.
-
-**Example:** LinkedIn returns `999` for both valid and non-existent profile URLs, making verification impossible.
-
-#### Workaround Options
-
-1. **Accept the skip** (recommended) - The default behavior won't fail your builds
-2. **Skip the domain entirely** - Use `--skip "example.com"` to hide these from output
-3. **Manual verification** - Test these links manually in a browser when needed
-
-To verify these links work for actual users, test them manually in a browser.
 
 ## License
 
