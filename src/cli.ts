@@ -16,108 +16,108 @@ import { Format, Logger, LogLevel } from './logger.js';
 
 const cli = meow(
 	`
-    Usage
-      $ linkinator LOCATION [ --arguments ]
+	Usage
+		$ linkinator LOCATION [ --arguments ]
 
-    Positional arguments
+	Positional arguments
 
-      LOCATION
-        Required. Either the URLs or the paths on disk to check for broken links.
+		LOCATION
+			Required. Either the URLs or the paths on disk to check for broken links.
 
-    Flags
+	Flags
 
-      --concurrency
-        The number of connections to make simultaneously. Defaults to 100.
+		--concurrency
+			The number of connections to make simultaneously. Defaults to 100.
 
-      --config
-          Path to the config file to use. Looks for \`linkinator.config.json\` by default.
+		--config
+			Path to the config file to use. Looks for \`linkinator.config.json\` by default.
 
-      --directory-listing
-          Include an automatic directory index file when linking to a directory.
-          Defaults to 'false'.
+		--directory-listing
+			Include an automatic directory index file when linking to a directory.
+			Defaults to 'false'.
 
-      --format, -f
-          Return the data in CSV or JSON format.
+		--format, -f
+			Return the data in CSV or JSON format.
 
-	  --header, -h
-	  		List of additional headers to be include in the request. use key:value notation.
+		--header, -h
+			List of additional headers to be include in the request. use key:value notation.
 
-      --help
-          Show this command.
+		--help
+			Show this command.
 
-      --markdown
-          Automatically parse and scan markdown if scanning from a location on disk.
+		--markdown
+			Automatically parse and scan markdown if scanning from a location on disk.
 
-      --recurse, -r
-          Recursively follow links on the same root domain.
+		--recurse, -r
+			Recursively follow links on the same root domain.
 
-      --check-css
-          Extract and check URLs found in CSS properties (inline styles, <style> tags, and external CSS files).
-          This includes url() functions, @import statements, and other CSS URL references.
-          Defaults to false.
+		--check-css
+			Extract and check URLs found in CSS properties (inline styles, <style> tags, and external CSS files).
+			This includes url() functions, @import statements, and other CSS URL references.
+			Defaults to false.
 
-      --check-fragments
-          Validate fragment identifiers (URL anchors like #section-name) exist on the target HTML page.
-          Invalid fragments will be marked as broken. Only checks server-rendered HTML (not JavaScript-added fragments).
-          Defaults to false.
+		--check-fragments
+			Validate fragment identifiers (URL anchors like #section-name) exist on the target HTML page.
+			Invalid fragments will be marked as broken. Only checks server-rendered HTML (not JavaScript-added fragments).
+			Defaults to false.
 
-      --redirects
-          Control how redirects are handled. Options are 'allow' (default, follows redirects),
-          'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
+		--redirects
+			Control how redirects are handled. Options are 'allow' (default, follows redirects),
+			'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
 
-      --require-https
-          Enforce HTTPS links. Options are 'off' (default, accepts both HTTP and HTTPS),
-          'warn' (accepts both but emits warnings for HTTP), or 'error' (treats HTTP links as broken).
+		--require-https
+			Enforce HTTPS links. Options are 'off' (default, accepts both HTTP and HTTPS),
+			'warn' (accepts both but emits warnings for HTTP), or 'error' (treats HTTP links as broken).
 
-      --allow-insecure-certs
-          Allow invalid or self-signed SSL certificates. Useful for local development with
-          untrusted certificates. Defaults to false.
+		--allow-insecure-certs
+			Allow invalid or self-signed SSL certificates. Useful for local development with
+			untrusted certificates. Defaults to false.
 
-      --retry,
-          Automatically retry requests that return HTTP 429 responses and include
-          a 'retry-after' header. Defaults to false.
+		--retry,
+			Automatically retry requests that return HTTP 429 responses and include
+			a 'retry-after' header. Defaults to false.
 
-      --retry-errors,
-          Automatically retry requests that return 5xx or unknown response.
+		--retry-errors,
+			Automatically retry requests that return 5xx or unknown response.
 
-      --retry-errors-count,
-          How many times should an error be retried?
+		--retry-errors-count,
+			How many times should an error be retried?
 
-      --retry-errors-jitter,
-          Random jitter applied to error retry.
+		--retry-errors-jitter,
+			Random jitter applied to error retry.
 
-      --server-root
-          When scanning a locally directory, customize the location on disk
-          where the server is started.  Defaults to the path passed in [LOCATION].
+		--server-root
+			When scanning a locally directory, customize the location on disk
+			where the server is started.  Defaults to the path passed in [LOCATION].
 
-      --skip, -s
-          List of urls in regexy form to not include in the check.
-          Can be specified multiple times.
+		--skip, -s
+			List of urls in regexy form to not include in the check.
+			Can be specified multiple times.
 
-      --timeout
-          Request timeout in ms.  Defaults to 0 (no timeout).
+		--timeout
+			Request timeout in ms.  Defaults to 0 (no timeout).
 
-      --url-rewrite-search
-          Pattern to search for in urls.  Must be used with --url-rewrite-replace.
+		--url-rewrite-search
+			Pattern to search for in urls.  Must be used with --url-rewrite-replace.
 
-      --url-rewrite-replace
-          Expression used to replace search content.  Must be used with --url-rewrite-search.
+		--url-rewrite-replace
+			Expression used to replace search content.  Must be used with --url-rewrite-search.
 
-	--user-agent
-		  The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+		--user-agent
+			The user agent passed in all HTTP requests. Defaults to 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
 
-      --verbosity
-          Override the default verbosity for this command. Available options are
-          'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
+		--verbosity
+			Override the default verbosity for this command. Available options are
+			'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
 
-    Examples
-      $ linkinator docs/
-      $ linkinator https://www.google.com
-      $ linkinator . --recurse
-      $ linkinator . --skip www.googleapis.com
-      $ linkinator . --skip example.com --skip github.com
-      $ linkinator . --format CSV
-      $ linkinator https://example.com --recurse --check-fragments --redirects error --require-https error --check-css
+	Examples
+		$ linkinator docs/
+		$ linkinator https://www.google.com
+		$ linkinator . --recurse
+		$ linkinator . --skip www.googleapis.com
+		$ linkinator . --skip example.com --skip github.com
+		$ linkinator . --format CSV
+		$ linkinator https://example.com --recurse --check-fragments --redirects error --require-https error --check-css
 `,
 	{
 		importMeta: import.meta,
@@ -219,10 +219,31 @@ async function main() {
 	});
 	checker.on('link', (link: LinkResult) => {
 		let state = '';
+		const isFragmentFailure = link.failureDetails?.some(
+			(detail) =>
+				detail instanceof Error &&
+				detail.message.includes('Fragment identifier'),
+		);
+
 		switch (link.state) {
 			case LinkState.BROKEN: {
-				state = `[${chalk.red(link.status?.toString())}]`;
-				logger.error(`${state} ${chalk.gray(link.url)}`);
+				if (isFragmentFailure) {
+					state = `[${chalk.red('#')}]`;
+					// Highlight the fragment portion with red text
+					const hashIndex = link.url.indexOf('#');
+					if (hashIndex !== -1) {
+						const baseUrl = link.url.substring(0, hashIndex);
+						const fragment = link.url.substring(hashIndex);
+						logger.error(
+							`${state} ${chalk.gray(baseUrl)}${chalk.red(fragment)}`,
+						);
+					} else {
+						logger.error(`${state} ${chalk.gray(link.url)}`);
+					}
+				} else {
+					state = `[${chalk.red(link.status?.toString())}]`;
+					logger.error(`${state} ${chalk.gray(link.url)}`);
+				}
 				break;
 			}
 
@@ -380,10 +401,38 @@ async function main() {
 		logger.error(chalk.blue(parent));
 		for (const link of links) {
 			let state = '';
+			// Check if this is a fragment failure by looking at failureDetails OR checking if URL has fragment with 2xx status
+			const isFragmentFailure =
+				link.failureDetails?.some(
+					(detail) =>
+						detail instanceof Error &&
+						detail.message.includes('Fragment identifier'),
+				) ||
+				(link.state === LinkState.BROKEN &&
+					link.status &&
+					link.status >= 200 &&
+					link.status < 300 &&
+					link.url.includes('#'));
+
 			switch (link.state) {
 				case LinkState.BROKEN: {
-					state = `[${chalk.red(link.status?.toString())}]`;
-					logger.error(`  ${state} ${chalk.gray(link.url)}`);
+					if (isFragmentFailure) {
+						state = `[${chalk.red('#')}]`;
+						// Highlight the fragment portion with red text
+						const hashIndex = link.url.indexOf('#');
+						if (hashIndex !== -1) {
+							const baseUrl = link.url.substring(0, hashIndex);
+							const fragment = link.url.substring(hashIndex);
+							logger.error(
+								`  ${state} ${chalk.gray(baseUrl)}${chalk.red(fragment)}`,
+							);
+						} else {
+							logger.error(`  ${state} ${chalk.gray(link.url)}`);
+						}
+					} else {
+						state = `[${chalk.red(link.status?.toString())}]`;
+						logger.error(`  ${state} ${chalk.gray(link.url)}`);
+					}
 					logger.debug(JSON.stringify(link.failureDetails, null, 2));
 					break;
 				}
