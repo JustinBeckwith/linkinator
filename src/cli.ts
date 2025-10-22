@@ -56,6 +56,11 @@ const cli = meow(
           This includes url() functions, @import statements, and other CSS URL references.
           Defaults to false.
 
+      --check-fragments
+          Validate fragment identifiers (URL anchors like #section-name) exist on the target HTML page.
+          Invalid fragments will be marked as broken. Only checks server-rendered HTML (not JavaScript-added fragments).
+          Defaults to false.
+
       --redirects
           Control how redirects are handled. Options are 'allow' (default, follows redirects),
           'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
@@ -112,6 +117,7 @@ const cli = meow(
       $ linkinator . --skip www.googleapis.com
       $ linkinator . --skip example.com --skip github.com
       $ linkinator . --format CSV
+      $ linkinator https://example.com --recurse --check-fragments --redirects error --require-https error --check-css
 `,
 	{
 		importMeta: import.meta,
@@ -125,6 +131,7 @@ const cli = meow(
 			timeout: { type: 'number' },
 			markdown: { type: 'boolean' },
 			checkCss: { type: 'boolean' },
+			checkFragments: { type: 'boolean' },
 			serverRoot: { type: 'string' },
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
@@ -270,6 +277,7 @@ async function main() {
 		timeout: Number(flags.timeout),
 		markdown: flags.markdown,
 		checkCss: flags.checkCss,
+		checkFragments: flags.checkFragments,
 		concurrency: Number(flags.concurrency),
 		serverRoot: flags.serverRoot,
 		directoryListing: flags.directoryListing,

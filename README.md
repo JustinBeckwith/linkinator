@@ -168,6 +168,19 @@ You know what, we better check all of the markdown files!
 npx linkinator "**/*.md" --markdown
 ```
 
+### 🌰 Strict Link Checking
+
+Like a diligent squirrel inspecting every acorn before storing it for winter, you can configure linkinator to be *extremely* picky about your links. Here's how to go full squirrel:
+
+```sh
+npx linkinator . --recurse --check-css --check-fragments --redirects error --require-https error
+```
+
+- Scurries through your entire site recursively
+- Sniffs out broken fragment identifiers (like `#section-name`)
+- Gets angry at any redirects (a suspicious acorn is a bad acorn!)
+- Only accepts HTTPS acorns (HTTP is a rotten nut!)
+
 ### Configuration file
 
 You can pass options directly to the `linkinator` CLI, or you can define a config file.  By default, `linkinator` will look for a `linkinator.config.json` file in the current working directory.

@@ -1,4 +1,4 @@
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 
@@ -41,6 +41,7 @@ export type ParsedUrl = {
 	link: string;
 	error?: Error;
 	url?: URL;
+	fragment?: string;
 };
 
 /**
@@ -191,8 +192,11 @@ function parseAttribute(name: string, value: string): string[] {
 function parseLink(link: string, baseUrl: string): ParsedUrl {
 	try {
 		const url = new URL(link, baseUrl);
+		const fragment = url.hash
+			? decodeURIComponent(url.hash.slice(1))
+			: undefined;
 		url.hash = '';
-		return { link, url };
+		return { link, url, fragment };
 	} catch (error) {
 		return { link, error: error as Error };
 	}
@@ -271,4 +275,69 @@ function extractUrlsFromCss(css: string): string[] {
 	}
 
 	return urls;
+}
+
+/**
+ * Extracts all valid fragment identifiers from HTML.
+ * Valid fragment targets include:
+ * - Elements with id attribute: <div id="section">
+ * - Named anchors: <a name="section">
+ * @param source Readable stream of HTML content
+ * @returns Set of valid fragment identifiers
+ */
+export async function extractFragmentIds(
+	source: Readable,
+): Promise<Set<string>> {
+	const fragments = new Set<string>();
+
+	const parser = new WritableStream({
+		onopentag(_tag: string, attributes: Record<string, string>) {
+			// Check for id attribute (most common)
+			if (attributes.id) {
+				fragments.add(attributes.id);
+			}
+
+			// Check for name attribute on anchors (legacy but still valid)
+			if (_tag === 'a' && attributes.name) {
+				fragments.add(attributes.name);
+			}
+		},
+	});
+
+	await new Promise((resolve, reject) => {
+		source.pipe(parser).on('finish', resolve).on('error', reject);
+	});
+
+	return fragments;
+}
+
+export type FragmentValidationResult = {
+	fragment: string;
+	isValid: boolean;
+};
+
+/**
+ * Validates fragment identifiers against HTML content.
+ * @param htmlContent The HTML content as a Buffer
+ * @param fragmentsToValidate Set of fragment identifiers to validate
+ * @returns Array of validation results for each fragment
+ */
+export async function validateFragments(
+	htmlContent: Buffer,
+	fragmentsToValidate: Set<string>,
+): Promise<FragmentValidationResult[]> {
+	// Extract valid fragment IDs from the HTML
+	const fragmentStream = Readable.from([htmlContent]);
+	const validFragments = await extractFragmentIds(fragmentStream);
+
+	// Check each fragment
+	const results: FragmentValidationResult[] = [];
+	for (const fragment of fragmentsToValidate) {
+		results.push({
+			fragment,
+			isValid: validFragments.has(fragment),
+		});
+	}
+
+	return results;
 }

@@ -29,6 +29,7 @@ export type CheckOptions = {
 	requireHttps?: 'off' | 'warn' | 'error';
 	allowInsecureCerts?: boolean;
 	checkCss?: boolean;
+	checkFragments?: boolean;
 };
 
 export type InternalCheckOptions = {

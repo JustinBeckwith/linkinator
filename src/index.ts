@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
 import { Agent } from 'undici';
-import { getCssLinks, getLinks } from './links.js';
+import { getCssLinks, getLinks, validateFragments } from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -12,6 +12,7 @@ import {
 } from './options.js';
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
+import { bufferStream, toNodeReadable } from './stream-utils.js';
 
 export { getConfig } from './config.js';
 
@@ -81,6 +82,9 @@ type CrawlOptions = {
  * Instance class used to perform a crawl job.
  */
 export class LinkChecker extends EventEmitter {
+	// Track which fragments need to be checked for each URL
+	private fragmentsToCheck = new Map<string, Set<string>>();
+
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
@@ -377,6 +381,32 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
+		// If we need to check fragments and we used HEAD, we need to do a GET
+		// to get the HTML body for parsing fragment IDs
+		if (
+			options.checkOptions.checkFragments &&
+			response !== undefined &&
+			isHtml(response) &&
+			!response.body
+		) {
+			const fragmentsToCheck = this.fragmentsToCheck.get(options.url.href);
+			if (fragmentsToCheck && fragmentsToCheck.size > 0) {
+				try {
+					response = await makeRequest('GET', options.url.href, {
+						headers: options.checkOptions.headers,
+						timeout: options.checkOptions.timeout,
+						redirect: redirectMode,
+						allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+					});
+					if (response !== undefined) {
+						status = response.status;
+					}
+				} catch (error) {
+					failures.push(error as Error);
+				}
+			}
+		}
+
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
 		// a network error likely occurred) or 429 without retry-after data:
 		if (this.shouldRetryOnError(status, options)) {
@@ -479,17 +509,61 @@ export class LinkChecker extends EventEmitter {
 		options.results.push(result);
 		this.emit('link', result);
 
+		// Check for fragment identifiers if needed (before we start crawling deeper)
+		if (
+			options.checkOptions.checkFragments &&
+			response?.body &&
+			isHtml(response)
+		) {
+			const fragmentsToValidate = this.fragmentsToCheck.get(options.url.href);
+			if (fragmentsToValidate && fragmentsToValidate.size > 0) {
+				// Convert and buffer the response body
+				const nodeStream = toNodeReadable(response.body);
+				const htmlContent = await bufferStream(nodeStream);
+
+				// Validate fragments
+				const validationResults = await validateFragments(
+					htmlContent,
+					fragmentsToValidate,
+				);
+
+				// Emit results for invalid fragments
+				for (const result of validationResults) {
+					if (!result.isValid) {
+						const fragmentResult: LinkResult = {
+							url: mapUrl(
+								`${options.url.href}#${result.fragment}`,
+								options.checkOptions,
+							),
+							status: response.status,
+							state: LinkState.BROKEN,
+							parent: mapUrl(options.parent, options.checkOptions),
+							failureDetails: [
+								new Error(
+									`Fragment identifier '#${result.fragment}' not found on page`,
+								),
+							],
+						};
+						options.results.push(fragmentResult);
+						this.emit('link', fragmentResult);
+					}
+				}
+
+				// Create a new stream from the buffered content for link extraction
+				const { Readable } = await import('node:stream');
+				const linkStream = Readable.from([htmlContent]);
+				response.body = linkStream as never;
+			}
+		}
+
 		// If we need to go deeper, scan the next level of depth for links and crawl
 		if (options.crawl && shouldRecurse) {
 			this.emit('pagestart', options.url);
 			let urlResults: Awaited<ReturnType<typeof getLinks>> = [];
 			if (response?.body) {
-				// Fetch returns a Web ReadableStream (browser standard), but htmlparser2
-				// requires a Node.js Readable stream for piping. This conversion allows
-				// streaming HTML parsing as the response arrives, which is more memory
-				// efficient than loading the full response into memory first.
-				const { Readable } = await import('node:stream');
-				const nodeStream = Readable.fromWeb(response.body as never);
+				// Convert to Node.js Readable stream (handles both Web and Node.js streams)
+				const nodeStream = toNodeReadable(response.body);
+
 				// Use the final URL after redirects (if available) as the base for resolving
 				// relative links. This ensures relative links are resolved correctly even when
 				// the original URL doesn't have a trailing slash but redirects to one.
@@ -519,6 +593,19 @@ export class LinkChecker extends EventEmitter {
 					options.results.push(r);
 					this.emit('link', r);
 					continue;
+				}
+
+				// Track fragments that need validation if checkFragments is enabled
+				if (
+					options.checkOptions.checkFragments &&
+					result.fragment &&
+					result.fragment.length > 0
+				) {
+					const urlKey = result.url.href;
+					if (!this.fragmentsToCheck.has(urlKey)) {
+						this.fragmentsToCheck.set(urlKey, new Set());
+					}
+					this.fragmentsToCheck.get(urlKey)?.add(result.fragment);
 				}
 
 				let crawl =

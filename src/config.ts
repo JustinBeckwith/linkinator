@@ -13,6 +13,7 @@ export type Flags = {
 	timeout?: number;
 	markdown?: boolean;
 	checkCss?: boolean;
+	checkFragments?: boolean;
 	serverRoot?: string;
 	directoryListing?: boolean;
 	redirects?: 'allow' | 'warn' | 'error';
