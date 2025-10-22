@@ -510,10 +510,12 @@ export class LinkChecker extends EventEmitter {
 		this.emit('link', result);
 
 		// Check for fragment identifiers if needed (before we start crawling deeper)
+		// Only validate fragments if the base URL returned a successful (2xx) response
 		if (
 			options.checkOptions.checkFragments &&
 			response?.body &&
-			isHtml(response)
+			isHtml(response) &&
+			state === LinkState.OK
 		) {
 			const fragmentsToValidate = this.fragmentsToCheck.get(options.url.href);
 			if (fragmentsToValidate && fragmentsToValidate.size > 0) {
@@ -521,31 +523,41 @@ export class LinkChecker extends EventEmitter {
 				const nodeStream = toNodeReadable(response.body);
 				const htmlContent = await bufferStream(nodeStream);
 
-				// Validate fragments
-				const validationResults = await validateFragments(
-					htmlContent,
-					fragmentsToValidate,
-				);
+				// Check if this is likely a soft 404 by looking for noindex/nofollow meta tags
+				// Many soft 404 pages (pages that return 200 but show "Page Not Found") include these tags
+				const htmlString = htmlContent.toString('utf-8');
+				const isSoft404 =
+					htmlString.includes('content="noindex') &&
+					htmlString.includes('nofollow');
 
-				// Emit results for invalid fragments
-				for (const result of validationResults) {
-					if (!result.isValid) {
-						const fragmentResult: LinkResult = {
-							url: mapUrl(
-								`${options.url.href}#${result.fragment}`,
-								options.checkOptions,
-							),
-							status: response.status,
-							state: LinkState.BROKEN,
-							parent: mapUrl(options.parent, options.checkOptions),
-							failureDetails: [
-								new Error(
-									`Fragment identifier '#${result.fragment}' not found on page`,
+				// Only validate fragments if this is NOT a soft 404
+				if (!isSoft404) {
+					// Validate fragments
+					const validationResults = await validateFragments(
+						htmlContent,
+						fragmentsToValidate,
+					);
+
+					// Emit results for invalid fragments
+					for (const result of validationResults) {
+						if (!result.isValid) {
+							const fragmentResult: LinkResult = {
+								url: mapUrl(
+									`${options.url.href}#${result.fragment}`,
+									options.checkOptions,
 								),
-							],
-						};
-						options.results.push(fragmentResult);
-						this.emit('link', fragmentResult);
+								status: response.status,
+								state: LinkState.BROKEN,
+								parent: mapUrl(options.parent, options.checkOptions),
+								failureDetails: [
+									new Error(
+										`Fragment identifier '#${result.fragment}' not found on page`,
+									),
+								],
+							};
+							options.results.push(fragmentResult);
+							this.emit('link', fragmentResult);
+						}
 					}
 				}
 

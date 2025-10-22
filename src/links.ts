@@ -301,6 +301,17 @@ export async function extractFragmentIds(
 			if (_tag === 'a' && attributes.name) {
 				fragments.add(attributes.name);
 			}
+
+			// Check for href attributes that are fragment-only links (start with #)
+			// This handles GitHub-style anchors where the actual element has id="user-content-foo"
+			// but the href is "#foo"
+			if (_tag === 'a' && attributes.href) {
+				const href = attributes.href;
+				if (href.startsWith('#') && href.length > 1) {
+					// Extract the fragment (removing the leading #)
+					fragments.add(href.substring(1));
+				}
+			}
 		},
 	});
 
