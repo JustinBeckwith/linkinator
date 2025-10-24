@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.3.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.2.0...linkinator-v7.3.0) (2025-10-24)
+
+
+### Features
+
+* add clean URLs support for extensionless links ([#727](https://github.com/JustinBeckwith/linkinator/issues/727)) ([7a622c6](https://github.com/JustinBeckwith/linkinator/commit/7a622c672e66ccb32233cdabe7c58aaab79805ca))
+* add CSS URL extraction support ([#722](https://github.com/JustinBeckwith/linkinator/issues/722)) ([565c71d](https://github.com/JustinBeckwith/linkinator/commit/565c71df552063785e8cc0bdac73a336acf1482b))
+* add fragment identifier validation ([#79](https://github.com/JustinBeckwith/linkinator/issues/79)) ([#723](https://github.com/JustinBeckwith/linkinator/issues/723)) ([1ac4526](https://github.com/JustinBeckwith/linkinator/commit/1ac452640b82ee032131db50ca140a0bd42d439a))
+* add support for meta refresh redirects ([#719](https://github.com/JustinBeckwith/linkinator/issues/719)) ([86d7271](https://github.com/JustinBeckwith/linkinator/commit/86d72714cde797ba232a2c7a0997948d47a60a7a))
+
+
+### Bug Fixes
+
+* remove default browser User-Agent to prevent redirect loops ([#721](https://github.com/JustinBeckwith/linkinator/issues/721)) ([811a833](https://github.com/JustinBeckwith/linkinator/commit/811a833ac87f26b7cdf2cb80d89d9ccd840f4aa9))
+* skip fragment validation for non-2xx responses and soft 404s ([#726](https://github.com/JustinBeckwith/linkinator/issues/726)) ([7cd2b49](https://github.com/JustinBeckwith/linkinator/commit/7cd2b4934b32b0ce230c8fb7d55853a4159b7d31))
+
 ## [7.2.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.1.3...linkinator-v7.2.0) (2025-10-20)
 
 
