@@ -1000,21 +1000,21 @@ describe('linkinator', () => {
 			results.passed,
 			'All links should be valid with cleanUrls enabled',
 		);
-		// Should find: index.html (root) + /about + /contact
-		const aboutLink = results.links.find((x) => x.url.includes('/about'));
-		assert.ok(aboutLink, 'Should find the /about link');
+		// Should find: index.html (root) + about + contact (relative paths)
+		const aboutLink = results.links.find((x) => x.url.endsWith('/about'));
+		assert.ok(aboutLink, 'Should find the about link');
 		assert.strictEqual(
 			aboutLink?.state,
 			LinkState.OK,
-			'/about should resolve to about.html',
+			'about should resolve to about.html',
 		);
 
-		const contactLink = results.links.find((x) => x.url.includes('/contact'));
-		assert.ok(contactLink, 'Should find the /contact link');
+		const contactLink = results.links.find((x) => x.url.endsWith('/contact'));
+		assert.ok(contactLink, 'Should find the contact link');
 		assert.strictEqual(
 			contactLink?.state,
 			LinkState.OK,
-			'/contact should resolve to contact.html',
+			'contact should resolve to contact.html',
 		);
 	});
 
@@ -1027,13 +1027,13 @@ describe('linkinator', () => {
 		});
 
 		assert.ok(!results.passed, 'Should fail with cleanUrls disabled');
-		// The /about link should be broken
-		const aboutLink = results.links.find((x) => x.url.includes('/about'));
-		assert.ok(aboutLink, 'Should find the /about link');
+		// The about link should be broken (can't find about.html without cleanUrls)
+		const aboutLink = results.links.find((x) => x.url.endsWith('/about'));
+		assert.ok(aboutLink, 'Should find the about link');
 		assert.strictEqual(
 			aboutLink?.state,
 			LinkState.BROKEN,
-			'/about should be broken without cleanUrls',
+			'about should be broken without cleanUrls',
 		);
 	});
 });

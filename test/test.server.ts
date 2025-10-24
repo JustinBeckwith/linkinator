@@ -124,7 +124,7 @@ describe('server with cleanUrls', () => {
 		assert.strictEqual(response.status, 200);
 		assert.strictEqual(
 			data,
-			'<html><body><h1>About Page</h1><a href="/contact">Contact</a></body></html>\n',
+			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
 		);
 	});
 
@@ -146,7 +146,7 @@ describe('server with cleanUrls', () => {
 		assert.strictEqual(response.status, 200);
 		assert.strictEqual(
 			data,
-			'<html><body><h1>About Page</h1><a href="/contact">Contact</a></body></html>\n',
+			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
 		);
 	});
 
@@ -163,7 +163,7 @@ describe('server with cleanUrls', () => {
 		assert.strictEqual(response.status, 200);
 		assert.strictEqual(
 			data,
-			'<html><body><h1>Home Page</h1><a href="/about">About</a></body></html>\n',
+			'<html><body><h1>Home Page</h1><a href="about">About</a></body></html>\n',
 		);
 	});
 
@@ -204,7 +204,7 @@ describe('server without cleanUrls', () => {
 		assert.strictEqual(response.status, 200);
 		assert.strictEqual(
 			data,
-			'<html><body><h1>About Page</h1><a href="/contact">Contact</a></body></html>\n',
+			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
 		);
 	});
 });
