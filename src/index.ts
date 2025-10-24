@@ -119,6 +119,7 @@ export class LinkChecker extends EventEmitter {
 				port,
 				markdown: options.markdown,
 				directoryListing: options.directoryListing,
+				cleanUrls: options.cleanUrls,
 			});
 			if (port === undefined) {
 				const addr = server.address() as AddressInfo;

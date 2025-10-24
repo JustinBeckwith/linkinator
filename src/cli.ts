@@ -36,6 +36,12 @@ const cli = meow(
 			Include an automatic directory index file when linking to a directory.
 			Defaults to 'false'.
 
+		--clean-urls
+			Enable clean URLs (extensionless links). When enabled, links like '/about'
+			will automatically resolve to '/about.html' if the file exists.
+			Mimics behavior of modern static hosting platforms like Vercel.
+			Defaults to 'false'.
+
 		--format, -f
 			Return the data in CSV or JSON format.
 
@@ -135,6 +141,7 @@ const cli = meow(
 			serverRoot: { type: 'string' },
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
+			cleanUrls: { type: 'boolean' },
 			redirects: { type: 'string', choices: ['allow', 'warn', 'error'] },
 			requireHttps: { type: 'string', choices: ['off', 'warn', 'error'] },
 			allowInsecureCerts: { type: 'boolean' },
@@ -302,6 +309,7 @@ async function main() {
 		concurrency: Number(flags.concurrency),
 		serverRoot: flags.serverRoot,
 		directoryListing: flags.directoryListing,
+		cleanUrls: flags.cleanUrls,
 		redirects: flags.redirects,
 		requireHttps: flags.requireHttps,
 		allowInsecureCerts: flags.allowInsecureCerts,

@@ -987,4 +987,61 @@ describe('linkinator', () => {
 			'Should find the api-keys link resolved relative to trailing slash',
 		);
 	});
+
+	it('should resolve clean URLs when enabled', async () => {
+		// Test with cleanUrls enabled
+		const results = await check({
+			path: 'test/fixtures/server/clean-urls',
+			recurse: true,
+			cleanUrls: true,
+		});
+
+		assert.ok(
+			results.passed,
+			'All links should be valid with cleanUrls enabled',
+		);
+		// Should find: index.html (root) + about + contact (relative paths)
+		// Match flexibly for cross-platform compatibility
+		const aboutLink = results.links.find(
+			(x) => x.url.includes('about') && !x.url.includes('about.html'),
+		);
+		assert.ok(aboutLink, 'Should find the about link');
+		assert.strictEqual(
+			aboutLink?.state,
+			LinkState.OK,
+			'about should resolve to about.html',
+		);
+
+		const contactLink = results.links.find(
+			(x) => x.url.includes('contact') && !x.url.includes('contact.html'),
+		);
+		assert.ok(contactLink, 'Should find the contact link');
+		assert.strictEqual(
+			contactLink?.state,
+			LinkState.OK,
+			'contact should resolve to contact.html',
+		);
+	});
+
+	it('should NOT resolve clean URLs when disabled', async () => {
+		// Test with cleanUrls disabled (default behavior)
+		const results = await check({
+			path: 'test/fixtures/server/clean-urls',
+			recurse: true,
+			cleanUrls: false,
+		});
+
+		assert.ok(!results.passed, 'Should fail with cleanUrls disabled');
+		// The about link should be broken (can't find about.html without cleanUrls)
+		// Match flexibly for cross-platform compatibility
+		const aboutLink = results.links.find(
+			(x) => x.url.includes('about') && !x.url.includes('about.html'),
+		);
+		assert.ok(aboutLink, 'Should find the about link');
+		assert.strictEqual(
+			aboutLink?.state,
+			LinkState.BROKEN,
+			'about should be broken without cleanUrls',
+		);
+	});
 });

@@ -99,3 +99,112 @@ describe('server', () => {
 		assert.strictEqual(data, '<html><body>Checkout page</body></html>');
 	});
 });
+
+describe('server with cleanUrls', () => {
+	let server: Server;
+	let rootUrl: string;
+
+	beforeAll(async () => {
+		server = await startWebServer({
+			root: 'test/fixtures/server/clean-urls',
+			cleanUrls: true,
+		});
+		const addr = server.address() as AddressInfo;
+		rootUrl = `http://localhost:${addr.port}`;
+	});
+
+	afterAll(() => {
+		server.destroy();
+	});
+
+	it('should resolve extensionless URL to .html file', async () => {
+		const url = `${rootUrl}/about`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(
+			data,
+			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
+		);
+	});
+
+	it('should resolve nested extensionless URL to .html file', async () => {
+		const url = `${rootUrl}/contact`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(
+			data,
+			'<html><body><h1>Contact Page</h1></body></html>\n',
+		);
+	});
+
+	it('should still serve files with .html extension', async () => {
+		const url = `${rootUrl}/about.html`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(
+			data,
+			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
+		);
+	});
+
+	it('should return 404 for non-existent extensionless URLs', async () => {
+		const url = `${rootUrl}/nonexistent`;
+		const response = await undiciFetch(url);
+		assert.strictEqual(response.status, 404);
+	});
+
+	it('should serve index.html for root path', async () => {
+		const url = `${rootUrl}/`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(
+			data,
+			'<html><body><h1>Home Page</h1><a href="about">About</a></body></html>\n',
+		);
+	});
+
+	it('should protect against path traversal with clean URLs', async () => {
+		const url = `${rootUrl}/../../../etc/passwd`;
+		const response = await undiciFetch(url);
+		assert.strictEqual(response.status, 404);
+	});
+});
+
+describe('server without cleanUrls', () => {
+	let server: Server;
+	let rootUrl: string;
+
+	beforeAll(async () => {
+		server = await startWebServer({
+			root: 'test/fixtures/server/clean-urls',
+			cleanUrls: false,
+		});
+		const addr = server.address() as AddressInfo;
+		rootUrl = `http://localhost:${addr.port}`;
+	});
+
+	afterAll(() => {
+		server.destroy();
+	});
+
+	it('should NOT resolve extensionless URL when cleanUrls is disabled', async () => {
+		const url = `${rootUrl}/about`;
+		const response = await undiciFetch(url);
+		assert.strictEqual(response.status, 404);
+	});
+
+	it('should still serve files with .html extension', async () => {
+		const url = `${rootUrl}/about.html`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(
+			data,
+			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
+		);
+	});
+});

@@ -54,11 +54,17 @@ $ linkinator LOCATIONS [ --arguments ]
         Include an automatic directory index file when linking to a directory.
         Defaults to 'false'.
 
+    --clean-urls
+        Enable clean URLs (extensionless links). When enabled, links like '/about'
+        will automatically resolve to '/about.html' if the file exists.
+        Mimics behavior of modern static hosting platforms like Vercel.
+        Defaults to 'false'.
+
     --format, -f
         Return the data in CSV or JSON format.
     
     --header, -h
-	  		List of additional headers to be include in the request. use key:value notation.
+      List of additional headers to be include in the request. use key:value notation.
         
     --help
         Show this command.
@@ -185,6 +191,12 @@ You know what, we better check all of the markdown files!
 npx linkinator "**/*.md" --markdown
 ```
 
+Need to check a static site with clean URLs (extensionless links)?
+
+```sh
+npx linkinator ./dist --recurse --clean-urls
+```
+
 ### 🌰 Strict Link Checking
 
 Like a diligent squirrel inspecting every acorn before storing it for winter, you can configure linkinator to be *extremely* picky about your links. Here's how to go full squirrel:
@@ -219,6 +231,7 @@ All options are optional. It should look like this:
   "checkFragments": true,
   "serverRoot": "./",
   "directoryListing": true,
+  "cleanUrls": true,
   "redirects": "allow",
   "requireHttps": "off",
   "allowInsecureCerts": false,
@@ -288,6 +301,7 @@ where the server is started.  Defaults to the path passed in `path`.
 - `markdown` (boolean) - Automatically parse and scan markdown if scanning from a location on disk.
 - `linksToSkip` (array | function) - An array of regular expression strings that should be skipped (e.g., `['example.com', 'github.com', '^http://']`), OR an async function that's called for each link with the link URL as its only argument. Return a Promise that resolves to `true` to skip the link or `false` to check it.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
+- `cleanUrls` (boolean) - Enable clean URLs (extensionless links). When enabled, links like `/about` will automatically resolve to `/about.html` if the file exists. Mimics behavior of modern static hosting platforms like Vercel. Defaults to `false`.
 - `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement. Use this to rewrite URLs before they are checked. For example, to rewrite a production URL to a local development URL:
   ```javascript
   urlRewriteExpressions: [
