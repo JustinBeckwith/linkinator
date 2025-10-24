@@ -2,6 +2,8 @@
 
 > A super simple site crawler and broken link checker.
 
+![linkinator](https://raw.githubusercontent.com/JustinBeckwith/linkinator/main/site/linkinator.webp)
+
 [![npm version](https://img.shields.io/npm/v/linkinator)](https://www.npmjs.com/package/linkinator)
 [![codecov](https://img.shields.io/codecov/c/github/JustinBeckwith/linkinator/main)](https://app.codecov.io/gh/JustinBeckwith/linkinator)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
