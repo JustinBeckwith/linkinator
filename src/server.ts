@@ -17,6 +17,8 @@ export type WebServerOptions = {
 	markdown?: boolean;
 	// Should directories automatically serve an inde page
 	directoryListing?: boolean;
+	// Enable clean URLs (e.g., /about resolves to /about.html)
+	cleanUrls?: boolean;
 };
 
 /**
@@ -92,6 +94,28 @@ async function handleRequest(
 		}
 	} catch (error) {
 		const error_ = error as Error;
+		// Try clean URLs: if file not found and cleanUrls is enabled, try adding .html
+		if (options.cleanUrls && !localPath.endsWith('.html')) {
+			try {
+				const htmlPath = `${localPath}.html`;
+				// Verify it's still within the root directory (security check)
+				if (htmlPath.startsWith(root)) {
+					const htmlStats = await fs.stat(htmlPath);
+					if (!htmlStats.isDirectory()) {
+						// File exists! Serve it with the original URL
+						const data = await fs.readFile(htmlPath, { encoding: 'utf8' });
+						const mimeType = 'text/html; charset=UTF-8';
+						response.setHeader('Content-Type', mimeType);
+						response.setHeader('Content-Length', Buffer.byteLength(data));
+						response.writeHead(200);
+						response.end(data);
+						return;
+					}
+				}
+			} catch {
+				// Fall through to normal 404 handling
+			}
+		}
 		if (!maybeListing) {
 			return404(response, error_);
 			return;

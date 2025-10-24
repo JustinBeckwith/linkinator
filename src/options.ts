@@ -18,6 +18,7 @@ export type CheckOptions = {
 	linksToSkip?: string[] | ((link: string) => Promise<boolean>);
 	serverRoot?: string;
 	directoryListing?: boolean;
+	cleanUrls?: boolean;
 	retry?: boolean;
 	retryErrors?: boolean;
 	retryErrorsCount?: number;

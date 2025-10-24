@@ -16,6 +16,7 @@ export type Flags = {
 	checkFragments?: boolean;
 	serverRoot?: string;
 	directoryListing?: boolean;
+	cleanUrls?: boolean;
 	redirects?: 'allow' | 'warn' | 'error';
 	requireHttps?: 'off' | 'warn' | 'error';
 	allowInsecureCerts?: boolean;
