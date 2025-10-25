@@ -285,6 +285,29 @@ jobs:
 
 To see all options or to learn more, visit [JustinBeckwith/linkinator-action](https://github.com/JustinBeckwith/linkinator-action).
 
+### Model Context Protocol (MCP)
+
+You can also use `linkinator` in AI assistants like Claude through the Model Context Protocol using [JustinBeckwith/linkinator-mcp](https://github.com/JustinBeckwith/linkinator-mcp).
+
+The linkinator-mcp server brings link-checking capabilities directly to AI assistants, enabling automated scanning of webpages and local files through natural language prompts.
+
+**Installation:**
+
+```sh
+npx install-mcp linkinator-mcp --client claude
+```
+
+This will automatically configure the MCP server for Claude Desktop, Claude Code, Cursor, and other compatible clients.
+
+**Usage:**
+
+Once installed, you can check links through natural language:
+- "Check all links on https://example.com"
+- "Scan my documentation recursively and validate anchor fragments"
+- "Check local files at /path/to/docs"
+
+For more details and manual configuration options, visit [JustinBeckwith/linkinator-mcp](https://github.com/JustinBeckwith/linkinator-mcp).
+
 ## API Usage
 
 ### linkinator.check(options)
