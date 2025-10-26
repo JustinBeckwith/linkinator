@@ -206,7 +206,7 @@ async function main() {
 		}),
 	);
 
-	logger.error(`🏊‍♂️ crawling ${cli.input.join(' ')}`);
+	logger.error(`→ crawling ${cli.input.join(' ')}`);
 
 	const checker = new LinkChecker();
 	if (format === Format.CSV) {
@@ -488,7 +488,7 @@ async function main() {
 
 	logger.error(
 		chalk.bold(
-			`🤖 Successfully scanned ${chalk.green(
+			`✓ Successfully scanned ${chalk.green(
 				scannedLinks.length.toString(),
 			)} links in ${chalk.cyan(total.toString())} seconds.`,
 		),
