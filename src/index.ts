@@ -13,6 +13,7 @@ import {
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
 import { bufferStream, toNodeReadable } from './stream-utils.js';
+import { normalizeBaseUrl } from './url-utils.js';
 
 export { getConfig } from './config.js';
 
@@ -580,7 +581,13 @@ export class LinkChecker extends EventEmitter {
 				// Use the final URL after redirects (if available) as the base for resolving
 				// relative links. This ensures relative links are resolved correctly even when
 				// the original URL doesn't have a trailing slash but redirects to one.
-				const baseUrl = response.url || options.url.href;
+				let baseUrl = response.url || options.url.href;
+
+				// Fix for issue #374: Normalize the base URL to ensure relative links resolve
+				// correctly. See normalizeBaseUrl() in url-utils.ts for details.
+				if (isHtml(response)) {
+					baseUrl = normalizeBaseUrl(baseUrl, options.checkOptions.cleanUrls);
+				}
 
 				// Parse HTML or CSS depending on content type
 				if (isHtml(response)) {
