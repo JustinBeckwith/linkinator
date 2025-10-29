@@ -1,5 +1,18 @@
 # Changelog
 
+## [7.4.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.3.0...linkinator-v7.4.0) (2025-10-29)
+
+
+### Features
+
+* add configurable status code handling ([#627](https://github.com/JustinBeckwith/linkinator/issues/627), [#718](https://github.com/JustinBeckwith/linkinator/issues/718)) ([#733](https://github.com/JustinBeckwith/linkinator/issues/733)) ([b5ef84c](https://github.com/JustinBeckwith/linkinator/commit/b5ef84c849d3adc7007c9b42d2cf634cefdb5565))
+
+
+### Bug Fixes
+
+* normalize base URLs for correct relative link resolution ([#374](https://github.com/JustinBeckwith/linkinator/issues/374)) ([#732](https://github.com/JustinBeckwith/linkinator/issues/732)) ([1b8c330](https://github.com/JustinBeckwith/linkinator/commit/1b8c33024ec2ae7aeac9d1c8c23c5fe67a893f35))
+* replace emojis with Unicode symbols for Windows compatibility ([#730](https://github.com/JustinBeckwith/linkinator/issues/730)) ([321ff07](https://github.com/JustinBeckwith/linkinator/commit/321ff0741937fa384110009fa72168ba87db0b5d))
+
 ## [7.3.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.2.0...linkinator-v7.3.0) (2025-10-24)
 
 
