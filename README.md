@@ -119,6 +119,13 @@ $ linkinator LOCATIONS [ --arguments ]
     --skip, -s
         List of urls in regexy form to not include in the check. Can be repeated multiple times.
 
+    --status-code
+        Control how specific HTTP status codes are handled. Format: "CODE:ACTION"
+        where CODE is a numeric status code (e.g., 403) or pattern (e.g., 4xx, 5xx)
+        and ACTION is one of: ok (success), warn (success with warning),
+        skip (ignore link), or error (force failure).
+        Can be repeated multiple times. Example: --status-code "403:warn" --status-code "5xx:skip"
+
     --timeout
         Request timeout in ms.  Defaults to 0 (no timeout).
 
@@ -244,7 +251,13 @@ All options are optional. It should look like this:
   "urlRewriteSearch": "https://example\\.com",
   "urlRewriteReplace": "http://localhost:3000",
   "userAgent": "Mozilla/4.0 (compatible; MSIE 6.0; MSIE 5.5; Windows NT 5.1)",
-  "header": ["Authorization:Bearer TOKEN", "X-Custom-Header:value"]
+  "header": ["Authorization:Bearer TOKEN", "X-Custom-Header:value"],
+  "statusCodes": {
+    "403": "warn",
+    "404": "skip",
+    "4xx": "warn",
+    "5xx": "skip"
+  }
 }
 ```
 
@@ -255,6 +268,44 @@ For skipping multiple URL patterns, use an array:
   "skip": ["www.googleapis.com", "example.com", "github.com"]
 }
 ```
+
+### Handling Specific Status Codes
+
+Sometimes you need fine-grained control over how linkinator handles specific HTTP status codes. For example, some sites aggressively block crawlers with 403 responses, or you might want to treat certain errors as warnings rather than failures.
+
+Use the `--status-code` flag on the command line:
+
+```sh
+# Treat 403 as a warning instead of an error
+npx linkinator . --status-code "403:warn"
+
+# Skip 404 errors entirely
+npx linkinator . --status-code "404:skip"
+
+# Combine multiple status code rules
+npx linkinator . --status-code "403:warn" --status-code "5xx:skip"
+```
+
+Or configure it in your `linkinator.config.json`:
+
+```json
+{
+  "statusCodes": {
+    "403": "warn",
+    "404": "skip",
+    "4xx": "warn",
+    "5xx": "skip"
+  }
+}
+```
+
+Available actions:
+- **`ok`** - Treat as success (link passes)
+- **`warn`** - Treat as success but emit a warning message
+- **`skip`** - Ignore the link entirely (like bot-protected links)
+- **`error`** - Force the link to fail
+
+You can use specific codes (`"403"`) or patterns (`"4xx"`, `"5xx"`). Specific codes take priority over patterns.
 
 To load config settings outside the CWD, you can pass the `--config` flag to the `linkinator` CLI:
 
