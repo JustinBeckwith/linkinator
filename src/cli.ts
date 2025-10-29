@@ -100,6 +100,13 @@ const cli = meow(
 			List of urls in regexy form to not include in the check.
 			Can be specified multiple times.
 
+		--status-code
+			Control how specific HTTP status codes are handled. Format: "CODE:ACTION"
+			where CODE is a numeric status code (e.g., 403) or pattern (e.g., 4xx, 5xx)
+			and ACTION is one of: ok (success), warn (success with warning),
+			skip (ignore link), or error (force failure).
+			Can be specified multiple times. Example: --status-code "403:warn"
+
 		--timeout
 			Request timeout in ms.  Defaults to 0 (no timeout).
 
@@ -132,6 +139,7 @@ const cli = meow(
 			concurrency: { type: 'number' },
 			recurse: { type: 'boolean', shortFlag: 'r' },
 			skip: { type: 'string', shortFlag: 's', isMultiple: true },
+			statusCode: { type: 'string', isMultiple: true },
 			format: { type: 'string', shortFlag: 'f' },
 			silent: { type: 'boolean' },
 			timeout: { type: 'number' },
@@ -222,6 +230,11 @@ async function main() {
 		const target = info.targetUrl ? ` → ${info.targetUrl}` : '';
 		logger.warn(
 			`${chalk.yellow('[REDIRECT]')} ${chalk.gray(info.url)}${target} ${chalk.dim(`(${info.status}${nonStandardNote})`)}`,
+		);
+	});
+	checker.on('statusCodeWarning', (info: { url: string; status: number }) => {
+		logger.warn(
+			`${chalk.yellow('[WARN]')} ${chalk.gray(info.url)} ${chalk.dim(`(${info.status})`)}`,
 		);
 	});
 	checker.on('link', (link: LinkResult) => {
@@ -341,6 +354,44 @@ async function main() {
 				replacement: flags.urlRewriteReplace,
 			},
 		];
+	}
+
+	// Merge statusCodes from config file and CLI flags
+	// Start with config file statusCodes if present
+	if (flags.statusCodes) {
+		options.statusCodes = { ...flags.statusCodes } as Record<
+			string,
+			'ok' | 'warn' | 'skip' | 'error'
+		>;
+	}
+
+	// Parse and add CLI statusCode flags (these override config file)
+	if (flags.statusCode) {
+		options.statusCodes = options.statusCodes || {};
+		const statusCodes = Array.isArray(flags.statusCode)
+			? flags.statusCode
+			: [flags.statusCode];
+		for (const item of statusCodes) {
+			const colonIndex = item.indexOf(':');
+			if (colonIndex === -1) {
+				throw new Error(
+					`Invalid status-code format: "${item}". Use "CODE:ACTION" format (e.g., "403:warn").`,
+				);
+			}
+			const code = item.slice(0, colonIndex).trim();
+			const action = item.slice(colonIndex + 1).trim();
+			if (!code) {
+				throw new Error(
+					`Invalid status-code format: "${item}". Status code cannot be empty.`,
+				);
+			}
+			if (!['ok', 'warn', 'skip', 'error'].includes(action)) {
+				throw new Error(
+					`Invalid status-code action: "${action}". Must be one of: ok, warn, skip, error.`,
+				);
+			}
+			options.statusCodes[code] = action as 'ok' | 'warn' | 'skip' | 'error';
+		}
 	}
 
 	const result = await checker.check(options);

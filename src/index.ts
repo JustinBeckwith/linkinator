@@ -9,6 +9,7 @@ import {
 	type CheckOptions,
 	type InternalCheckOptions,
 	processOptions,
+	type StatusCodeAction,
 } from './options.js';
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
@@ -38,6 +39,11 @@ export type RedirectInfo = {
 
 export type HttpInsecureInfo = {
 	url: string;
+};
+
+export type StatusCodeWarning = {
+	url: string;
+	status: number;
 };
 
 export type HttpResponse = {
@@ -93,6 +99,10 @@ export class LinkChecker extends EventEmitter {
 	on(
 		event: 'httpInsecure',
 		listener: (details: HttpInsecureInfo) => void,
+	): this;
+	on(
+		event: 'statusCodeWarning',
+		listener: (details: StatusCodeWarning) => void,
 	): this;
 	// biome-ignore lint/suspicious/noExplicitAny: this can in fact be generic
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
@@ -418,12 +428,38 @@ export class LinkChecker extends EventEmitter {
 		// Detect if this was a redirect
 		const redirect = detectRedirect(status, originalUrl, response);
 
+		// Check for custom status code actions first (highest priority)
+		const customAction = getStatusCodeAction(
+			status,
+			options.checkOptions.statusCodes,
+		);
+
+		if (customAction === 'ok') {
+			// Treat as success
+			state = LinkState.OK;
+		} else if (customAction === 'warn') {
+			// Treat as success but emit warning
+			state = LinkState.OK;
+			this.emit('statusCodeWarning', {
+				url: originalUrl,
+				status,
+			});
+		} else if (customAction === 'skip') {
+			// Skip this link entirely
+			state = LinkState.SKIPPED;
+		} else if (customAction === 'error') {
+			// Force failure
+			state = LinkState.BROKEN;
+			if (response !== undefined) {
+				failures.push(response);
+			}
+		}
 		// Special handling for bot protection responses
 		// Status 999: Used by LinkedIn and other sites to block automated requests
 		// Status 403 with cf-mitigated: Cloudflare bot protection challenge
 		// Since we cannot distinguish between valid and invalid URLs when blocked,
 		// treat these as skipped rather than broken.
-		if (status === 999) {
+		else if (status === 999) {
 			state = LinkState.SKIPPED;
 		} else if (
 			status === 403 &&
@@ -990,6 +1026,62 @@ async function makeRequest(
 		body: (response.body ?? undefined) as ReadableStream | undefined,
 		url: response.url,
 	};
+}
+
+/**
+ * Checks if a status code matches a pattern (e.g., "403", "4xx", "5xx").
+ *
+ * @param status - HTTP status code to check
+ * @param pattern - Pattern to match against (specific code like "403" or wildcard like "4xx")
+ * @returns True if the status matches the pattern
+ */
+function matchesStatusCodePattern(status: number, pattern: string): boolean {
+	// Exact match (e.g., "403")
+	if (pattern === status.toString()) {
+		return true;
+	}
+
+	// Pattern match (e.g., "4xx", "5xx")
+	// The pattern should be in the form "Xxx" where X is the first digit and xx are wildcards
+	if (pattern.endsWith('xx') && pattern.length === 3) {
+		const firstDigit = pattern[0];
+		const statusFirstDigit = Math.floor(status / 100).toString();
+		return firstDigit === statusFirstDigit;
+	}
+
+	return false;
+}
+
+/**
+ * Gets the configured action for a given status code.
+ * Checks exact matches first, then patterns (4xx, 5xx).
+ *
+ * @param status - HTTP status code
+ * @param statusCodes - Configuration mapping status codes/patterns to actions
+ * @returns The action to take, or undefined if no match
+ */
+function getStatusCodeAction(
+	status: number,
+	statusCodes?: Record<string, StatusCodeAction>,
+): StatusCodeAction | undefined {
+	if (!statusCodes) {
+		return undefined;
+	}
+
+	// Check for exact match first (e.g., "403")
+	const exactMatch = statusCodes[status.toString()];
+	if (exactMatch) {
+		return exactMatch;
+	}
+
+	// Check for pattern matches (e.g., "4xx", "5xx")
+	for (const [pattern, action] of Object.entries(statusCodes)) {
+		if (matchesStatusCodePattern(status, pattern)) {
+			return action;
+		}
+	}
+
+	return undefined;
 }
 
 /**

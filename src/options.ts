@@ -8,6 +8,8 @@ export type UrlRewriteExpression = {
 	replacement: string;
 };
 
+export type StatusCodeAction = 'ok' | 'warn' | 'skip' | 'error';
+
 export type CheckOptions = {
 	concurrency?: number;
 	port?: number;
@@ -31,6 +33,7 @@ export type CheckOptions = {
 	allowInsecureCerts?: boolean;
 	checkCss?: boolean;
 	checkFragments?: boolean;
+	statusCodes?: Record<string, StatusCodeAction>;
 };
 
 export type InternalCheckOptions = {

@@ -27,6 +27,8 @@ export type Flags = {
 	urlRewriteSearch?: string;
 	urlRewriteReplace?: string;
 	header?: string[];
+	statusCode?: string | string[];
+	statusCodes?: Record<string, string>;
 };
 
 const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
