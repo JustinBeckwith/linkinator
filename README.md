@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/justinbeckwith-linkinator-badge.png)](https://mseep.ai/app/justinbeckwith-linkinator)
+
 # 🐿 linkinator
 
 > A super simple site crawler and broken link checker.
