@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.4.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.0...linkinator-v7.4.1) (2025-10-31)
+
+
+### Bug Fixes
+
+* add GitHub-style heading IDs for markdown fragment validation ([#735](https://github.com/JustinBeckwith/linkinator/issues/735)) ([9516653](https://github.com/JustinBeckwith/linkinator/commit/9516653362afdab825b3f2b0b752aea726bf8f97))
+
 ## [7.4.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.3.0...linkinator-v7.4.0) (2025-10-29)
 
 
