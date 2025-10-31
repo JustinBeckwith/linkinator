@@ -5,8 +5,12 @@ import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import escapeHtml from 'escape-html';
 import { marked } from 'marked';
+import { gfmHeadingId } from 'marked-gfm-heading-id';
 import mime from 'mime';
 import enableDestroy from 'server-destroy';
+
+// Configure marked to generate GitHub-style heading IDs for fragment validation
+marked.use(gfmHeadingId());
 
 export type WebServerOptions = {
 	// The local path that should be mounted as a static web server

@@ -28,6 +28,7 @@
 		"glob": "^10.3.10",
 		"htmlparser2": "^10.0.0",
 		"marked": "^16.0.0",
+		"marked-gfm-heading-id": "^4.1.2",
 		"meow": "^14.0.0",
 		"mime": "^4.0.0",
 		"server-destroy": "^1.0.1",

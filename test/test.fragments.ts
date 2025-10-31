@@ -335,6 +335,49 @@ describe('fragment identifier validation', () => {
 		).toHaveLength(0);
 	});
 
+	it('should validate fragments in markdown files with GitHub-style heading IDs', async () => {
+		// This test verifies that markdown headings get proper id attributes
+		// e.g., ## Authoring -> <h2 id="authoring">Authoring</h2>
+		const results = await check({
+			path: 'test/fixtures/fragments-markdown',
+			markdown: true,
+			checkFragments: true,
+		});
+
+		// Should pass - markdown headings generate lowercase hyphenated IDs
+		expect(results.passed).toBe(true);
+
+		// Both fragment links should be valid
+		expect(
+			results.links.filter(
+				(l) =>
+					(l.url.includes('#authoring') || l.url.includes('#examples')) &&
+					l.state === LinkState.BROKEN,
+			),
+		).toHaveLength(0);
+	});
+
+	it('should mark invalid markdown fragments as broken', async () => {
+		const results = await check({
+			path: 'test/fixtures/fragments-markdown-invalid',
+			markdown: true,
+			checkFragments: true,
+		});
+
+		// Should fail - fragment doesn't exist
+		expect(results.passed).toBe(false);
+
+		// Find the broken fragment link
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#nonexistent'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect(fragmentResult?.failureDetails?.[0]).toBeInstanceOf(Error);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#nonexistent' not found on page",
+		);
+	});
+
 	describe('validateFragments', () => {
 		it('should validate fragments against HTML content', async () => {
 			const html = `
