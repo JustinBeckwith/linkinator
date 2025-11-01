@@ -53,15 +53,27 @@
 		"build/src"
 	],
 	"keywords": [
+		"broken link checker",
+		"link checker",
+		"dead link checker",
+		"link validator",
+		"url validator",
+		"broken links",
+		"dead links",
 		"404",
+		"crawler",
+		"spider",
 		"html",
 		"hyperlink",
 		"links",
 		"seo",
+		"seo tools",
+		"website validator",
+		"link tester",
 		"url",
-		"broken link checker",
 		"broken",
 		"link",
-		"checker"
+		"checker",
+		"validator"
 	]
 }

@@ -1,6 +1,6 @@
-# 🐿 linkinator
+# 🐿 linkinator - Broken Link Checker
 
-> A super simple site crawler and broken link checker.
+> A super simple site crawler and broken link checker for websites, documentation, and local files.
 
 ![linkinator](https://raw.githubusercontent.com/JustinBeckwith/linkinator/main/site/linkinator.webp)
 
@@ -9,7 +9,9 @@
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079)](https://github.com/semantic-release/semantic-release)
 
-Behold my latest inator! The `linkinator` provides an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
+**Linkinator** is a powerful broken link checker that crawls websites and validates all links automatically. Whether you're checking a live website, local HTML files, or markdown documentation, this link checker tool will find broken links, dead links, and invalid URLs quickly and efficiently.
+
+This link validator is perfect for SEO audits, quality assurance, continuous integration, and maintaining healthy websites. The `linkinator` broken link checker provides both an API and CLI for crawling websites and validating links.  It's got a ton of sweet features:
 
 - 🔥 Easily perform scans on remote sites or local files
 - 🔥 Scan any element that includes links, not just `<a href>`
