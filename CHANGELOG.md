@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.4.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.1...linkinator-v7.4.2) (2025-11-04)
+
+
+### Bug Fixes
+
+* ensure --allow-insecure-certs works on native builds ([#740](https://github.com/JustinBeckwith/linkinator/issues/740)) ([c4d02ca](https://github.com/JustinBeckwith/linkinator/commit/c4d02caa359fc2d5f171b3ff4f7b7bd9bba11590))
+
 ## [7.4.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.0...linkinator-v7.4.1) (2025-10-31)
 
 
