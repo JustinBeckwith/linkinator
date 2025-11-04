@@ -185,6 +185,14 @@ async function main() {
 		);
 	}
 
+	// This is a workaround for a bug in bun where the `dispatcher` option in
+	// `fetch` is not respected. This causes the `allowInsecureCerts` option to
+	// be ignored. By setting the `NODE_TLS_REJECT_UNAUTHORIZED` environment
+	// variable to '0', we can bypass certificate validation for all requests.
+	if (flags.allowInsecureCerts) {
+		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+	}
+
 	const start = Date.now();
 	const verbosity = parseVerbosity(flags);
 	const format = parseFormat(flags);
