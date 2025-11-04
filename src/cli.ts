@@ -167,6 +167,13 @@ const cli = meow(
 
 let flags: Flags;
 
+function isBunExecutable() {
+	// When compiled with `bun build --compile`, process.argv[0] is typically "bun".
+	// When run directly with `bun`, process.argv[0] is the path to the bun executable.
+	// This check assumes that the compiled executable itself is not named "bun".
+	return process.argv[0] === 'bun';
+}
+
 async function main() {
 	if (cli.input.length === 0) {
 		cli.showHelp();
@@ -189,7 +196,10 @@ async function main() {
 	// `fetch` is not respected. This causes the `allowInsecureCerts` option to
 	// be ignored. By setting the `NODE_TLS_REJECT_UNAUTHORIZED` environment
 	// variable to '0', we can bypass certificate validation for all requests.
-	if (flags.allowInsecureCerts) {
+	if (flags.allowInsecureCerts && isBunExecutable()) {
+		console.warn(
+			'Info: Certificate validation is being bypassed for this run due to --allow-insecure-certs flag in a bun executable environment. This is a workaround for a known bun issue.',
+		);
 		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 	}
 
