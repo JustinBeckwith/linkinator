@@ -1,6 +1,9 @@
 import { Readable } from 'node:stream';
 import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
+import schemaOrgUrlFields from './schema-org-url-fields.json' with {
+	type: 'json',
+};
 
 const linksAttribute: Record<string, string[]> = {
 	background: ['body'],
@@ -70,6 +73,8 @@ export async function getLinks(
 	const links: ParsedUrl[] = [];
 	let isInStyleTag = false;
 	let styleTagContent = '';
+	let isJsonLd = false;
+	let jsonLdContent = '';
 
 	const parser = new WritableStream({
 		onopentag(tag: string, attributes: Record<string, string>) {
@@ -83,6 +88,11 @@ export async function getLinks(
 			if (tag === 'style' && checkCss) {
 				isInStyleTag = true;
 				styleTagContent = '';
+			}
+
+			if (tag === 'script' && attributes.type === 'application/ld+json') {
+				isJsonLd = true;
+				jsonLdContent = '';
 			}
 
 			// ignore href properties for link tags where rel is likely to fail
@@ -133,6 +143,10 @@ export async function getLinks(
 			if (isInStyleTag) {
 				styleTagContent += text;
 			}
+			// Collect text content when inside a JSON-LD <script> tag
+			if (isJsonLd) {
+				jsonLdContent += text;
+			}
 		},
 		onclosetag(tag: string) {
 			// When we close a <style> tag, extract URLs from the collected CSS
@@ -143,6 +157,19 @@ export async function getLinks(
 					links.push(parseLink(url, realBaseUrl));
 				}
 				styleTagContent = '';
+			}
+			if (tag === 'script' && isJsonLd) {
+				isJsonLd = false;
+				try {
+					const json = JSON.parse(jsonLdContent);
+					const urls = extractLinksFromJson(json, undefined);
+					for (const url of urls) {
+						links.push(parseLink(url, realBaseUrl));
+					}
+				} catch {
+					// Silently ignore JSON parsing errors
+				}
+				jsonLdContent = '';
 			}
 		},
 	});
@@ -275,6 +302,52 @@ function extractUrlsFromCss(css: string): string[] {
 	}
 
 	return urls;
+}
+
+/**
+ * Extracts URLs from JSON-LD content.  I took the approach of only
+ * extracting URLs from known schema.org fields that are expected to contain URLs.
+ * In the future, we may consider validating non-schema.org fields, or moving
+ * towards a more fuzzy logic for idenfiying potential URLs.
+ */
+function extractLinksFromJson(json: unknown, parentKey?: string): string[] {
+	const links: string[] = [];
+	if (!json || typeof json !== 'object') {
+		// If it's a string and we have a parentKey, check if it's a URL field
+		if (
+			typeof json === 'string' &&
+			parentKey &&
+			schemaOrgUrlFields.includes(parentKey)
+		) {
+			try {
+				new URL(json);
+				links.push(json);
+			} catch (_e) {
+				// Not a valid URL
+			}
+		}
+		return links;
+	}
+
+	for (const key in json as Record<string, unknown>) {
+		const value = (json as Record<string, unknown>)[key];
+		if (typeof value === 'string' && schemaOrgUrlFields.includes(key)) {
+			try {
+				new URL(value);
+				links.push(value);
+			} catch (_e) {
+				// Not a valid URL.
+			}
+		} else if (Array.isArray(value)) {
+			for (const item of value) {
+				links.push(...extractLinksFromJson(item, key)); // Pass the key down
+			}
+		} else if (typeof value === 'object') {
+			links.push(...extractLinksFromJson(value, key)); // Pass the key down
+		}
+	}
+
+	return links;
 }
 
 /**
