@@ -12,7 +12,6 @@
 		"linkinator": "./build/src/cli.js"
 	},
 	"scripts": {
-		"pretest": "npm run build",
 		"prepare": "husky && npm run build",
 		"coverage": "vitest run --coverage",
 		"build": "tsc -p .",
@@ -20,7 +19,8 @@
 		"test": "vitest",
 		"fix": "biome check --write .",
 		"lint": "biome check .",
-		"docs-test": "node build/src/cli.js ./README.md"
+		"docs-test": "node build/src/cli.js ./README.md",
+		"update-schema-org-types": "node src/tools/update-schema-org-types.ts"
 	},
 	"dependencies": {
 		"chalk": "^5.0.0",

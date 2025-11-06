@@ -302,6 +302,7 @@ Or configure it in your `linkinator.config.json`:
 ```
 
 Available actions:
+
 - **`ok`** - Treat as success (link passes)
 - **`warn`** - Treat as success but emit a warning message
 - **`skip`** - Ignore the link entirely (like bot-protected links)
@@ -355,9 +356,12 @@ This will automatically configure the MCP server for Claude Desktop, Claude Code
 **Usage:**
 
 Once installed, you can check links through natural language:
-- "Check all links on https://example.com"
-- "Scan my documentation recursively and validate anchor fragments"
-- "Check local files at /path/to/docs"
+
+```text
+> Check all links on https://example.com
+> Scan my documentation recursively and validate anchor fragments
+> Check local files at /path/to/docs
+```
 
 For more details and manual configuration options, visit [JustinBeckwith/linkinator-mcp](https://github.com/JustinBeckwith/linkinator-mcp).
 
@@ -381,6 +385,7 @@ where the server is started.  Defaults to the path passed in `path`.
 - `directoryListing` (boolean) - Automatically serve a static file listing page when serving a directory.  Defaults to `false`.
 - `cleanUrls` (boolean) - Enable clean URLs (extensionless links). When enabled, links like `/about` will automatically resolve to `/about.html` if the file exists. Mimics behavior of modern static hosting platforms like Vercel. Defaults to `false`.
 - `urlRewriteExpressions` (array) - Collection of objects that contain a search pattern, and replacement. Use this to rewrite URLs before they are checked. For example, to rewrite a production URL to a local development URL:
+
   ```javascript
   urlRewriteExpressions: [
     {
@@ -389,6 +394,7 @@ where the server is started.  Defaults to the path passed in `path`.
     }
   ]
   ```
+
 - `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
 - `headers` (object) - Custom HTTP headers to include in all requests. Object with header names as keys and values as strings. These headers are merged with the default headers (including User-Agent). Example: `{ 'Authorization': 'Bearer token', 'X-Custom': 'value' }`.
 
@@ -598,6 +604,10 @@ npx linkinator "**/*.md" --markdown
 ```
 
 Without the quotes, some shells will attempt to expand the glob paths on their own.  Various shells (bash, zsh) have different, somewhat unpredictable behaviors when left to their own devices.  Using the quotes ensures consistent, predictable behavior by letting the library expand the pattern.
+
+### JSON-LD
+
+This library now scans [JSON-LD](https://json-ld.org/) scripts, verifying URLs that are pre-defined by <https://schema.org>.
 
 ### Debugging
 

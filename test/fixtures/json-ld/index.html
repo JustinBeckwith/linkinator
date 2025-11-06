@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JSON-LD Test</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Article headline",
+    "image": [
+      "https://example.invalid/photos/1x1/photo.jpg",
+      "https://example.invalid/photos/4x3/photo.jpg",
+      "http://example.invalid/photos/16x9/photo.jpg"
+    ],
+    "author": {
+      "@type": "Person",
+      "name": "John Doe",
+      "url": "https://example.invalid/johndoe"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Google",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://example.invalid/logo.jpg"
+      }
+    }
+  }
+  </script>
+</head>
+<body>
+  <a href="https://example.invalid/regular-link">A regular link</a>
+</body>
+</html>
