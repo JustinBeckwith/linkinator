@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.5.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.2...linkinator-v7.5.0) (2025-11-06)
+
+
+### Features
+
+* add support for scanning JSON-LD ([#742](https://github.com/JustinBeckwith/linkinator/issues/742)) ([6e82632](https://github.com/JustinBeckwith/linkinator/commit/6e82632286ed26a13a432b12674fa6151d25957b))
+
 ## [7.4.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.1...linkinator-v7.4.2) (2025-11-04)
 
 
