@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.5.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.0...linkinator-v7.5.1) (2025-11-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v17 ([#744](https://github.com/JustinBeckwith/linkinator/issues/744)) ([57306c5](https://github.com/JustinBeckwith/linkinator/commit/57306c576993b6a84da54e92e0ec1e734847379d))
+
 ## [7.5.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.2...linkinator-v7.5.0) (2025-11-06)
 
 
