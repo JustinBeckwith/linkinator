@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import http from 'node:http';
 import util from 'node:util';
 import { execa } from 'execa';
-import enableDestroy from 'server-destroy';
 import stripAnsi from 'strip-ansi';
 import { afterEach, assert, describe, it } from 'vitest';
 import { type LinkResult, LinkState } from '../src/index.js';
@@ -18,7 +17,9 @@ describe('cli', () => {
 
 	afterEach(async () => {
 		if (server) {
-			await util.promisify(server.destroy)();
+			const close = util.promisify(server.close.bind(server))();
+			server.closeAllConnections();
+			await close;
 			server = undefined as unknown as http.Server;
 		}
 	});
@@ -317,7 +318,6 @@ describe('cli', () => {
 
 			response.end();
 		});
-		enableDestroy(server);
 		await new Promise<void>((r) => {
 			server.listen(port, r);
 		});

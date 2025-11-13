@@ -7,7 +7,6 @@ import escapeHtml from 'escape-html';
 import { marked } from 'marked';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
 import mime from 'mime';
-import enableDestroy from 'server-destroy';
 
 // Configure marked to generate GitHub-style heading IDs for fragment validation
 marked.use(gfmHeadingId());
@@ -45,8 +44,24 @@ export async function startWebServer(options: WebServerOptions) {
 			const addr = server.address() as AddressInfo;
 			options.port = addr.port;
 		}
+	});
+}
 
-		enableDestroy(server);
+/**
+ * Stop the given web server
+ * @param server The server instance to stop
+ * @returns Promise that resolves when the server is fully stopped
+ */
+export async function stopWebServer(server: http.Server) {
+	return new Promise<void>((resolve, reject) => {
+		server.close((err) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve();
+			}
+		});
+		server.closeAllConnections();
 	});
 }
 
