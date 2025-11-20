@@ -25,7 +25,7 @@
 	"dependencies": {
 		"chalk": "^5.0.0",
 		"escape-html": "^1.0.3",
-		"glob": "^11.0.0",
+		"glob": "^13.0.0",
 		"htmlparser2": "^10.0.0",
 		"marked": "^17.0.0",
 		"marked-gfm-heading-id": "^4.1.3",
