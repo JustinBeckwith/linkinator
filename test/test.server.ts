@@ -3,7 +3,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fetch as undiciFetch } from 'undici';
 import { afterAll, assert, beforeAll, describe, it } from 'vitest';
-import { startWebServer } from '../src/server.js';
+import { startWebServer, stopWebServer } from '../src/server.js';
 
 describe('server', () => {
 	let server: Server;
@@ -18,8 +18,8 @@ describe('server', () => {
 		const addr = server.address() as AddressInfo;
 		rootUrl = `http://localhost:${addr.port}`;
 	});
-	afterAll(() => {
-		server.destroy();
+	afterAll(async () => {
+		await stopWebServer(server);
 	});
 
 	it('should serve basic file', async () => {
@@ -113,8 +113,8 @@ describe('server with cleanUrls', () => {
 		rootUrl = `http://localhost:${addr.port}`;
 	});
 
-	afterAll(() => {
-		server.destroy();
+	afterAll(async () => {
+		await stopWebServer(server);
 	});
 
 	it('should resolve extensionless URL to .html file', async () => {
@@ -187,8 +187,8 @@ describe('server without cleanUrls', () => {
 		rootUrl = `http://localhost:${addr.port}`;
 	});
 
-	afterAll(() => {
-		server.destroy();
+	afterAll(async () => {
+		await stopWebServer(server);
 	});
 
 	it('should NOT resolve extensionless URL when cleanUrls is disabled', async () => {
