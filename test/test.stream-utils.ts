@@ -1,6 +1,11 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { bufferStream, toNodeReadable } from '../src/stream-utils.js';
+import { resetSharedAgents } from '../src/index.js';
+import {
+	bufferStream,
+	drainStream,
+	toNodeReadable,
+} from '../src/stream-utils.js';
 
 describe('stream utilities', () => {
 	describe('toNodeReadable', () => {
@@ -57,6 +62,58 @@ describe('stream utilities', () => {
 			const result = await bufferStream(stream);
 			expect(result).toBeInstanceOf(Buffer);
 			expect(result.toString()).toBe('hello world');
+		});
+	});
+
+	describe('drainStream', () => {
+		it('should handle undefined body', async () => {
+			await expect(drainStream(undefined)).resolves.toBeUndefined();
+		});
+
+		it('should drain a Web ReadableStream by canceling it', async () => {
+			let canceled = false;
+			const webStream = new ReadableStream({
+				start(controller) {
+					controller.enqueue('data');
+				},
+				cancel() {
+					canceled = true;
+				},
+			});
+			await drainStream(webStream);
+			expect(canceled).toBe(true);
+		});
+
+		it('should drain a Node.js Readable stream by destroying it', async () => {
+			let destroyed = false;
+			const nodeStream = new Readable({
+				read() {
+					this.push('data');
+				},
+				destroy(_err, callback) {
+					destroyed = true;
+					callback(null);
+				},
+			});
+			await drainStream(nodeStream);
+			expect(destroyed).toBe(true);
+		});
+
+		it('should handle errors gracefully when draining', async () => {
+			// Create a stream that throws when canceled
+			const errorStream = {
+				cancel: () => Promise.reject(new Error('Cancel failed')),
+			} as unknown as ReadableStream;
+			// Should not throw
+			await expect(drainStream(errorStream)).resolves.toBeUndefined();
+		});
+	});
+
+	describe('resetSharedAgents', () => {
+		it('should reset the shared agent state', () => {
+			// This function is primarily for testing purposes
+			// Just verify it can be called without errors
+			expect(() => resetSharedAgents()).not.toThrow();
 		});
 	});
 });
