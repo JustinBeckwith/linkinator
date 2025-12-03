@@ -729,12 +729,15 @@ export class LinkChecker extends EventEmitter {
 					options.queue.add(() => checkPromise);
 				} else {
 					// URL is being checked or has been checked
-					// Wait for the existing check to complete, then reuse the result
+					// Only report duplicate results for BROKEN links so users can see
+					// all parents that reference broken URLs. For OK/SKIPPED links,
+					// we don't need to report them multiple times as this causes
+					// massive result inflation for heavily interlinked sites.
 					const urlHref = result.url.href;
 					const parentHref = options.url.href;
 					const pendingCheck = options.pendingChecks.get(urlHref);
 
-					// Always queue the reuse operation to ensure proper sequencing
+					// Queue the reuse operation to check if the link is broken
 					options.queue.add(async () => {
 						// If there's a pending check, wait for it
 						if (pendingCheck) {
@@ -746,7 +749,8 @@ export class LinkChecker extends EventEmitter {
 							(r) => r.url === mapUrl(urlHref, options.checkOptions),
 						);
 
-						if (cachedResult) {
+						// Only emit duplicate results for BROKEN links
+						if (cachedResult && cachedResult.state === LinkState.BROKEN) {
 							const reusedResult: LinkResult = {
 								url: cachedResult.url,
 								status: cachedResult.status,
