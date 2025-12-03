@@ -3,8 +3,45 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import { Agent } from 'undici';
+import { Agent, type RequestInit, fetch as undiciFetch } from 'undici';
 import { getCssLinks, getLinks, validateFragments } from './links.js';
+
+// Shared HTTP agent for insecure certificate requests.
+// Using a single shared agent prevents port exhaustion from creating
+// new agents per request (which was the original bug).
+let sharedInsecureAgent: Agent | undefined;
+
+/**
+ * Reset the shared insecure HTTP agent. This is primarily useful for testing
+ * to ensure a fresh agent state between tests.
+ */
+export function resetSharedAgents(): void {
+	sharedInsecureAgent = undefined;
+}
+
+/**
+ * Get or create a shared HTTP agent that accepts insecure certificates.
+ * This is used when allowInsecureCerts is enabled to bypass certificate
+ * validation while still maintaining connection pooling.
+ * @param _allowInsecureCerts Always true when called (parameter kept for clarity)
+ * @returns The shared insecure agent instance
+ */
+function getSharedAgent(_allowInsecureCerts: boolean): Agent {
+	if (!sharedInsecureAgent) {
+		sharedInsecureAgent = new Agent({
+			connect: {
+				rejectUnauthorized: false,
+			},
+			// Keep connections alive for reuse
+			keepAliveTimeout: 30_000,
+			keepAliveMaxTimeout: 60_000,
+			// Allow multiple connections per host for concurrency
+			connections: 100,
+		});
+	}
+	return sharedInsecureAgent;
+}
+
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -13,7 +50,7 @@ import {
 } from './options.js';
 import { Queue } from './queue.js';
 import { startWebServer } from './server.js';
-import { bufferStream, toNodeReadable } from './stream-utils.js';
+import { bufferStream, drainStream, toNodeReadable } from './stream-utils.js';
 import { normalizeBaseUrl } from './url-utils.js';
 
 export { getConfig } from './config.js';
@@ -765,6 +802,11 @@ export class LinkChecker extends EventEmitter {
 				}
 			}
 		}
+
+		// Drain any unconsumed response body to release the connection back to the pool.
+		// This is critical for preventing port exhaustion - if the body isn't consumed,
+		// the underlying TCP connection may not be reused.
+		await drainStream(response?.body);
 	}
 
 	/**
@@ -1002,19 +1044,20 @@ async function makeRequest(
 		requestOptions.signal = AbortSignal.timeout(options.timeout);
 	}
 
-	// If allowInsecureCerts is enabled, use a custom undici dispatcher
-	// that doesn't validate certificates
-	if (options.allowInsecureCerts) {
-		const agent = new Agent({
-			connect: {
-				rejectUnauthorized: false,
-			},
-		});
-		// @ts-expect-error - dispatcher is a valid option for fetch in Node.js but not in the types
-		requestOptions.dispatcher = agent;
-	}
-
-	const response = await fetch(url, requestOptions);
+	// For normal requests, use native fetch which uses the global dispatcher
+	// with built-in connection pooling. This also ensures the Node.js default
+	// User-Agent ('node') is used and allows tests to mock via setGlobalDispatcher.
+	//
+	// For insecure cert requests, we must use undiciFetch with a custom
+	// dispatcher because the global dispatcher doesn't support disabling
+	// certificate validation. We use a shared agent to prevent port exhaustion
+	// from creating new agents per request (which was the original bug).
+	const response = options.allowInsecureCerts
+		? await undiciFetch(url, {
+				...requestOptions,
+				dispatcher: getSharedAgent(true),
+			})
+		: await fetch(url, requestOptions as globalThis.RequestInit);
 
 	// Convert headers to a plain object
 	const headers: Record<string, string> = {};
