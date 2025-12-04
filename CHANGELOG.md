@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.5.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.0...linkinator-v7.5.1) (2025-12-04)
+
+
+### Bug Fixes
+
+* **deps:** update dependency glob to v11 [security] ([#748](https://github.com/JustinBeckwith/linkinator/issues/748)) ([b9f6660](https://github.com/JustinBeckwith/linkinator/commit/b9f6660d6366963fc6a0a59d9a765817361d0490))
+* **deps:** update dependency glob to v13 ([#751](https://github.com/JustinBeckwith/linkinator/issues/751)) ([de4f2df](https://github.com/JustinBeckwith/linkinator/commit/de4f2dff8219f7a23e770489783aaf7e656fac3a))
+* **deps:** update dependency marked to v17 ([#744](https://github.com/JustinBeckwith/linkinator/issues/744)) ([57306c5](https://github.com/JustinBeckwith/linkinator/commit/57306c576993b6a84da54e92e0ec1e734847379d))
+* handle unhandled promise rejections in retry behavior ([#754](https://github.com/JustinBeckwith/linkinator/issues/754)) ([#757](https://github.com/JustinBeckwith/linkinator/issues/757)) ([e16ce35](https://github.com/JustinBeckwith/linkinator/commit/e16ce3509008d47ec8075f7afeb06085952628d1))
+* only report duplicate results for broken links ([#750](https://github.com/JustinBeckwith/linkinator/issues/750)) ([#755](https://github.com/JustinBeckwith/linkinator/issues/755)) ([6941006](https://github.com/JustinBeckwith/linkinator/commit/6941006b2f95ba4746c0c7670560b4bb2e9a4767))
+* prevent port exhaustion by reusing HTTP agents ([#753](https://github.com/JustinBeckwith/linkinator/issues/753)) ([#756](https://github.com/JustinBeckwith/linkinator/issues/756)) ([a8f7605](https://github.com/JustinBeckwith/linkinator/commit/a8f7605b67d8b78877d07878431ddb2209de1a25))
+
 ## [7.5.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.4.2...linkinator-v7.5.0) (2025-11-06)
 
 
