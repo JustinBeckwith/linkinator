@@ -640,4 +640,9 @@ function shouldShowResult(link: LinkResult, verbosity: LogLevel) {
 	}
 }
 
-await main();
+try {
+	await main();
+} catch (error) {
+	console.error(error instanceof Error ? error.message : error);
+	gracefulExit(1);
+}
