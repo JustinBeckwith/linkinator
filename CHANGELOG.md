@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.5.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.1...linkinator-v7.5.2) (2025-12-26)
+
+
+### Bug Fixes
+
+* exclude local static server from requireHttps enforcement ([#762](https://github.com/JustinBeckwith/linkinator/issues/762)) ([0805320](https://github.com/JustinBeckwith/linkinator/commit/0805320c24a703fc80468071338e352864ad0747))
+* make --version flag work in compiled binaries ([#760](https://github.com/JustinBeckwith/linkinator/issues/760)) ([455fd37](https://github.com/JustinBeckwith/linkinator/commit/455fd373bc6fa7220ef51f75e44fdf9df6294edb))
+
 ## [7.5.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.0...linkinator-v7.5.1) (2025-12-04)
 
 
