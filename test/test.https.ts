@@ -192,7 +192,7 @@ describe('https enforcement', () => {
 
 			// Find the local file link (other.html)
 			const localLink = results.links.find((link) =>
-				link.url.includes('other.html'),
+				link.url.endsWith('other.html'),
 			);
 			assert.ok(localLink, 'Should find the local link to other.html');
 			assert.strictEqual(
@@ -202,8 +202,8 @@ describe('https enforcement', () => {
 			);
 
 			// Find the external HTTP link (example.com)
-			const externalHttpLink = results.links.find((link) =>
-				link.url.includes('example.com'),
+			const externalHttpLink = results.links.find(
+				(link) => link.url === 'http://example.com/',
 			);
 			assert.ok(externalHttpLink, 'Should find the external HTTP link');
 			assert.strictEqual(
@@ -235,11 +235,11 @@ describe('https enforcement', () => {
 			// Should have warning for external HTTP link but not for local static server
 			assert.ok(warnings.length > 0, 'Should have at least one warning');
 			assert.ok(
-				warnings.some((w) => w.url.includes('example.com')),
+				warnings.some((w) => w.url === 'http://example.com/'),
 				'Should warn about external HTTP link',
 			);
 			assert.ok(
-				!warnings.some((w) => w.url.includes('other.html')),
+				!warnings.some((w) => w.url.endsWith('other.html')),
 				'Should not warn about local static server links',
 			);
 		});
