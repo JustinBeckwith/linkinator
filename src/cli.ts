@@ -3,6 +3,7 @@
 import process from 'node:process';
 import chalk from 'chalk';
 import meow from 'meow';
+import packageJson from '../package.json' with { type: 'json' };
 import { type Flags, getConfig } from './config.js';
 import {
 	type CheckOptions,
@@ -50,6 +51,9 @@ const cli = meow(
 
 		--help
 			Show this command.
+
+		--version
+			Show the version number.
 
 		--markdown
 			Automatically parse and scan markdown if scanning from a location on disk.
@@ -134,6 +138,7 @@ const cli = meow(
 `,
 	{
 		importMeta: import.meta,
+		version: packageJson.version,
 		flags: {
 			config: { type: 'string' },
 			concurrency: { type: 'number' },
