@@ -54,6 +54,14 @@ describe('cli', () => {
 		assert.match(response.stdout, /\$ linkinator LOCATION \[ --arguments ]/);
 	});
 
+	it('should show version when --version flag is used', async () => {
+		const response = await execa(node, [linkinator, '--version']);
+		const pkg = JSON.parse(
+			fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+		) as { version: string };
+		assert.strictEqual(response.stdout.trim(), pkg.version);
+	});
+
 	it('should flag skipped links', async () => {
 		const response = await execa(node, [
 			linkinator,
