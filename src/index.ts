@@ -113,7 +113,7 @@ type CrawlOptions = {
 	pendingChecks: Map<string, Promise<void>>;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
-	checkOptions: CheckOptions;
+	checkOptions: InternalCheckOptions;
 	queue: Queue;
 	rootPath: string;
 	retry: boolean;
@@ -560,14 +560,27 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		// Handle HTTPS enforcement
+		// Skip enforcement for our own local static server since it can't use HTTPS
 		const isHttpUrl = originalUrl.startsWith('http://');
-		if (isHttpUrl && options.checkOptions.requireHttps === 'error') {
+		const isLocalStaticServer =
+			options.checkOptions.staticHttpServerHost &&
+			originalUrl.startsWith(options.checkOptions.staticHttpServerHost);
+
+		if (
+			isHttpUrl &&
+			!isLocalStaticServer &&
+			options.checkOptions.requireHttps === 'error'
+		) {
 			// Treat HTTP as broken in error mode
 			state = LinkState.BROKEN;
 			failures.push(
 				new Error(`HTTP link detected (${originalUrl}) but HTTPS is required`),
 			);
-		} else if (isHttpUrl && options.checkOptions.requireHttps === 'warn') {
+		} else if (
+			isHttpUrl &&
+			!isLocalStaticServer &&
+			options.checkOptions.requireHttps === 'warn'
+		) {
 			// Emit warning about HTTP link in warn mode
 			this.emit('httpInsecure', {
 				url: originalUrl,
