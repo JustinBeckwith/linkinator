@@ -181,4 +181,67 @@ describe('https enforcement', () => {
 			}
 		});
 	});
+
+	describe('local file scanning with requireHttps', () => {
+		it('should not flag local static server URLs as broken', async () => {
+			const results = await check({
+				path: 'test/fixtures/require-https/index.html',
+				recurse: false,
+				requireHttps: 'error',
+			});
+
+			// Find the local file link (other.html)
+			const localLink = results.links.find((link) =>
+				link.url.includes('other.html'),
+			);
+			assert.ok(localLink, 'Should find the local link to other.html');
+			assert.strictEqual(
+				localLink.state,
+				LinkState.OK,
+				'Local static server links should not be flagged as HTTPS violations',
+			);
+
+			// Find the external HTTP link (example.com)
+			const externalHttpLink = results.links.find((link) =>
+				link.url.includes('example.com'),
+			);
+			assert.ok(externalHttpLink, 'Should find the external HTTP link');
+			assert.strictEqual(
+				externalHttpLink.state,
+				LinkState.BROKEN,
+				'External HTTP links should still be flagged when requireHttps is error',
+			);
+		});
+
+		it('should emit warnings for external HTTP but not local static server', async () => {
+			const warnings: HttpInsecureInfo[] = [];
+			const checker = new LinkChecker();
+
+			checker.on('httpInsecure', (info) => {
+				warnings.push(info);
+			});
+
+			const results = await checker.check({
+				path: 'test/fixtures/require-https/index.html',
+				recurse: false,
+				requireHttps: 'warn',
+			});
+
+			// All links should be OK in warn mode
+			for (const link of results.links) {
+				assert.strictEqual(link.state, LinkState.OK);
+			}
+
+			// Should have warning for external HTTP link but not for local static server
+			assert.ok(warnings.length > 0, 'Should have at least one warning');
+			assert.ok(
+				warnings.some((w) => w.url.includes('example.com')),
+				'Should warn about external HTTP link',
+			);
+			assert.ok(
+				!warnings.some((w) => w.url.includes('other.html')),
+				'Should not warn about local static server links',
+			);
+		});
+	});
 });
