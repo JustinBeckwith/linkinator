@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.5.3](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.2...linkinator-v7.5.3) (2025-12-27)
+
+
+### Bug Fixes
+
+* include build/package.json in npm package ([#764](https://github.com/JustinBeckwith/linkinator/issues/764)) ([1f83f3b](https://github.com/JustinBeckwith/linkinator/commit/1f83f3bbf8553812879d48ce3c8b016964a75cbf))
+
 ## [7.5.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.1...linkinator-v7.5.2) (2025-12-26)
 
 
