@@ -50,7 +50,8 @@
 		"node": ">=20"
 	},
 	"files": [
-		"build/src"
+		"build/src",
+		"build/package.json"
 	],
 	"keywords": [
 		"broken link checker",
