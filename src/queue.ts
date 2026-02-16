@@ -80,10 +80,16 @@ export class Queue extends EventEmitter {
 			if (item.timeToRun <= Date.now()) {
 				// This function is ready to go!
 				this.activeFunctions++;
-				item.fn().finally(() => {
-					this.activeFunctions--;
-					this.tick();
-				});
+				item
+					.fn()
+					.catch(() => {
+						// Errors are handled within crawl() and stored in results.
+						// Silently catch here to prevent unhandled promise rejections.
+					})
+					.finally(() => {
+						this.activeFunctions--;
+						this.tick();
+					});
 			} else {
 				this.q.push(item);
 			}

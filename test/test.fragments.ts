@@ -378,6 +378,67 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
+	it('should validate same-page fragment links (issue #770)', async () => {
+		const results = await check({
+			path: 'test/fixtures/fragments-same-page',
+			checkFragments: true,
+		});
+
+		// Should fail because nonexistent-section doesn't exist
+		expect(results.passed).toBe(false);
+
+		// Find the broken same-page fragment link
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#nonexistent-section'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#nonexistent-section' not found on page",
+		);
+
+		// Valid same-page fragments should not be reported as broken
+		const validFragments = results.links.filter(
+			(l) =>
+				(l.url.includes('#valid-section') ||
+					l.url.includes('#another-section')) &&
+				l.state === LinkState.BROKEN,
+		);
+		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should validate GitHub-style permalink anchors', async () => {
+		// GitHub adds permalink anchors with both id and href attributes:
+		// <a id="user-content-section-anchor" href="#section">
+		// The href fragment should be considered valid even if the actual
+		// element has a prefixed id like "user-content-section"
+		const results = await check({
+			path: 'test/fixtures/fragments-github-style',
+			checkFragments: true,
+		});
+
+		// Should fail because only #nonexistent doesn't exist
+		expect(results.passed).toBe(false);
+
+		// Valid GitHub-style fragments should pass
+		const validFragmentLinks = results.links.filter(
+			(l) =>
+				(l.url.includes('#section-one') || l.url.includes('#section-two')) &&
+				l.state === LinkState.BROKEN,
+		);
+		expect(validFragmentLinks).toHaveLength(0);
+
+		// Invalid fragment should fail
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#nonexistent'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#nonexistent' not found on page",
+		);
+	});
+
 	describe('validateFragments', () => {
 		it('should validate fragments against HTML content', async () => {
 			const html = `

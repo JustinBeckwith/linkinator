@@ -329,5 +329,41 @@ describe('retries', () => {
 			const results = await checkPromise;
 			assert.ok(!results.passed);
 		});
+
+		it('should handle all retries failing without crashing (issue #754)', async () => {
+			// This test simulates the scenario from issue #754 where retry behavior
+			// causes "unsettled top-level await" crashes. The fix ensures rejected
+			// promises in the queue are properly caught.
+			const mockPool = mockAgent.get('http://example.invalid');
+			// All attempts fail with connection errors (HEAD + GET retries)
+			mockPool
+				.intercept({ path: '/', method: 'HEAD' })
+				.replyWithError(new Error('Connection reset'));
+			mockPool
+				.intercept({ path: '/', method: 'GET' })
+				.replyWithError(new Error('Connection reset'))
+				.times(2);
+
+			const retryCount = { count: 0 };
+			const checker = new LinkChecker().on('retry', () => {
+				retryCount.count++;
+			});
+			const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
+			const checkPromise = checker.check({
+				path: 'test/fixtures/basic',
+				retryErrors: true,
+				retryErrorsCount: 1,
+				retryErrorsJitter: 10,
+			});
+
+			// Advance time enough for all retries to complete
+			await clock.advanceTimersByTime(20000);
+			const results = await checkPromise;
+
+			// Should complete without crashing, with failed link result
+			assert.ok(!results.passed);
+			// Verify retries happened (exact count depends on HEAD/GET fallback)
+			assert.ok(retryCount.count >= 1);
+		});
 	});
 });

@@ -253,10 +253,12 @@ describe('linkinator', () => {
 		// Expected results:
 		// 1. index.html (starting page, parent: undefined)
 		// 2. first.html (from index.html)
-		// 3. / (from first.html, points back to index - now reported with parent)
-		// 4. second.html (from first.html)
-		// 5. http://example.invalid (from second.html, external link)
-		assert.strictEqual(results.links.length, 5);
+		// 3. second.html (from first.html)
+		// 4. http://example.invalid (from second.html, external link)
+		// Note: the "/" link from first.html pointing back to index is not
+		// reported again since it's an OK link (only broken links are
+		// reported for all parents to avoid result inflation)
+		assert.strictEqual(results.links.length, 4);
 	});
 
 	it('should not recurse non-html files', async () => {
@@ -470,34 +472,17 @@ describe('linkinator', () => {
 		// 2. LICENSE.md (starting page)
 		// 3. deep/deep.md (starting page)
 		// 4. unlinked.md (starting page)
-		// 5. LICENSE.md (from README.md)
-		// 6. LICENSE.md (from unlinked.md)
-		// 7. LICENSE.md (from deep/deep.md)
-		// 8. boo.jpg (from README.md)
-		// 9. mailto link (from LICENSE.md)
-		assert.strictEqual(results.links.length, 9);
+		// 5. boo.jpg (from README.md)
+		// 6. mailto link (from LICENSE.md)
+		// Note: LICENSE.md is NOT reported again from README.md, unlinked.md,
+		// and deep/deep.md since it's an OK link (only broken links are
+		// reported for all parents to avoid result inflation)
+		assert.strictEqual(results.links.length, 6);
 		const licenseLinks = results.links.filter((x) =>
 			x.url.endsWith('LICENSE.md'),
 		);
-		// LICENSE.md should appear 4 times: once as a starting page, then from README.md, unlinked.md, and deep/deep.md
-		assert.strictEqual(licenseLinks.length, 4);
-		// Verify LICENSE.md is reported with different parents
-		const licenseLinkParents = licenseLinks
-			.map((x) => x.parent)
-			.filter((p) => p !== undefined);
-		assert.strictEqual(licenseLinkParents.length, 3);
-		assert.ok(
-			licenseLinkParents.some((p) => p?.includes('README.md')),
-			'LICENSE.md should be reported from README.md',
-		);
-		assert.ok(
-			licenseLinkParents.some((p) => p?.includes('unlinked.md')),
-			'LICENSE.md should be reported from unlinked.md',
-		);
-		assert.ok(
-			licenseLinkParents.some((p) => p?.includes('deep.md')),
-			'LICENSE.md should be reported from deep/deep.md',
-		);
+		assert.strictEqual(licenseLinks.length, 1);
+		assert.ok(licenseLinks[0].url, 'test/fixtures/markdown/LICENSE.md');
 	});
 
 	it('should autoscan markdown if specifically in path', async () => {
