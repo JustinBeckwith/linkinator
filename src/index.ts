@@ -660,6 +660,7 @@ export class LinkChecker extends EventEmitter {
 		if (options.crawl && shouldRecurse) {
 			this.emit('pagestart', options.url);
 			let urlResults: Awaited<ReturnType<typeof getLinks>> = [];
+			let htmlContentForFragments: Buffer | undefined;
 			if (response?.body) {
 				// Convert to Node.js Readable stream (handles both Web and Node.js streams)
 				const nodeStream = toNodeReadable(response.body);
@@ -677,11 +678,25 @@ export class LinkChecker extends EventEmitter {
 
 				// Parse HTML or CSS depending on content type
 				if (isHtml(response)) {
-					urlResults = await getLinks(
-						nodeStream,
-						baseUrl,
-						options.checkOptions.checkCss,
-					);
+					// If we're checking fragments, buffer the HTML content so we can validate
+					// same-page fragments after extracting links
+					if (options.checkOptions.checkFragments) {
+						htmlContentForFragments = await bufferStream(nodeStream);
+						// Create a new stream from the buffer for link extraction
+						const { Readable } = await import('node:stream');
+						const linkStream = Readable.from([htmlContentForFragments]);
+						urlResults = await getLinks(
+							linkStream,
+							baseUrl,
+							options.checkOptions.checkCss,
+						);
+					} else {
+						urlResults = await getLinks(
+							nodeStream,
+							baseUrl,
+							options.checkOptions.checkCss,
+						);
+					}
 				} else if (isCss(response) && options.checkOptions.checkCss) {
 					urlResults = await getCssLinks(nodeStream, baseUrl);
 				}
@@ -812,6 +827,50 @@ export class LinkChecker extends EventEmitter {
 							this.emit('link', reusedResult);
 						}
 					});
+				}
+			}
+
+			// Validate same-page fragments that were found during link extraction
+			// These fragments reference the current page and need immediate validation
+			// since the page won't be checked again (it's already in the cache)
+			if (
+				options.checkOptions.checkFragments &&
+				htmlContentForFragments &&
+				response &&
+				isHtml(response) &&
+				state === LinkState.OK
+			) {
+				const samePageFragments = this.fragmentsToCheck.get(options.url.href);
+				if (samePageFragments && samePageFragments.size > 0) {
+					const validationResults = await validateFragments(
+						htmlContentForFragments,
+						samePageFragments,
+					);
+
+					// Emit results for invalid same-page fragments
+					for (const result of validationResults) {
+						if (!result.isValid) {
+							const fragmentResult: LinkResult = {
+								url: mapUrl(
+									`${options.url.href}#${result.fragment}`,
+									options.checkOptions,
+								),
+								status: response.status,
+								state: LinkState.BROKEN,
+								parent: mapUrl(options.parent, options.checkOptions),
+								failureDetails: [
+									new Error(
+										`Fragment identifier '#${result.fragment}' not found on page`,
+									),
+								],
+							};
+							options.results.push(fragmentResult);
+							this.emit('link', fragmentResult);
+						}
+					}
+
+					// Clear the validated fragments to avoid duplicate validation
+					this.fragmentsToCheck.delete(options.url.href);
 				}
 			}
 		}

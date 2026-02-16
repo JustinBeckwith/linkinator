@@ -375,13 +375,14 @@ export async function extractFragmentIds(
 				fragments.add(attributes.name);
 			}
 
-			// Check for href attributes that are fragment-only links (start with #)
-			// This handles GitHub-style anchors where the actual element has id="user-content-foo"
-			// but the href is "#foo"
-			if (_tag === 'a' && attributes.href) {
+			// Check for GitHub-style permalink anchors that have both an id and href
+			// These are self-referential anchors like: <a id="user-content-foo-anchor" href="#foo">
+			// The href indicates that #foo is a valid fragment target
+			// Only add the href fragment if the anchor also has an id (permalink pattern)
+			if (_tag === 'a' && attributes.id && attributes.href) {
 				const href = attributes.href;
 				if (href.startsWith('#') && href.length > 1) {
-					// Extract the fragment (removing the leading #)
+					// This is a permalink anchor - the href indicates a valid fragment
 					fragments.add(href.substring(1));
 				}
 			}
