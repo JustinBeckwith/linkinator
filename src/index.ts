@@ -3,7 +3,12 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import { Agent, type RequestInit, fetch as undiciFetch } from 'undici';
+import {
+	Agent,
+	ProxyAgent,
+	type RequestInit,
+	fetch as undiciFetch,
+} from 'undici';
 import { getCssLinks, getLinks, validateFragments } from './links.js';
 
 // Shared HTTP agent for insecure certificate requests.
@@ -11,12 +16,39 @@ import { getCssLinks, getLinks, validateFragments } from './links.js';
 // new agents per request (which was the original bug).
 let sharedInsecureAgent: Agent | undefined;
 
+// Shared proxy agent, cached per proxy URL to avoid repeated allocations.
+let sharedProxyAgent: ProxyAgent | undefined;
+let cachedProxyUrl: string | undefined;
+
 /**
- * Reset the shared insecure HTTP agent. This is primarily useful for testing
+ * Reset the shared HTTP agents. This is primarily useful for testing
  * to ensure a fresh agent state between tests.
  */
 export function resetSharedAgents(): void {
 	sharedInsecureAgent = undefined;
+	sharedProxyAgent = undefined;
+	cachedProxyUrl = undefined;
+}
+
+/**
+ * Returns the proxy URL from well-known environment variables, or undefined
+ * if none are set. Precedence: https_proxy > HTTPS_PROXY > http_proxy > HTTP_PROXY.
+ */
+function getProxyUrl(): string | undefined {
+	const url =
+		process.env.https_proxy ??
+		process.env.HTTPS_PROXY ??
+		process.env.http_proxy ??
+		process.env.HTTP_PROXY;
+	return url || undefined;
+}
+
+function getSharedProxyAgent(proxyUrl: string): ProxyAgent {
+	if (!sharedProxyAgent || cachedProxyUrl !== proxyUrl) {
+		sharedProxyAgent = new ProxyAgent(proxyUrl);
+		cachedProxyUrl = proxyUrl;
+	}
+	return sharedProxyAgent;
 }
 
 /**
@@ -1124,12 +1156,22 @@ async function makeRequest(
 	// dispatcher because the global dispatcher doesn't support disabling
 	// certificate validation. We use a shared agent to prevent port exhaustion
 	// from creating new agents per request (which was the original bug).
+	//
+	// For proxy requests, Node's native fetch does not automatically read
+	// http_proxy / https_proxy environment variables, so we must explicitly
+	// create a ProxyAgent dispatcher when those env vars are present.
+	const proxyUrl = getProxyUrl();
 	const response = options.allowInsecureCerts
 		? await undiciFetch(url, {
 				...requestOptions,
 				dispatcher: getSharedAgent(true),
 			})
-		: await fetch(url, requestOptions as globalThis.RequestInit);
+		: proxyUrl
+			? await undiciFetch(url, {
+					...requestOptions,
+					dispatcher: getSharedProxyAgent(proxyUrl),
+				})
+			: await fetch(url, requestOptions as globalThis.RequestInit);
 
 	// Convert headers to a plain object
 	const headers: Record<string, string> = {};
