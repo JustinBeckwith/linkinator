@@ -1,6 +1,6 @@
 import http from 'node:http';
-import net from 'node:net';
 import type { AddressInfo } from 'node:net';
+import net from 'node:net';
 import { afterEach, assert, beforeEach, describe, it, vi } from 'vitest';
 import { check, resetSharedAgents } from '../src/index.js';
 
@@ -30,25 +30,20 @@ describe('proxy', () => {
 		// even for plain HTTP targets. The proxy records the tunneled host:port,
 		// then splices the client and target sockets together.
 		proxyServer = http.createServer();
-		proxyServer.on(
-			'connect',
-			(req, clientSocket, head) => {
-				proxiedHosts.push(req.url ?? '');
+		proxyServer.on('connect', (req, clientSocket, head) => {
+			proxiedHosts.push(req.url ?? '');
 
-				const [hostname, portStr] = (req.url ?? '').split(':');
-				const port = Number(portStr) || 80;
-				const targetSocket = net.connect(port, hostname, () => {
-					clientSocket.write(
-						'HTTP/1.1 200 Connection Established\r\n\r\n',
-					);
-					if (head.length > 0) targetSocket.write(head);
-					targetSocket.pipe(clientSocket);
-					clientSocket.pipe(targetSocket);
-				});
-				targetSocket.on('error', () => clientSocket.destroy());
-				clientSocket.on('error', () => targetSocket.destroy());
-			},
-		);
+			const [hostname, portStr] = (req.url ?? '').split(':');
+			const port = Number(portStr) || 80;
+			const targetSocket = net.connect(port, hostname, () => {
+				clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+				if (head.length > 0) targetSocket.write(head);
+				targetSocket.pipe(clientSocket);
+				clientSocket.pipe(targetSocket);
+			});
+			targetSocket.on('error', () => clientSocket.destroy());
+			clientSocket.on('error', () => targetSocket.destroy());
+		});
 		await new Promise<void>((resolve, reject) => {
 			proxyServer.listen(0, () => resolve());
 			proxyServer.on('error', reject);
