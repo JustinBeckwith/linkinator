@@ -33,6 +33,27 @@ Don't have Node.js installed? No problem! Browse all releases at [github.com/Jus
 
 These binaries are completely standalone - no runtime dependencies needed. Just download, make executable (Linux/macOS), and run!
 
+### Docker Usage
+
+Run `linkinator` using Docker with the same commands as the CLI. The image is available on GitHub Container Registry at ghcr.io/justinbeckwith/linkinator.
+
+**Basic Usage:**
+```sh
+docker run ghcr.io/justinbeckwith/linkinator LOCATION [ --arguments ]
+```
+
+**Examples:**
+Check a live website:
+```sh
+docker run ghcr.io/justinbeckwith/linkinator https://jbeckwith.com
+```
+
+Check local files in your current directory (mount your directory as a volume):
+```sh
+docker run -v "$(pwd)":/usr/src/app -w /usr/src/app ghcr.io/justinbeckwith/linkinator . --recurse
+```
+This command mounts your current directory (`$(pwd)`) to `/usr/src/app` inside the container and sets it as the working directory. Then, `linkinator` scans the `.` directory within the container, recursively.
+
 ## Command Usage
 
 You can use this as a library, or as a CLI.  Let's see the CLI!
