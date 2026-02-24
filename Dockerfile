@@ -1,3 +1,5 @@
+# NOTE: This Dockerfile requires a pre-built Linux binary.
+# Run `npm run build-binaries` first, or let CI supply the binary via build-args.
 FROM debian:bookworm-slim
 
 ARG BINARY_PATH=build/binaries/linkinator-linux

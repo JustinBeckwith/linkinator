@@ -42,6 +42,11 @@ Run `linkinator` using Docker with the same commands as the CLI. The image is av
 docker run ghcr.io/justinbeckwith/linkinator LOCATION [ --arguments ]
 ```
 
+For reproducible builds, pin to a specific version:
+```sh
+docker run ghcr.io/justinbeckwith/linkinator:3.4.0 LOCATION [ --arguments ]
+```
+
 **Examples:**
 Check a live website:
 ```sh
