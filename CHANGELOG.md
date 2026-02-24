@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.6.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.3...linkinator-v7.6.0) (2026-02-24)
+
+
+### Features
+
+* build and publish docker images on release ([#773](https://github.com/JustinBeckwith/linkinator/issues/773)) ([0588ab2](https://github.com/JustinBeckwith/linkinator/commit/0588ab29988d6f76f49cd4fcbe3ab9fa1720b718))
+
+
+### Bug Fixes
+
+* add @types/node to devDependencies ([#777](https://github.com/JustinBeckwith/linkinator/issues/777)) ([ec620ab](https://github.com/JustinBeckwith/linkinator/commit/ec620ab1f8461355fd2fc65334043cf384ac02d2))
+* docker image follow-up improvements ([#780](https://github.com/JustinBeckwith/linkinator/issues/780)) ([29ccd7f](https://github.com/JustinBeckwith/linkinator/commit/29ccd7f8155520236a27de9fb357c388d2ddb068))
+* respect http_proxy and https_proxy environment variables ([#778](https://github.com/JustinBeckwith/linkinator/issues/778)) ([6a38f9b](https://github.com/JustinBeckwith/linkinator/commit/6a38f9bfbffa526088da25fd8066e32942db4624))
+* validate same-page fragment links ([#770](https://github.com/JustinBeckwith/linkinator/issues/770)) ([#771](https://github.com/JustinBeckwith/linkinator/issues/771)) ([c2a4476](https://github.com/JustinBeckwith/linkinator/commit/c2a44760d6ad0e40e3a962a98b88d9376d61a076))
+
 ## [7.5.3](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.2...linkinator-v7.5.3) (2025-12-27)
 
 
