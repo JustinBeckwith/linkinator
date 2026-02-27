@@ -49,7 +49,7 @@ jobs:
         run: gh release upload ${{ needs.release-please.outputs.tag_name }} build/binaries/* --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: linkinator-linux
           path: build/binaries/linkinator-linux
@@ -63,7 +63,7 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: linkinator-linux
           path: build/binaries
