@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.6.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.6.0...linkinator-v7.6.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* docker version tagging ([#781](https://github.com/JustinBeckwith/linkinator/issues/781)) ([1db51fb](https://github.com/JustinBeckwith/linkinator/commit/1db51fba1751ecad9485d8f18bca0efeb563338b))
+
 ## [7.6.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.5.3...linkinator-v7.6.0) (2026-02-24)
 
 
