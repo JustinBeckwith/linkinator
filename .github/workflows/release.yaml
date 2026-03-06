@@ -83,7 +83,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }}
             type=semver,pattern={{major}},value=${{ needs.release-please.outputs.version }}
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: true
