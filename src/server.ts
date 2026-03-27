@@ -144,7 +144,10 @@ async function handleRequest(
 	try {
 		let data = await fs.readFile(localPath, { encoding: 'utf8' });
 		let mimeType = mime.getType(localPath);
-		const isMarkdown = request.url?.toLocaleLowerCase().endsWith('.md');
+		const extensions = ['.md', '.mdx'];
+		const isMarkdown = extensions.some((ext) =>
+			request.url?.toLowerCase().endsWith(ext),
+		);
 		if (isMarkdown && options.markdown) {
 			const markedData = marked(data, { gfm: true });
 			if (typeof markedData === 'string') {
