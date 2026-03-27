@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.6.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.6.1...linkinator-v7.6.2) (2026-03-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency htmlparser2 to v12 ([#792](https://github.com/JustinBeckwith/linkinator/issues/792)) ([5ce7509](https://github.com/JustinBeckwith/linkinator/commit/5ce7509ac62a3184850af5aaba5e214303170a81))
+
 ## [7.6.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.6.0...linkinator-v7.6.1) (2026-02-27)
 
 
