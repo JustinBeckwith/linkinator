@@ -493,6 +493,22 @@ describe('linkinator', () => {
 		assert.strictEqual(results.links.length, 3);
 	});
 
+	it('should autoscan mdx files in a repo scan', async () => {
+		const results = await check({
+			path: 'test/fixtures/mdx-repo/**/*.mdx',
+		});
+		assert.ok(results.passed);
+		assert.strictEqual(results.links.length, 3);
+		assert.strictEqual(
+			results.links.filter((x) => x.url.endsWith('guide.mdx')).length,
+			1,
+		);
+		assert.strictEqual(
+			results.links.filter((x) => x.url.endsWith('LICENSE.md')).length,
+			1,
+		);
+	});
+
 	it('should throw if a glob provides no paths to scan', async () => {
 		await expect(
 			check({

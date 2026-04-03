@@ -153,7 +153,8 @@ export async function processOptions(
 	// Enable markdown if someone passes a flag/glob right at it
 	if (options.markdown === undefined) {
 		for (const p of options.path) {
-			if (path.extname(p).toLowerCase() === '.md') {
+			const extension = path.extname(p).toLowerCase();
+			if (extension === '.md' || extension === '.mdx') {
 				options.markdown = true;
 			}
 		}
