@@ -39,6 +39,14 @@ describe('cli', () => {
 		assert.match(response.stderr, /Successfully scanned/);
 	});
 
+	it('should pass successful mdx scan', async () => {
+		const response = await execa(node, [
+			linkinator,
+			'test/fixtures/mdx-repo/README.mdx',
+		]);
+		assert.match(response.stderr, /Successfully scanned/);
+	});
+
 	it('should allow multiple paths', async () => {
 		const response = await execa(node, [
 			linkinator,
