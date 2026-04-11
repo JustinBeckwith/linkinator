@@ -364,7 +364,7 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
-		// If there is a crawl delay add the delay to the delayChache so that other requests to the same host get delayed
+		// If there is a crawl delay add the delay to the delayCache so that other requests to the same host get delayed
 		if (options.crawlDelay > 0) {
 			const newTimeout = Date.now() + options.crawlDelay * 1000;
 			options.delayCache.set(options.url.host, newTimeout);
