@@ -152,6 +152,7 @@ type CrawlOptions = {
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
+	crawlDelay: number;
 };
 
 /**
@@ -254,6 +255,7 @@ export class LinkChecker extends EventEmitter {
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,
 					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+					crawlDelay: options.crawlDelay ?? 0,
 				});
 			})();
 
@@ -360,6 +362,12 @@ export class LinkChecker extends EventEmitter {
 				);
 				return;
 			}
+		}
+
+		// If there is a crawl delay add the delay to the delayChache so that other requests to the same host get delayed
+		if (options.crawlDelay > 0) {
+			const newTimeout = Date.now() + options.crawlDelay * 1000;
+			options.delayCache.set(options.url.host, newTimeout);
 		}
 
 		// Perform a HEAD or GET request based on the need to crawl
@@ -816,6 +824,7 @@ export class LinkChecker extends EventEmitter {
 							retryErrors: options.retryErrors,
 							retryErrorsCount: options.retryErrorsCount,
 							retryErrorsJitter: options.retryErrorsJitter,
+							crawlDelay: options.crawlDelay,
 						});
 					})();
 

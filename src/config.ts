@@ -29,6 +29,7 @@ export type Flags = {
 	header?: string[];
 	statusCode?: string | string[];
 	statusCodes?: Record<string, string>;
+	crawlDelay?: number;
 };
 
 const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];
