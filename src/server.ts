@@ -16,6 +16,8 @@ export type WebServerOptions = {
 	root: string;
 	// The port on which to start the local web server
 	port?: number;
+	// The host on which to start the local web server
+	host?: string;
 	// If markdown should be automatically compiled and served
 	markdown?: boolean;
 	// Should directories automatically serve an inde page
@@ -31,19 +33,20 @@ export type WebServerOptions = {
  */
 export async function startWebServer(options: WebServerOptions) {
 	const root = path.resolve(options.root);
+	const host = options.host ?? '127.0.0.1';
 	return new Promise<http.Server>((resolve, reject) => {
 		const server = http
 			.createServer(async (request, response) =>
 				handleRequest(request, response, root, options),
 			)
-			.listen(options.port || 0, () => {
+			.listen(options.port || 0, host, () => {
+				if (!options.port) {
+					const addr = server.address() as AddressInfo;
+					options.port = addr.port;
+				}
 				resolve(server);
 			})
 			.on('error', reject);
-		if (!options.port) {
-			const addr = server.address() as AddressInfo;
-			options.port = addr.port;
-		}
 	});
 }
 
@@ -111,8 +114,7 @@ async function handleRequest(
 			response.end(document);
 			return;
 		}
-	} catch (error) {
-		const error_ = error as Error;
+	} catch {
 		// Try clean URLs: if file not found and cleanUrls is enabled, try adding .html
 		if (options.cleanUrls && !localPath.endsWith('.html')) {
 			try {
@@ -134,10 +136,10 @@ async function handleRequest(
 			} catch {
 				// Fall through to normal 404 handling
 			}
-		}
-		if (!maybeListing) {
-			return404(response, error_);
-			return;
+			if (!maybeListing) {
+				return404(response);
+				return;
+			}
 		}
 	}
 
@@ -166,7 +168,7 @@ async function handleRequest(
 		response.setHeader('Content-Length', Buffer.byteLength(data));
 		response.writeHead(200);
 		response.end(data);
-	} catch (error) {
+	} catch {
 		if (maybeListing) {
 			try {
 				const files = await fs.readdir(originalPath);
@@ -177,18 +179,18 @@ async function handleRequest(
 				const data = `<html><body><ul>${fileList}</ul></body></html>`;
 				response.writeHead(200);
 				response.end(data);
-			} catch (error_) {
-				const error__ = error_ as Error;
-				return404(response, error__);
+			} catch {
+				return404(response);
 			}
 		} else {
-			const error_ = error as Error;
-			return404(response, error_);
+			return404(response);
 		}
 	}
 }
 
-function return404(response: http.ServerResponse, error: Error) {
-	response.writeHead(404);
-	response.end(JSON.stringify(error));
+function return404(response: http.ServerResponse) {
+	response.writeHead(404, {
+		'Content-Type': 'text/plain; charset=UTF-8',
+	});
+	response.end('Not Found');
 }

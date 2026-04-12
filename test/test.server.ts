@@ -16,7 +16,7 @@ describe('server', () => {
 			root: 'test/fixtures/server',
 		});
 		const addr = server.address() as AddressInfo;
-		rootUrl = `http://localhost:${addr.port}`;
+		rootUrl = `http://127.0.0.1:${addr.port}`;
 	});
 	afterAll(async () => {
 		await stopWebServer(server);
@@ -57,12 +57,30 @@ describe('server', () => {
 		const url = `${rootUrl}/../../etc/passwd`;
 		const response = await undiciFetch(url);
 		assert.strictEqual(response.status, 404);
+		assert.strictEqual(await response.text(), 'Not Found');
 	});
 
 	it('should return a 404 for missing paths', async () => {
 		const url = `${rootUrl}/does/not/exist`;
 		const response = await undiciFetch(url);
 		assert.strictEqual(response.status, 404);
+		assert.strictEqual(await response.text(), 'Not Found');
+	});
+
+	it('should not leak filesystem details in 404 responses', async () => {
+		const url = `${rootUrl}/does/not/exist`;
+		const response = await undiciFetch(url);
+		const data = await response.text();
+		assert.strictEqual(response.status, 404);
+		assert.strictEqual(data, 'Not Found');
+		assert.ok(!data.includes('ENOENT'));
+		assert.ok(!data.includes('does/not/exist'));
+		assert.ok(!data.includes('test/fixtures/server'));
+	});
+
+	it('should bind the temporary server to loopback only', () => {
+		const addr = server.address() as AddressInfo;
+		assert.strictEqual(addr.address, '127.0.0.1');
 	});
 
 	it('should work with directories with a .', async () => {
@@ -110,7 +128,7 @@ describe('server with cleanUrls', () => {
 			cleanUrls: true,
 		});
 		const addr = server.address() as AddressInfo;
-		rootUrl = `http://localhost:${addr.port}`;
+		rootUrl = `http://127.0.0.1:${addr.port}`;
 	});
 
 	afterAll(async () => {
@@ -184,7 +202,7 @@ describe('server without cleanUrls', () => {
 			cleanUrls: false,
 		});
 		const addr = server.address() as AddressInfo;
-		rootUrl = `http://localhost:${addr.port}`;
+		rootUrl = `http://127.0.0.1:${addr.port}`;
 	});
 
 	afterAll(async () => {

@@ -85,6 +85,8 @@ import { startWebServer, stopWebServer } from './server.js';
 import { bufferStream, drainStream, toNodeReadable } from './stream-utils.js';
 import { normalizeBaseUrl } from './url-utils.js';
 
+const STATIC_SERVER_HOST = '127.0.0.1';
+
 export { getConfig } from './config.js';
 
 export enum LinkState {
@@ -197,10 +199,12 @@ export class LinkChecker extends EventEmitter {
 			server = await startWebServer({
 				root: options.serverRoot ?? '',
 				port,
+				host: STATIC_SERVER_HOST,
 				markdown: options.markdown,
 				directoryListing: options.directoryListing,
 				cleanUrls: options.cleanUrls,
 			});
+
 			if (port === undefined) {
 				const addr = server.address() as AddressInfo;
 				port = addr.port;
@@ -211,10 +215,11 @@ export class LinkChecker extends EventEmitter {
 					options.path[i] = options.path[i].slice(1);
 				}
 
-				options.path[i] = `http://localhost:${port}/${options.path[i]}`;
+				options.path[i] =
+					`http://${STATIC_SERVER_HOST}:${port}/${options.path[i]}`;
 			}
 
-			options.staticHttpServerHost = `http://localhost:${port}/`;
+			options.staticHttpServerHost = `http://${STATIC_SERVER_HOST}:${port}/`;
 		}
 
 		if (process.env.LINKINATOR_DEBUG) {
@@ -1073,7 +1078,7 @@ function isCss(response: HttpResponse): boolean {
  * When running a local static web server for the user, translate paths from
  * the Url generated back to something closer to a local filesystem path.
  * @example
- *    http://localhost:0000/test/route/README.md => test/route/README.md
+ *    http://127.0.0.1:0000/test/route/README.md => test/route/README.md
  * @param url The url that was checked
  * @param options Original CheckOptions passed into the client
  */
@@ -1087,7 +1092,7 @@ function mapUrl<T extends string | undefined>(
 
 	let newUrl = url as string;
 
-	// Trim the starting http://localhost:0000 if we stood up a local static server
+	// Trim the starting http://127.0.0.1:0000 if we stood up a local static server
 	if (
 		options?.staticHttpServerHost?.length &&
 		url?.startsWith(options.staticHttpServerHost)
