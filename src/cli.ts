@@ -126,6 +126,9 @@ const cli = meow(
 		--verbosity
 			Override the default verbosity for this command. Available options are
 			'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
+		
+		--crawl-delay
+			Number of seconds to wait between requests to the same host. Defaults to 0 (no delay).
 
 	Examples
 		$ linkinator docs/
@@ -165,6 +168,7 @@ const cli = meow(
 			urlRewriteSearch: { type: 'string' },
 			urlReWriteReplace: { type: 'string' },
 			header: { type: 'string', shortFlag: 'h', isMultiple: true },
+			crawlDelay: { type: 'number' },
 		},
 		booleanDefault: undefined,
 	},
@@ -353,6 +357,7 @@ async function main() {
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
 		retryErrorsJitter: Number(flags.retryErrorsJitter),
+		crawlDelay: Number(flags.crawlDelay),
 		headers,
 	};
 	if (flags.skip) {
