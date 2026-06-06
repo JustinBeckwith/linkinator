@@ -6,7 +6,7 @@ name: release
 permissions: {}
 env:
   FORCE_COLOR: 2
-  NODE: 24
+  NODE: 26
 jobs:
   release-please:
     if: github.repository == 'JustinBeckwith/linkinator'
