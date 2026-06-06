@@ -61,6 +61,7 @@ function getSharedProxyAgent(proxyUrl: string): ProxyAgent {
 function getSharedAgent(_allowInsecureCerts: boolean): Agent {
 	if (!sharedInsecureAgent) {
 		sharedInsecureAgent = new Agent({
+			allowH2: false,
 			connect: {
 				rejectUnauthorized: false,
 			},

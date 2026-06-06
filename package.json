@@ -19,7 +19,7 @@
 		"test": "vitest",
 		"fix": "biome check --write .",
 		"lint": "biome check .",
-		"docs-test": "node build/src/cli.js ./README.md",
+		"docs-test": "node build/src/cli.js ./README.md --retry-errors --retry-errors-count 2",
 		"update-schema-org-types": "node src/tools/update-schema-org-types.ts"
 	},
 	"dependencies": {
