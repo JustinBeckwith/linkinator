@@ -1,15 +1,25 @@
 import { execa } from 'execa';
-import { assert, describe, it } from 'vitest';
+import { afterAll, assert, beforeAll, describe, it } from 'vitest';
+import {
+	startSelfSignedHttpsServer,
+	type TestHttpsServer,
+} from './helpers/https-server.js';
 
 describe('cli', () => {
+	let server: TestHttpsServer;
+
+	beforeAll(async () => {
+		server = await startSelfSignedHttpsServer();
+	});
+
+	afterAll(async () => {
+		await server?.close();
+	});
+
 	it('should allow insecure certs', async () => {
 		const response = await execa(
 			'node',
-			[
-				'build/src/cli.js',
-				'https://self-signed.badssl.com/',
-				'--allow-insecure-certs',
-			],
+			['build/src/cli.js', server.url, '--allow-insecure-certs'],
 			{
 				reject: false,
 			},
