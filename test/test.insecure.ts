@@ -23,6 +23,7 @@ describe('cli', () => {
 				reject: false,
 			},
 		);
+		assert.strictEqual(response.exitCode, 0);
 		assert.match(response.stderr, /Successfully scanned/);
 	});
 });

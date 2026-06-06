@@ -30,7 +30,7 @@ WmhppNZtHW7tTURPK1zriRD4E0/oYVBNCfTH+NXROviBgNvfMZSnINksh18DsDly
 zMrNLpvpO+925gialIvg+X8=
 -----END PRIVATE KEY-----`;
 
-const cert = `-----BEGIN CERTIFICATE-----
+export const selfSignedCertificate = `-----BEGIN CERTIFICATE-----
 MIIDJTCCAg2gAwIBAgIUG4X4D3qhddVoOmerTmVLb+WhCcowDQYJKoZIhvcNAQEL
 BQAwFDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI2MDYyMDE4MDExOFoXDTM2MDYx
 NzE4MDExOFowFDESMBAGA1UEAwwJbG9jYWxob3N0MIIBIjANBgkqhkiG9w0BAQEF
@@ -51,10 +51,13 @@ O1LJygrJG2+no3bUkp6OnzTsBwKG3h9tqvkbDRXy7ukJLariMKx02+w=
 -----END CERTIFICATE-----`;
 
 export async function startSelfSignedServer() {
-	const server = https.createServer({ key, cert }, (_req, res) => {
-		res.writeHead(200, { 'Content-Type': 'text/html' });
-		res.end('<html><body>ok</body></html>');
-	});
+	const server = https.createServer(
+		{ key, cert: selfSignedCertificate },
+		(_req, res) => {
+			res.writeHead(200, { 'Content-Type': 'text/html' });
+			res.end('<html><body>ok</body></html>');
+		},
+	);
 
 	await new Promise<void>((resolve) => {
 		server.listen(0, '127.0.0.1', resolve);
