@@ -1,5 +1,27 @@
 # Changelog
 
+## [8.0.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.6.1...linkinator-v8.0.0) (2026-06-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* require nodejs 22 and up ([#824](https://github.com/JustinBeckwith/linkinator/issues/824))
+
+### Features
+
+* Parse MDX files ([#794](https://github.com/JustinBeckwith/linkinator/issues/794)) ([3518692](https://github.com/JustinBeckwith/linkinator/commit/3518692247df0676dd65067f4d0965f1acd805e7))
+
+
+### Bug Fixes
+
+* **deps:** update dependency htmlparser2 to v12 ([#792](https://github.com/JustinBeckwith/linkinator/issues/792)) ([5ce7509](https://github.com/JustinBeckwith/linkinator/commit/5ce7509ac62a3184850af5aaba5e214303170a81))
+* harden local static server error handling ([#807](https://github.com/JustinBeckwith/linkinator/issues/807)) ([3b8609d](https://github.com/JustinBeckwith/linkinator/commit/3b8609d5b972478900c7d1f8372ffe5571e66210))
+
+
+### Build System
+
+* require nodejs 22 and up ([#824](https://github.com/JustinBeckwith/linkinator/issues/824)) ([c305a68](https://github.com/JustinBeckwith/linkinator/commit/c305a68b482be07acfc3fb731d182ccbc8c3e949))
+
 ## [7.6.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.6.0...linkinator-v7.6.1) (2026-02-27)
 
 
