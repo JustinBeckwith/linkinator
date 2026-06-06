@@ -1141,6 +1141,7 @@ async function makeRequest(
 		'Sec-Fetch-Mode': 'navigate',
 		'Sec-Fetch-Site': 'none',
 		'Upgrade-Insecure-Requests': '1',
+		'User-Agent': 'node',
 	};
 
 	const requestOptions: RequestInit = {
@@ -1153,9 +1154,8 @@ async function makeRequest(
 		requestOptions.signal = AbortSignal.timeout(options.timeout);
 	}
 
-	// For normal requests, use native fetch which uses the global dispatcher
-	// with built-in connection pooling. This also ensures the Node.js default
-	// User-Agent ('node') is used and allows tests to mock via setGlobalDispatcher.
+	// For normal requests, use undici fetch so tests and callers can control
+	// request dispatching with undici.setGlobalDispatcher across Node versions.
 	//
 	// For insecure cert requests, we must use undiciFetch with a custom
 	// dispatcher because the global dispatcher doesn't support disabling
@@ -1176,7 +1176,7 @@ async function makeRequest(
 					...requestOptions,
 					dispatcher: getSharedProxyAgent(proxyUrl),
 				})
-			: await fetch(url, requestOptions as globalThis.RequestInit);
+			: await undiciFetch(url, requestOptions);
 
 	// Convert headers to a plain object
 	const headers: Record<string, string> = {};
