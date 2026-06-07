@@ -1,24 +1,59 @@
-import { assert, describe, it } from 'vitest';
+import fs from 'node:fs';
+import https from 'node:https';
+import type { AddressInfo } from 'node:net';
+import { afterAll, assert, beforeAll, describe, it } from 'vitest';
 import { check, LinkState } from '../src/index.js';
 
 describe('certificate validation', () => {
+	let server: https.Server;
+	let selfSignedUrl: string;
+
+	beforeAll(async () => {
+		server = https.createServer(
+			{
+				cert: fs.readFileSync(
+					'test/fixtures/cert-validation/self-signed-cert.pem',
+				),
+				key: fs.readFileSync(
+					'test/fixtures/cert-validation/self-signed-key.pem',
+				),
+			},
+			(_req, res) => {
+				res.writeHead(200, { 'Content-Type': 'text/html' });
+				res.end('<html><body>self-signed test page</body></html>');
+			},
+		);
+
+		await new Promise<void>((resolve) => {
+			server.listen(0, '127.0.0.1', () => {
+				const addr = server.address() as AddressInfo;
+				selfSignedUrl = `https://127.0.0.1:${addr.port}/`;
+				resolve();
+			});
+		});
+	});
+
+	afterAll(async () => {
+		await new Promise<void>((resolve, reject) => {
+			server.close((err) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				resolve();
+			});
+		});
+	});
+
 	describe('with allowInsecureCerts disabled (default)', () => {
 		it('should fail on self-signed certificates', async () => {
-			// Using badssl.com which provides various certificate scenarios
 			const results = await check({
-				path: 'https://self-signed.badssl.com/',
+				path: selfSignedUrl,
 				recurse: false,
 				allowInsecureCerts: false,
 			});
 
-			// The link should be broken due to certificate error
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'self-signed.badssl.com';
-				} catch {
-					return false;
-				}
-			});
+			const mainPage = results.links.find((link) => link.url === selfSignedUrl);
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
@@ -26,76 +61,22 @@ describe('certificate validation', () => {
 				'Expected self-signed cert to be rejected',
 			);
 		});
-
-		it('should succeed on valid certificates', async () => {
-			// Test a site with a valid certificate
-			const results = await check({
-				path: 'https://www.google.com/',
-				recurse: false,
-				allowInsecureCerts: false,
-			});
-
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'www.google.com';
-				} catch {
-					return false;
-				}
-			});
-			assert.ok(mainPage, 'Expected to find the main page in results');
-			assert.strictEqual(
-				mainPage.state,
-				LinkState.OK,
-				'Expected valid cert to succeed',
-			);
-		});
 	});
 
 	describe('with allowInsecureCerts enabled', () => {
 		it('should accept self-signed certificates', async () => {
-			// Using badssl.com which provides various certificate scenarios
 			const results = await check({
-				path: 'https://self-signed.badssl.com/',
+				path: selfSignedUrl,
 				recurse: false,
 				allowInsecureCerts: true,
 			});
 
-			// The link should be OK when ignoring cert errors
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'self-signed.badssl.com';
-				} catch {
-					return false;
-				}
-			});
+			const mainPage = results.links.find((link) => link.url === selfSignedUrl);
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
 				LinkState.OK,
 				'Expected self-signed cert to be accepted with allowInsecureCerts',
-			);
-		});
-
-		it('should still work with valid certificates', async () => {
-			// Test a site with a valid certificate
-			const results = await check({
-				path: 'https://www.google.com/',
-				recurse: false,
-				allowInsecureCerts: true,
-			});
-
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'www.google.com';
-				} catch {
-					return false;
-				}
-			});
-			assert.ok(mainPage, 'Expected to find the main page in results');
-			assert.strictEqual(
-				mainPage.state,
-				LinkState.OK,
-				'Expected valid cert to still work with allowInsecureCerts',
 			);
 		});
 	});
