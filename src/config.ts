@@ -29,6 +29,7 @@ export type Flags = {
 	header?: string[];
 	statusCode?: string | string[];
 	statusCodes?: Record<string, string>;
+	rootPath?: string;
 };
 
 const validConfigExtensions = ['.js', '.mjs', '.cjs', '.json'];

@@ -254,7 +254,7 @@ export class LinkChecker extends EventEmitter {
 					delayCache,
 					retryErrorsCache,
 					queue,
-					rootPath: path,
+					rootPath: options.rootPath ?? path,
 					retry: Boolean(options_.retry),
 					retryErrors: Boolean(options_.retryErrors),
 					retryErrorsCount: options_.retryErrorsCount ?? 5,

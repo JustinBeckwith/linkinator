@@ -127,6 +127,9 @@ const cli = meow(
 			Override the default verbosity for this command. Available options are
 			'debug', 'info', 'warning', 'error', and 'none'.  Defaults to 'warning'.
 
+		--root-path
+			Base path which all crawled links must be under; if omitted uses LOCATION
+
 	Examples
 		$ linkinator docs/
 		$ linkinator https://www.google.com
@@ -165,6 +168,7 @@ const cli = meow(
 			urlRewriteSearch: { type: 'string' },
 			urlReWriteReplace: { type: 'string' },
 			header: { type: 'string', shortFlag: 'h', isMultiple: true },
+			rootPath: { type: 'string' },
 		},
 		booleanDefault: undefined,
 	},
@@ -353,6 +357,7 @@ async function main() {
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
 		retryErrorsJitter: Number(flags.retryErrorsJitter),
+		rootPath: flags.rootPath,
 		headers,
 	};
 	if (flags.skip) {
