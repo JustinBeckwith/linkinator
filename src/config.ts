@@ -17,7 +17,7 @@ export type Flags = {
 	serverRoot?: string;
 	directoryListing?: boolean;
 	cleanUrls?: boolean;
-	redirects?: 'allow' | 'warn' | 'error';
+	redirects?: 'allow' | 'warn' | 'error' | 'verify';
 	requireHttps?: 'off' | 'warn' | 'error';
 	allowInsecureCerts?: boolean;
 	retry?: boolean;

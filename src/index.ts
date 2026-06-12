@@ -375,7 +375,10 @@ export class LinkChecker extends EventEmitter {
 		const failures: Array<Error | HttpResponse> = [];
 		const originalUrl = options.url.href;
 		const redirectMode =
-			options.checkOptions.redirects === 'error' ? 'manual' : 'follow';
+			options.checkOptions.redirects === 'error' ||
+			options.checkOptions.redirects === 'verify'
+				? 'manual'
+				: 'follow';
 
 		try {
 			response = await makeRequest(
@@ -501,6 +504,9 @@ export class LinkChecker extends EventEmitter {
 
 		// Detect if this was a redirect
 		const redirect = detectRedirect(status, originalUrl, response);
+		if (options.checkOptions.redirects === 'verify' && redirect.isRedirect) {
+			redirect.targetUrl = response?.headers.location;
+		}
 
 		// Check for custom status code actions first (highest priority)
 		const customAction = getStatusCodeAction(
@@ -591,6 +597,12 @@ export class LinkChecker extends EventEmitter {
 			state = LinkState.OK;
 		} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
 			// Non-standard redirect with content - treat as OK in allow mode
+			state = LinkState.OK;
+		} else if (
+			options.checkOptions.redirects === 'verify' &&
+			redirect.isRedirect
+		) {
+			// This is a redirect, we will treat this as another link to follow
 			state = LinkState.OK;
 		} else if (response !== undefined) {
 			failures.push(response);
@@ -698,7 +710,18 @@ export class LinkChecker extends EventEmitter {
 			this.emit('pagestart', options.url);
 			let urlResults: Awaited<ReturnType<typeof getLinks>> = [];
 			let htmlContentForFragments: Buffer | undefined;
-			if (response?.body) {
+			if (
+				options.checkOptions.redirects === 'verify' &&
+				redirect.isRedirect &&
+				redirect.targetUrl
+			) {
+				// We have a Location: header which we will crawl
+				// TODO: crawl body of redirection page?
+				urlResults.push({
+					link: redirect.targetUrl,
+					url: new URL(redirect.targetUrl, response?.url || options.url.href),
+				});
+			} else if (response?.body) {
 				// Convert to Node.js Readable stream (handles both Web and Node.js streams)
 				const nodeStream = toNodeReadable(response.body);
 

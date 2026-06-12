@@ -77,7 +77,8 @@ const cli = meow(
 
 		--redirects
 			Control how redirects are handled. Options are 'allow' (default, follows redirects),
-			'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
+			'warn' (follows but emits warnings), 'error' (treats redirects as broken), or
+			'verify' (follows if not skipped).
 
 		--require-https
 			Enforce HTTPS links. Options are 'off' (default, accepts both HTTP and HTTPS),
@@ -162,7 +163,7 @@ const cli = meow(
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
 			cleanUrls: { type: 'boolean' },
-			redirects: { type: 'string', choices: ['allow', 'warn', 'error'] },
+			redirects: { type: 'string', choices: ['allow', 'warn', 'error', 'verify'] },
 			requireHttps: { type: 'string', choices: ['off', 'warn', 'error'] },
 			allowInsecureCerts: { type: 'boolean' },
 			retry: { type: 'boolean' },
