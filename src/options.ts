@@ -28,7 +28,7 @@ export type CheckOptions = {
 	urlRewriteExpressions?: UrlRewriteExpression[];
 	userAgent?: string;
 	headers?: Record<string, string>;
-	redirects?: 'allow' | 'warn' | 'error';
+	redirects?: 'allow' | 'warn' | 'error' | 'verify';
 	requireHttps?: 'off' | 'warn' | 'error';
 	allowInsecureCerts?: boolean;
 	checkCss?: boolean;
@@ -67,9 +67,6 @@ export async function processOptions(
 	if (options.directoryListing === undefined) {
 		options.directoryListing = false;
 	}
-
-	// Default redirects to 'allow'
-	options.redirects = options.redirects ?? 'allow';
 
 	// Ensure we do not mix http:// and file system paths.  The paths passed in
 	// must all be filesystem paths, or HTTP paths.
