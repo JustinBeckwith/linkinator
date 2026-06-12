@@ -163,7 +163,10 @@ const cli = meow(
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
 			cleanUrls: { type: 'boolean' },
-			redirects: { type: 'string', choices: ['allow', 'warn', 'error', 'verify'] },
+			redirects: {
+				type: 'string',
+				choices: ['allow', 'warn', 'error', 'verify'],
+			},
 			requireHttps: { type: 'string', choices: ['off', 'warn', 'error'] },
 			allowInsecureCerts: { type: 'boolean' },
 			retry: { type: 'boolean' },

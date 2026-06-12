@@ -1,0 +1,79 @@
+{
+    "name": "linkinator",
+    "description": "Find broken links, missing images, etc in your HTML. Scurry around your site and find all those broken links.",
+    "version": "7.6.1",
+    "license": "MIT",
+    "repository": "JustinBeckwith/linkinator",
+    "author": "Justin Beckwith",
+    "exports": "./build/src/index.js",
+    "types": "./build/src/index.d.ts",
+    "type": "module",
+    "bin": {
+        "linkinator": "./build/src/cli.js"
+    },
+    "scripts": {
+        "prepare": "husky && npm run build",
+        "coverage": "vitest run --coverage",
+        "build": "tsc -p .",
+        "build-binaries": "bun build ./build/src/cli.js --compile --minify --sourcemap --target=bun --outfile ./build/binaries/linkinator-linux && bun build ./build/src/cli.js --compile --minify --sourcemap --target=bun-windows --outfile ./build/binaries/linkinator-win.exe && bun build ./build/src/cli.js --compile --minify --sourcemap --target=bun-darwin --outfile ./build/binaries/linkinator-macos",
+        "test": "vitest",
+        "fix": "biome check --write .",
+        "lint": "biome check .",
+        "docs-test": "node build/src/cli.js ./README.md",
+        "update-schema-org-types": "node src/tools/update-schema-org-types.ts"
+    },
+    "dependencies": {
+        "chalk": "^5.0.0",
+        "escape-html": "^1.0.3",
+        "glob": "^13.0.0",
+        "htmlparser2": "^12.0.0",
+        "marked": "^17.0.0",
+        "marked-gfm-heading-id": "^4.1.3",
+        "meow": "^14.0.0",
+        "mime": "^4.0.0",
+        "srcset": "^5.0.0",
+        "undici": "^7.16.0"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.0.4",
+        "@types/escape-html": "^1.0.1",
+        "@types/node": "^25.3.0",
+        "@vitest/coverage-v8": "^4.0.0",
+        "execa": "^9.0.0",
+        "husky": "^9.0.11",
+        "strip-ansi": "^7.0.1",
+        "typescript": "^6.0.0",
+        "vitest": "^4.0.0"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "files": [
+        "build/src",
+        "build/package.json"
+    ],
+    "keywords": [
+        "broken link checker",
+        "link checker",
+        "dead link checker",
+        "link validator",
+        "url validator",
+        "broken links",
+        "dead links",
+        "404",
+        "crawler",
+        "spider",
+        "html",
+        "hyperlink",
+        "links",
+        "seo",
+        "seo tools",
+        "website validator",
+        "link tester",
+        "url",
+        "broken",
+        "link",
+        "checker",
+        "validator"
+    ]
+}
