@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { writeFileSync } from 'node:fs';
 import process from 'node:process';
 import chalk from 'chalk';
 import meow from 'meow';
@@ -45,6 +46,9 @@ const cli = meow(
 
 		--format, -f
 			Return the data in CSV or JSON format.
+
+		--output-filename
+			Save formatted CSV or JSON results to file; will emit TEXT format to console
 
 		--header, -h
 			List of additional headers to be include in the request. use key:value notation.
@@ -169,6 +173,7 @@ const cli = meow(
 			urlReWriteReplace: { type: 'string' },
 			header: { type: 'string', shortFlag: 'h', isMultiple: true },
 			rootPath: { type: 'string' },
+			outputFilename: { type: 'string' },
 		},
 		booleanDefault: undefined,
 	},
@@ -215,7 +220,9 @@ async function main() {
 	const start = Date.now();
 	const verbosity = parseVerbosity(flags);
 	const format = parseFormat(flags);
-	const logger = new Logger(verbosity, format);
+	const outputFilename = flags.outputFilename;
+	const outputCSV: string[] = [];
+	const logger = new Logger(verbosity, outputFilename ? Format.TEXT : format);
 	const header = flags.header ?? [];
 	const headers = Object.fromEntries(
 		header.map((item) => {
@@ -246,7 +253,11 @@ async function main() {
 	const checker = new LinkChecker();
 	if (format === Format.CSV) {
 		const header = 'url,status,state,parent,failureDetails';
-		console.log(header);
+		if (outputFilename) {
+			outputCSV.push(header);
+		} else {
+			console.log(header);
+		}
 	}
 
 	checker.on('retry', (info: RetryInfo) => {
@@ -333,9 +344,12 @@ async function main() {
 					}
 					return field;
 				};
-				console.log(
-					`${escapeCsvField(link.url)},${link.status},${link.state},${escapeCsvField(link.parent || '')},${escapeCsvField(failureDetails)}`,
-				);
+				const line = `${escapeCsvField(link.url)},${link.status},${link.state},${escapeCsvField(link.parent || '')},${escapeCsvField(failureDetails)}`;
+				if (outputFilename) {
+					outputCSV.push(line);
+				} else {
+					console.log(line);
+				}
 			}
 		}
 	});
@@ -428,12 +442,22 @@ async function main() {
 	);
 	if (format === Format.JSON) {
 		result.links = filteredResults;
-		console.log(JSON.stringify(result, null, 2));
+		const resultJSON = JSON.stringify(result, null, 2);
+		if (outputFilename) {
+			writeFileSync(outputFilename, resultJSON, 'utf-8');
+			reportSummary(start, result, logger);
+		} else {
+			console.log(resultJSON);
+		}
 		gracefulExit(result.passed ? 0 : 1);
 		return;
 	}
 
 	if (format === Format.CSV) {
+		if (outputFilename) {
+			writeFileSync(outputFilename, outputCSV.join('\n'), 'utf-8');
+			reportSummary(start, result, logger);
+		}
 		gracefulExit(result.passed ? 0 : 1);
 		return;
 	}
@@ -546,6 +570,15 @@ async function main() {
 		}
 	}
 
+	reportSummary(start, result, logger);
+	gracefulExit(result.passed ? 0 : 1);
+}
+
+function reportSummary(
+	start: number,
+	result: { links: LinkResult[]; passed: boolean },
+	logger: Logger,
+) {
 	const total = (Date.now() - start) / 1000;
 	const scannedLinks = result.links.filter(
 		(x) => x.state !== LinkState.SKIPPED,
@@ -561,7 +594,6 @@ async function main() {
 				)} links in ${chalk.cyan(total.toString())} seconds.`,
 			),
 		);
-		gracefulExit(1);
 		return;
 	}
 
@@ -572,7 +604,6 @@ async function main() {
 			)} links in ${chalk.cyan(total.toString())} seconds.`,
 		),
 	);
-	gracefulExit(0);
 }
 
 /**
