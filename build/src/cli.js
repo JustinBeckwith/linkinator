@@ -582,6 +582,6 @@ try {
     await main();
 }
 catch (error) {
-    console.error(error instanceof Error ? error.message : error);
+    console.error(inspect(error));
     gracefulExit(1);
 }
