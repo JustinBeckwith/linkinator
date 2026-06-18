@@ -13,7 +13,7 @@ export declare function drainStream(body: ReadableStream | Readable | undefined)
  * @param body The response body stream
  * @returns A Node.js Readable stream
  */
-export declare function toNodeReadable(body: ReadableStream | Readable): Readable;
+export declare function toNodeReadable(body: ReadableStream | Readable): Promise<Readable>;
 /**
  * Buffers a stream's contents into a single Buffer.
  * @param stream The stream to buffer

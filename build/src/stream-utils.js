@@ -12,7 +12,14 @@ export async function drainStream(body) {
     try {
         if ('cancel' in body && typeof body.cancel === 'function') {
             // Web ReadableStream - cancel it to release the connection
-            await body.cancel();
+            if (!body.locked) {
+                await body.cancel();
+            }
+            else {
+                for await (const _chunk of body) {
+                    // force consumption of body
+                }
+            }
         }
         else if ('destroy' in body && typeof body.destroy === 'function') {
             // Node.js Readable stream - destroy it
@@ -29,14 +36,18 @@ export async function drainStream(body) {
  * @param body The response body stream
  * @returns A Node.js Readable stream
  */
-export function toNodeReadable(body) {
+export async function toNodeReadable(body) {
     // Check if body is already a Node.js Readable stream
     if (body && 'pipe' in body) {
         // Already a Node.js Readable stream (from local server)
         return body;
     }
     // Web ReadableStream (from fetch), convert it
-    return Readable.fromWeb(body);
+    const chunks = [];
+    for await (const chunk of body) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Readable.from(Buffer.concat(chunks));
 }
 /**
  * Buffers a stream's contents into a single Buffer.

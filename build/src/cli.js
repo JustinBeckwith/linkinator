@@ -152,7 +152,10 @@ const cli = meow(`
         verbosity: { type: 'string' },
         directoryListing: { type: 'boolean' },
         cleanUrls: { type: 'boolean' },
-        redirects: { type: 'string', choices: ['allow', 'warn', 'error', 'verify'] },
+        redirects: {
+            type: 'string',
+            choices: ['allow', 'warn', 'error', 'verify'],
+        },
         requireHttps: { type: 'string', choices: ['off', 'warn', 'error'] },
         allowInsecureCerts: { type: 'boolean' },
         retry: { type: 'boolean' },
@@ -228,7 +231,7 @@ async function main() {
         }
     }
     checker.on('retry', (info) => {
-        logger.warn(`Retrying: ${info.url} in ${info.secondsUntilRetry} seconds.`);
+        logger.warn(`Retrying: ${info.url} [${info.status}] in ${info.secondsUntilRetry} seconds.`);
     });
     checker.on('redirect', (info) => {
         const nonStandardNote = info.isNonStandard ? ' (non-standard)' : '';
