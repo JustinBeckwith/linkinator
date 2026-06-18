@@ -7,6 +7,7 @@ import {
 	Agent,
 	ProxyAgent,
 	type RequestInit,
+	setGlobalDispatcher,
 	fetch as undiciFetch,
 } from 'undici';
 import { getCssLinks, getLinks, validateFragments } from './links.js';
@@ -58,7 +59,7 @@ function getSharedProxyAgent(proxyUrl: string): ProxyAgent {
  * @param _allowInsecureCerts Always true when called (parameter kept for clarity)
  * @returns The shared insecure agent instance
  */
-function getSharedAgent(_allowInsecureCerts: boolean): Agent {
+function getSharedAgent(_allowInsecureCerts: boolean, concurrency: number): Agent {
 	if (!sharedInsecureAgent) {
 		sharedInsecureAgent = new Agent({
 			connect: {
@@ -68,7 +69,7 @@ function getSharedAgent(_allowInsecureCerts: boolean): Agent {
 			keepAliveTimeout: 30_000,
 			keepAliveMaxTimeout: 60_000,
 			// Allow multiple connections per host for concurrency
-			connections: 100,
+			connections: concurrency,
 		});
 	}
 	return sharedInsecureAgent;
@@ -230,6 +231,17 @@ export class LinkChecker extends EventEmitter {
 			concurrency: options.concurrency || 100,
 		});
 
+		// undici.fetch with custom configuration
+		const agent = new Agent({
+			// Keep connections alive for reuse
+			keepAliveTimeout: 30_000,
+			keepAliveMaxTimeout: 60_000,
+			// We'll use the concurrency value to restrict number of active
+			// connections in the pool
+			connections: options.concurrency || 100,
+  	});
+		setGlobalDispatcher(agent);
+
 		const results: LinkResult[] = [];
 		const initCache = new Set<string>();
 		const relationshipCache = new Set<string>();
@@ -389,9 +401,11 @@ export class LinkChecker extends EventEmitter {
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
 					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+					concurrency: options.checkOptions.concurrency,
 				},
 			);
 			if (this.shouldRetryAfter(response, options)) {
+				await drainStream(response?.body);
 				return;
 			}
 
@@ -402,8 +416,10 @@ export class LinkChecker extends EventEmitter {
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
 					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+					concurrency: options.checkOptions.concurrency,
 				});
 				if (this.shouldRetryAfter(response, options)) {
+					await drainStream(response?.body);
 					return;
 				}
 			}
@@ -428,8 +444,10 @@ export class LinkChecker extends EventEmitter {
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
 					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+					concurrency: options.checkOptions.concurrency,
 				});
 				if (this.shouldRetryAfter(response, options)) {
+					await drainStream(response?.body);
 					return;
 				}
 			}
@@ -461,6 +479,7 @@ export class LinkChecker extends EventEmitter {
 					timeout: options.checkOptions.timeout,
 					redirect: redirectMode,
 					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+					concurrency: options.checkOptions.concurrency,
 				});
 				if (response !== undefined) {
 					status = response.status;
@@ -486,6 +505,7 @@ export class LinkChecker extends EventEmitter {
 						timeout: options.checkOptions.timeout,
 						redirect: redirectMode,
 						allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+						concurrency: options.checkOptions.concurrency,
 					});
 					if (response !== undefined) {
 						status = response.status;
@@ -499,6 +519,7 @@ export class LinkChecker extends EventEmitter {
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
 		// a network error likely occurred) or 429 without retry-after data:
 		if (this.shouldRetryOnError(status, options)) {
+			await drainStream(response?.body);
 			return;
 		}
 
@@ -646,6 +667,8 @@ export class LinkChecker extends EventEmitter {
 		options.results.push(result);
 		this.emit('link', result);
 
+		let shouldDrain = true;
+
 		// Check for fragment identifiers if needed (before we start crawling deeper)
 		// Only validate fragments if the base URL returned a successful (2xx) response
 		if (
@@ -657,7 +680,7 @@ export class LinkChecker extends EventEmitter {
 			const fragmentsToValidate = this.fragmentsToCheck.get(options.url.href);
 			if (fragmentsToValidate && fragmentsToValidate.size > 0) {
 				// Convert and buffer the response body
-				const nodeStream = toNodeReadable(response.body);
+				const nodeStream = await toNodeReadable(response.body);
 				const htmlContent = await bufferStream(nodeStream);
 
 				// Check if this is likely a soft 404 by looking for noindex/nofollow meta tags
@@ -701,7 +724,10 @@ export class LinkChecker extends EventEmitter {
 				// Create a new stream from the buffered content for link extraction
 				const { Readable } = await import('node:stream');
 				const linkStream = Readable.from([htmlContent]);
+				await drainStream(response?.body);
 				response.body = linkStream as never;
+				// We don't need to drain the Readable linkStream because it doesn't have a TCP connection
+				shouldDrain = false;
 			}
 		}
 
@@ -723,7 +749,7 @@ export class LinkChecker extends EventEmitter {
 				});
 			} else if (response?.body) {
 				// Convert to Node.js Readable stream (handles both Web and Node.js streams)
-				const nodeStream = toNodeReadable(response.body);
+				const nodeStream = await toNodeReadable(response.body);
 
 				// Use the final URL after redirects (if available) as the base for resolving
 				// relative links. This ensures relative links are resolved correctly even when
@@ -935,10 +961,12 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
-		// Drain any unconsumed response body to release the connection back to the pool.
-		// This is critical for preventing port exhaustion - if the body isn't consumed,
-		// the underlying TCP connection may not be reused.
-		await drainStream(response?.body);
+		if(shouldDrain) {
+			// Drain any unconsumed response body to release the connection back to the pool.
+			// This is critical for preventing port exhaustion - if the body isn't consumed,
+			// the underlying TCP connection may not be reused.
+			await drainStream(response?.body);
+		}
 	}
 
 	/**
@@ -1150,6 +1178,7 @@ async function makeRequest(
 		timeout?: number;
 		redirect?: 'follow' | 'manual';
 		allowInsecureCerts?: boolean;
+		concurrency?: number;
 	} = {},
 ): Promise<HttpResponse> {
 	// Build browser-like headers to avoid bot detection
@@ -1192,7 +1221,7 @@ async function makeRequest(
 	const response = options.allowInsecureCerts
 		? await undiciFetch(url, {
 				...requestOptions,
-				dispatcher: getSharedAgent(true),
+				dispatcher: getSharedAgent(true, options.concurrency || 100),
 			})
 		: proxyUrl
 			? await undiciFetch(url, {

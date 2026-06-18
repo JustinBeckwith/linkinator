@@ -9,13 +9,13 @@ import {
 
 describe('stream utilities', () => {
 	describe('toNodeReadable', () => {
-		it('should return Node.js Readable stream as-is', () => {
+		it('should return Node.js Readable stream as-is', async () => {
 			const nodeStream = Readable.from(['hello', 'world']);
-			const result = toNodeReadable(nodeStream);
+			const result = await toNodeReadable(nodeStream);
 			expect(result).toBe(nodeStream);
 		});
 
-		it('should convert Web ReadableStream to Node.js Readable', () => {
+		it('should convert Web ReadableStream to Node.js Readable', async () => {
 			// Create a Web ReadableStream
 			const webStream = new ReadableStream({
 				start(controller) {
@@ -25,7 +25,7 @@ describe('stream utilities', () => {
 				},
 			});
 
-			const result = toNodeReadable(webStream);
+			const result = await toNodeReadable(webStream);
 			expect(result).toBeInstanceOf(Readable);
 			expect(result).not.toBe(webStream);
 		});
