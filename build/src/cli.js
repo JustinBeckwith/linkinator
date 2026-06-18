@@ -231,7 +231,7 @@ async function main() {
         }
     }
     checker.on('retry', (info) => {
-        logger.warn(`Retrying: ${info.url} in ${info.secondsUntilRetry} seconds.`);
+        logger.warn(`Retrying: ${info.url} [${info.status}] in ${info.secondsUntilRetry} seconds.`);
     });
     checker.on('redirect', (info) => {
         const nonStandardNote = info.isNonStandard ? ' (non-standard)' : '';
