@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'node:fs';
 import process from 'node:process';
+import { inspect } from 'node:util';
 import chalk from 'chalk';
 import meow from 'meow';
 import packageJson from '../package.json' with { type: 'json' };
@@ -264,6 +265,12 @@ async function main() {
                     state = `[${chalk.red(link.status?.toString())}]`;
                     logger.error(`${state} ${chalk.gray(link.url)}`);
                 }
+                if (link.status?.toString() === '0') {
+                    logger.error(inspect(link.failureDetails));
+                }
+                else {
+                    logger.debug(inspect(link.failureDetails));
+                }
                 break;
             }
             case LinkState.OK: {
@@ -472,7 +479,13 @@ async function main() {
                         state = `[${chalk.red(link.status?.toString())}]`;
                         logger.error(`  ${state} ${chalk.gray(link.url)}`);
                     }
-                    logger.debug(JSON.stringify(link.failureDetails, null, 2));
+                    if (link.status?.toString() === '0') {
+                        logger.error(inspect(link.failureDetails));
+                    }
+                    else {
+                        logger.debug(inspect(link.failureDetails));
+                    }
+                    // logger.debug(JSON.stringify(link.failureDetails, null, 2));
                     break;
                 }
                 case LinkState.OK: {
@@ -556,7 +569,7 @@ function shouldShowResult(link, verbosity) {
         }
         case LinkState.BROKEN: {
             if (verbosity > LogLevel.DEBUG) {
-                link.failureDetails = undefined;
+                // link.failureDetails = undefined;
             }
             return verbosity <= LogLevel.ERROR;
         }
