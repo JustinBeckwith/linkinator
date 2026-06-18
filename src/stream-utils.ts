@@ -8,18 +8,18 @@ import { Readable } from 'node:stream';
  * @param body The response body stream to drain
  */
 export async function drainStream(
-	body: ReadableStream | Readable | undefined
+	body: ReadableStream | Readable | undefined,
 ): Promise<void> {
 	if (!body) return;
 
 	try {
 		if ('cancel' in body && typeof body.cancel === 'function') {
 			// Web ReadableStream - cancel it to release the connection
-			if(!body.locked) {
+			if (!body.locked) {
 				await body.cancel();
 			} else {
-				for await (const chunk of body) {
-  				// force consumption of body
+				for await (const _chunk of body) {
+					// force consumption of body
 				}
 			}
 		} else if ('destroy' in body && typeof body.destroy === 'function') {
@@ -37,7 +37,9 @@ export async function drainStream(
  * @param body The response body stream
  * @returns A Node.js Readable stream
  */
-export async function toNodeReadable(body: ReadableStream | Readable): Promise<Readable> {
+export async function toNodeReadable(
+	body: ReadableStream | Readable,
+): Promise<Readable> {
 	// Check if body is already a Node.js Readable stream
 	if (body && 'pipe' in body) {
 		// Already a Node.js Readable stream (from local server)

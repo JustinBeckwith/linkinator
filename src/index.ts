@@ -59,7 +59,10 @@ function getSharedProxyAgent(proxyUrl: string): ProxyAgent {
  * @param _allowInsecureCerts Always true when called (parameter kept for clarity)
  * @returns The shared insecure agent instance
  */
-function getSharedAgent(_allowInsecureCerts: boolean, concurrency: number): Agent {
+function getSharedAgent(
+	_allowInsecureCerts: boolean,
+	concurrency: number,
+): Agent {
 	if (!sharedInsecureAgent) {
 		sharedInsecureAgent = new Agent({
 			connect: {
@@ -239,7 +242,7 @@ export class LinkChecker extends EventEmitter {
 			// We'll use the concurrency value to restrict number of active
 			// connections in the pool
 			connections: options.concurrency || 100,
-  	});
+		});
 		setGlobalDispatcher(agent);
 
 		const results: LinkResult[] = [];
@@ -961,7 +964,7 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
-		if(shouldDrain) {
+		if (shouldDrain) {
 			// Drain any unconsumed response body to release the connection back to the pool.
 			// This is critical for preventing port exhaustion - if the body isn't consumed,
 			// the underlying TCP connection may not be reused.
