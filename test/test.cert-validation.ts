@@ -1,24 +1,29 @@
-import { assert, describe, it } from 'vitest';
+import { afterAll, assert, beforeAll, describe, it } from 'vitest';
 import { check, LinkState } from '../src/index.js';
+import { startSelfSignedServer } from './fixtures/self-signed-server.js';
 
 describe('certificate validation', () => {
+	let server: Awaited<ReturnType<typeof startSelfSignedServer>>;
+	let selfSignedUrl: string;
+
+	beforeAll(async () => {
+		server = await startSelfSignedServer();
+		selfSignedUrl = server.url;
+	});
+
+	afterAll(async () => {
+		await server.close();
+	});
+
 	describe('with allowInsecureCerts disabled (default)', () => {
 		it('should fail on self-signed certificates', async () => {
-			// Using badssl.com which provides various certificate scenarios
 			const results = await check({
-				path: 'https://self-signed.badssl.com/',
+				path: selfSignedUrl,
 				recurse: false,
 				allowInsecureCerts: false,
 			});
 
-			// The link should be broken due to certificate error
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'self-signed.badssl.com';
-				} catch {
-					return false;
-				}
-			});
+			const mainPage = results.links.find((link) => link.url === selfSignedUrl);
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
@@ -53,21 +58,13 @@ describe('certificate validation', () => {
 
 	describe('with allowInsecureCerts enabled', () => {
 		it('should accept self-signed certificates', async () => {
-			// Using badssl.com which provides various certificate scenarios
 			const results = await check({
-				path: 'https://self-signed.badssl.com/',
+				path: selfSignedUrl,
 				recurse: false,
 				allowInsecureCerts: true,
 			});
 
-			// The link should be OK when ignoring cert errors
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'self-signed.badssl.com';
-				} catch {
-					return false;
-				}
-			});
+			const mainPage = results.links.find((link) => link.url === selfSignedUrl);
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
