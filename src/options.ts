@@ -34,6 +34,7 @@ export type CheckOptions = {
 	checkCss?: boolean;
 	checkFragments?: boolean;
 	statusCodes?: Record<string, StatusCodeAction>;
+	crawlDelay?: number;
 };
 
 export type InternalCheckOptions = {
