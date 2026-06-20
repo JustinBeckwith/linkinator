@@ -1,6 +1,10 @@
+import { Agent, getGlobalDispatcher, setGlobalDispatcher } from 'undici';
 import { afterAll, assert, beforeAll, describe, it } from 'vitest';
 import { check, LinkState } from '../src/index.js';
-import { startSelfSignedServer } from './fixtures/self-signed-server.js';
+import {
+	selfSignedCertificate,
+	startSelfSignedServer,
+} from './fixtures/self-signed-server.js';
 
 describe('certificate validation', () => {
 	let server: Awaited<ReturnType<typeof startSelfSignedServer>>;
@@ -32,27 +36,35 @@ describe('certificate validation', () => {
 			);
 		});
 
-		it('should succeed on valid certificates', async () => {
-			// Test a site with a valid certificate
-			const results = await check({
-				path: 'https://www.google.com/',
-				recurse: false,
-				allowInsecureCerts: false,
+		it('should succeed on trusted certificates', async () => {
+			const originalDispatcher = getGlobalDispatcher();
+			const trustedAgent = new Agent({
+				connect: {
+					ca: selfSignedCertificate,
+				},
 			});
+			setGlobalDispatcher(trustedAgent);
 
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'www.google.com';
-				} catch {
-					return false;
-				}
-			});
-			assert.ok(mainPage, 'Expected to find the main page in results');
-			assert.strictEqual(
-				mainPage.state,
-				LinkState.OK,
-				'Expected valid cert to succeed',
-			);
+			try {
+				const results = await check({
+					path: selfSignedUrl,
+					recurse: false,
+					allowInsecureCerts: false,
+				});
+
+				const mainPage = results.links.find(
+					(link) => link.url === selfSignedUrl,
+				);
+				assert.ok(mainPage, 'Expected to find the main page in results');
+				assert.strictEqual(
+					mainPage.state,
+					LinkState.OK,
+					'Expected trusted cert to succeed',
+				);
+			} finally {
+				setGlobalDispatcher(originalDispatcher);
+				await trustedAgent.close();
+			}
 		});
 	});
 
@@ -73,26 +85,19 @@ describe('certificate validation', () => {
 			);
 		});
 
-		it('should still work with valid certificates', async () => {
-			// Test a site with a valid certificate
+		it('should still work with trusted certificates', async () => {
 			const results = await check({
-				path: 'https://www.google.com/',
+				path: selfSignedUrl,
 				recurse: false,
 				allowInsecureCerts: true,
 			});
 
-			const mainPage = results.links.find((link) => {
-				try {
-					return new URL(link.url).hostname === 'www.google.com';
-				} catch {
-					return false;
-				}
-			});
+			const mainPage = results.links.find((link) => link.url === selfSignedUrl);
 			assert.ok(mainPage, 'Expected to find the main page in results');
 			assert.strictEqual(
 				mainPage.state,
 				LinkState.OK,
-				'Expected valid cert to still work with allowInsecureCerts',
+				'Expected trusted cert to still work with allowInsecureCerts',
 			);
 		});
 	});
