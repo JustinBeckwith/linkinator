@@ -3,6 +3,7 @@ export class Queue extends EventEmitter {
     q = [];
     activeFunctions = 0;
     concurrency;
+    interval;
     constructor(options) {
         super();
         this.concurrency = options.concurrency;
@@ -10,10 +11,10 @@ export class Queue extends EventEmitter {
         // moments before it was scheduled. This leads to a delta between timeToRun
         // and Date.now(), and a link may never crawl. This setInterval() ensures
         // these items are eventually processed.
-        setInterval(() => {
+        this.interval = setInterval(() => {
             if (this.activeFunctions === 0)
                 this.tick();
-        }, 2500).unref();
+        }, 2500); //.unref();
     }
     // biome-ignore lint/suspicious/noExplicitAny: this can actually be any
     on(event, listener) {
@@ -33,6 +34,13 @@ export class Queue extends EventEmitter {
     async onIdle() {
         return new Promise((resolve) => {
             this.on('done', () => {
+                if (this.interval === undefined) {
+                    console.error('Unexpected clear interval;');
+                }
+                else {
+                    clearInterval(this.interval);
+                    this.interval = undefined;
+                }
                 resolve();
             });
         });

@@ -10,6 +10,7 @@ export declare class Queue extends EventEmitter {
     private readonly q;
     private activeFunctions;
     private readonly concurrency;
+    private interval?;
     constructor(options: QueueOptions);
     on(event: 'done', listener: () => void): this;
     add(function_: AsyncFunction, options?: QueueItemOptions): void;

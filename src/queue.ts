@@ -19,6 +19,7 @@ export class Queue extends EventEmitter {
 	private readonly q: QueueItem[] = [];
 	private activeFunctions = 0;
 	private readonly concurrency: number;
+	private interval?: NodeJS.Timeout;
 
 	constructor(options: QueueOptions) {
 		super();
@@ -27,9 +28,9 @@ export class Queue extends EventEmitter {
 		// moments before it was scheduled. This leads to a delta between timeToRun
 		// and Date.now(), and a link may never crawl. This setInterval() ensures
 		// these items are eventually processed.
-		setInterval(() => {
+		this.interval = setInterval(() => {
 			if (this.activeFunctions === 0) this.tick();
-		}, 2500).unref();
+		}, 2500); //.unref();
 	}
 
 	on(event: 'done', listener: () => void): this;
@@ -53,6 +54,12 @@ export class Queue extends EventEmitter {
 	async onIdle() {
 		return new Promise<void>((resolve) => {
 			this.on('done', () => {
+				if(this.interval === undefined) {
+					console.error('Unexpected clear interval;')
+				} else {
+					clearInterval(this.interval);
+					this.interval = undefined;
+				}
 				resolve();
 			});
 		});
