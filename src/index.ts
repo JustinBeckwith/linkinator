@@ -299,53 +299,15 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
-		// Explicitly skip non-http[s] links before making the request
-		const proto = options.url.protocol;
-		if (proto !== 'http:' && proto !== 'https:') {
-			const r: LinkResult = {
-				url: mapUrl(options.url.href, options.checkOptions),
-				status: 0,
-				state: LinkState.SKIPPED,
-				parent: mapUrl(options.parent, options.checkOptions),
-			};
-			options.results.push(r);
-			this.emit('link', r);
-			return;
-		}
-
-		// Check for a user-configured function to filter out links
-		if (
-			typeof options.checkOptions.linksToSkip === 'function' &&
-			(await options.checkOptions.linksToSkip(options.url.href))
-		) {
+		if (await this.shouldSkipUrl(options.url.href, options.checkOptions)) {
 			const result: LinkResult = {
 				url: mapUrl(options.url.href, options.checkOptions),
 				state: LinkState.SKIPPED,
-				parent: options.parent,
+				parent: mapUrl(options.parent, options.checkOptions),
 			};
 			options.results.push(result);
 			this.emit('link', result);
 			return;
-		}
-
-		// Check for a user-configured array of link regular expressions that should be skipped
-		if (Array.isArray(options.checkOptions.linksToSkip)) {
-			const skips = options.checkOptions.linksToSkip
-				.map((linkToSkip) => {
-					return new RegExp(linkToSkip).test(options.url.href);
-				})
-				.filter(Boolean);
-
-			if (skips.length > 0) {
-				const result: LinkResult = {
-					url: mapUrl(options.url.href, options.checkOptions),
-					state: LinkState.SKIPPED,
-					parent: mapUrl(options.parent, options.checkOptions),
-				};
-				options.results.push(result);
-				this.emit('link', result);
-				return;
-			}
 		}
 
 		// Check if this host has been marked for delay due to 429
@@ -374,20 +336,22 @@ export class LinkChecker extends EventEmitter {
 		let response: HttpResponse | undefined;
 		const failures: Array<Error | HttpResponse> = [];
 		const originalUrl = options.url.href;
+		const useManualRedirectsForSkip =
+			this.hasSkipRules(options.checkOptions) &&
+			options.checkOptions.redirects !== 'error';
 		const redirectMode =
-			options.checkOptions.redirects === 'error' ? 'manual' : 'follow';
+			options.checkOptions.redirects === 'error' || useManualRedirectsForSkip
+				? 'manual'
+				: 'follow';
+		const requestMethod = options.crawl ? 'GET' : 'HEAD';
 
 		try {
-			response = await makeRequest(
-				options.crawl ? 'GET' : 'HEAD',
-				options.url.href,
-				{
-					headers: options.checkOptions.headers,
-					timeout: options.checkOptions.timeout,
-					redirect: redirectMode,
-					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-				},
-			);
+			response = await makeRequest(requestMethod, options.url.href, {
+				headers: options.checkOptions.headers,
+				timeout: options.checkOptions.timeout,
+				redirect: redirectMode,
+				allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+			});
 			if (this.shouldRetryAfter(response, options)) {
 				return;
 			}
@@ -497,6 +461,36 @@ export class LinkChecker extends EventEmitter {
 		// a network error likely occurred) or 429 without retry-after data:
 		if (this.shouldRetryOnError(status, options)) {
 			return;
+		}
+
+		if (
+			useManualRedirectsForSkip &&
+			response !== undefined &&
+			response.status >= 300 &&
+			response.status < 400
+		) {
+			const followResult = await this.followRedirectsRespectingSkip(
+				response,
+				options.url.href,
+				requestMethod,
+				options,
+			);
+			if (followResult.skipped) {
+				const result: LinkResult = {
+					url: mapUrl(options.url.href, options.checkOptions),
+					state: LinkState.SKIPPED,
+					parent: mapUrl(options.parent, options.checkOptions),
+				};
+				options.results.push(result);
+				this.emit('link', result);
+				return;
+			}
+			response = followResult.response;
+			options.url = new URL(followResult.finalUrl);
+			status = response.status;
+			shouldRecurse =
+				isHtml(response) ||
+				(isCss(response) && options.checkOptions.checkCss === true);
 		}
 
 		// Detect if this was a redirect
@@ -916,6 +910,100 @@ export class LinkChecker extends EventEmitter {
 		// This is critical for preventing port exhaustion - if the body isn't consumed,
 		// the underlying TCP connection may not be reused.
 		await drainStream(response?.body);
+	}
+
+	private hasSkipRules(checkOptions: InternalCheckOptions): boolean {
+		if (typeof checkOptions.linksToSkip === 'function') {
+			return true;
+		}
+
+		return (
+			Array.isArray(checkOptions.linksToSkip) &&
+			checkOptions.linksToSkip.length > 0
+		);
+	}
+
+	private async shouldSkipUrl(
+		href: string,
+		checkOptions: InternalCheckOptions,
+	): Promise<boolean> {
+		let url: URL;
+		try {
+			url = new URL(href);
+		} catch {
+			return false;
+		}
+
+		const proto = url.protocol;
+		if (proto !== 'http:' && proto !== 'https:') {
+			return true;
+		}
+
+		if (typeof checkOptions.linksToSkip === 'function') {
+			return await checkOptions.linksToSkip(href);
+		}
+
+		if (Array.isArray(checkOptions.linksToSkip)) {
+			return checkOptions.linksToSkip.some((linkToSkip) =>
+				new RegExp(linkToSkip).test(href),
+			);
+		}
+
+		return false;
+	}
+
+	private async followRedirectsRespectingSkip(
+		response: HttpResponse,
+		currentUrl: string,
+		method: 'GET' | 'HEAD',
+		options: CrawlOptions,
+	): Promise<
+		| { skipped: true }
+		| { skipped: false; response: HttpResponse; finalUrl: string }
+	> {
+		let currentResponse = response;
+		let url = currentUrl;
+		const maxRedirects = 20;
+		let redirectsFollowed = 0;
+		const requestOptions = {
+			headers: options.checkOptions.headers,
+			timeout: options.checkOptions.timeout,
+			redirect: 'manual' as const,
+			allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+		};
+
+		while (
+			currentResponse.status >= 300 &&
+			currentResponse.status < 400 &&
+			redirectsFollowed < maxRedirects
+		) {
+			const location = currentResponse.headers.location;
+			if (!location) {
+				break;
+			}
+
+			const targetUrl = new URL(location, url).href;
+			if (await this.shouldSkipUrl(targetUrl, options.checkOptions)) {
+				await drainStream(currentResponse.body);
+				return { skipped: true };
+			}
+
+			await drainStream(currentResponse.body);
+			url = targetUrl;
+			currentResponse = await makeRequest(method, url, requestOptions);
+
+			if (currentResponse.status === 405 && method === 'HEAD') {
+				currentResponse = await makeRequest('GET', url, requestOptions);
+			}
+
+			redirectsFollowed++;
+		}
+
+		return {
+			skipped: false,
+			response: { ...currentResponse, url },
+			finalUrl: url,
+		};
 	}
 
 	/**
