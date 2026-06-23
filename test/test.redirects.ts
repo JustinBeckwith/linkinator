@@ -394,5 +394,101 @@ describe('redirects', () => {
 			assert.strictEqual(redirectWarnings.length, 1);
 			assert.ok(redirectWarnings[0].targetUrl?.includes('/target'));
 		});
+
+		it('should skip redirect targets that match skip rules', async () => {
+			let externalRequestCount = 0;
+			const externalServer = http.createServer((_req, res) => {
+				externalRequestCount++;
+				res.writeHead(200, { 'Content-Type': 'text/html' });
+				res.end('<html><body>External</body></html>');
+			});
+
+			await new Promise<void>((resolve, reject) => {
+				externalServer.listen(0, () => resolve());
+				externalServer.on('error', reject);
+			});
+
+			const externalAddr = externalServer.address() as AddressInfo;
+			const externalUrl = `http://127.0.0.1:${externalAddr.port}`;
+
+			const redirectServer = http.createServer((req, res) => {
+				if (req.url === '/internal-redirect') {
+					res.writeHead(302, {
+						Location: `${externalUrl}/external-page`,
+						'Content-Type': 'text/html',
+					});
+					res.end('Redirecting...');
+					return;
+				}
+
+				res.writeHead(404);
+				res.end('Not Found');
+			});
+
+			await new Promise<void>((resolve, reject) => {
+				redirectServer.listen(0, () => resolve());
+				redirectServer.on('error', reject);
+			});
+
+			const redirectAddr = redirectServer.address() as AddressInfo;
+			const redirectUrl = `http://127.0.0.1:${redirectAddr.port}/internal-redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: [`^${externalUrl}`],
+				});
+
+				assert.ok(results.passed);
+				assert.strictEqual(results.links.length, 1);
+				assert.strictEqual(results.links[0].state, LinkState.SKIPPED);
+				assert.strictEqual(
+					externalRequestCount,
+					0,
+					'Should not request skipped redirect target',
+				);
+			} finally {
+				redirectServer.close();
+				externalServer.close();
+			}
+		});
+
+		it('should follow internal redirects when target is not skipped', async () => {
+			const redirectServer = http.createServer((req, res) => {
+				if (req.url === '/internal-redirect') {
+					res.writeHead(302, {
+						Location: `${rootUrl}/target`,
+						'Content-Type': 'text/html',
+					});
+					res.end('Redirecting...');
+					return;
+				}
+
+				res.writeHead(404);
+				res.end('Not Found');
+			});
+
+			await new Promise<void>((resolve, reject) => {
+				redirectServer.listen(0, () => resolve());
+				redirectServer.on('error', reject);
+			});
+
+			const redirectAddr = redirectServer.address() as AddressInfo;
+			const redirectUrl = `http://127.0.0.1:${redirectAddr.port}/internal-redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: ['^https://'],
+				});
+
+				assert.ok(results.passed);
+				assert.strictEqual(results.links.length, 1);
+				assert.strictEqual(results.links[0].state, LinkState.OK);
+				assert.strictEqual(results.links[0].status, 200);
+			} finally {
+				redirectServer.close();
+			}
+		});
 	});
 });
