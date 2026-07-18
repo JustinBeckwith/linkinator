@@ -39,7 +39,7 @@
 		"@types/escape-html": "^1.0.1",
 		"@types/node": "^25.3.0",
 		"@vitest/coverage-v8": "^4.0.0",
-		"execa": "^9.0.0",
+		"execa": "^10.0.0",
 		"husky": "^9.0.11",
 		"strip-ansi": "^7.0.1",
 		"typescript": "^7.0.0",
