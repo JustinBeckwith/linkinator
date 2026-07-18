@@ -71,6 +71,40 @@ describe('linkinator', () => {
 		assert.strictEqual(checkerSpy.mock.calls.length, 2);
 	});
 
+	it('should not start more crawls than the configured concurrency', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		for (let i = 1; i <= 5; i++) {
+			mockPool.intercept({ path: `/${i}`, method: 'HEAD' }).reply(200, '');
+		}
+
+		const checker = new LinkChecker();
+		const crawl = checker.crawl.bind(checker);
+		let activeCrawls = 0;
+		let maxActiveCrawls = 0;
+		vi.spyOn(checker, 'crawl').mockImplementation(async (options) => {
+			activeCrawls++;
+			maxActiveCrawls = Math.max(maxActiveCrawls, activeCrawls);
+			try {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				await crawl(options);
+			} finally {
+				activeCrawls--;
+			}
+		});
+
+		const results = await checker.check({
+			path: 'test/fixtures/concurrency',
+			concurrency: 2,
+		});
+
+		assert.ok(results.passed);
+		assert.strictEqual(results.links.length, 6);
+		assert.ok(
+			maxActiveCrawls <= 2,
+			`observed ${maxActiveCrawls} active crawls`,
+		);
+	});
+
 	it('should skip links if asked nicely', async () => {
 		const results = await check({
 			path: 'test/fixtures/skip',
@@ -915,6 +949,7 @@ describe('linkinator', () => {
 				'test/fixtures/repeated-broken-link/pageA.html',
 				'test/fixtures/repeated-broken-link/pageB.html',
 			],
+			concurrency: 1,
 		});
 		assert.ok(!results.passed);
 
