@@ -124,6 +124,8 @@ export type HttpResponse = {
 	url?: string;
 };
 
+type RequestResponse = HttpResponse & { redirectSkipped?: string };
+
 export type LinkResult = {
 	url: string;
 	status?: number;
@@ -299,53 +301,9 @@ export class LinkChecker extends EventEmitter {
 			}
 		}
 
-		// Explicitly skip non-http[s] links before making the request
-		const proto = options.url.protocol;
-		if (proto !== 'http:' && proto !== 'https:') {
-			const r: LinkResult = {
-				url: mapUrl(options.url.href, options.checkOptions),
-				status: 0,
-				state: LinkState.SKIPPED,
-				parent: mapUrl(options.parent, options.checkOptions),
-			};
-			options.results.push(r);
-			this.emit('link', r);
+		if (await this.shouldSkipUrl(options.url.href, options.checkOptions)) {
+			this.recordSkippedResult(options);
 			return;
-		}
-
-		// Check for a user-configured function to filter out links
-		if (
-			typeof options.checkOptions.linksToSkip === 'function' &&
-			(await options.checkOptions.linksToSkip(options.url.href))
-		) {
-			const result: LinkResult = {
-				url: mapUrl(options.url.href, options.checkOptions),
-				state: LinkState.SKIPPED,
-				parent: options.parent,
-			};
-			options.results.push(result);
-			this.emit('link', result);
-			return;
-		}
-
-		// Check for a user-configured array of link regular expressions that should be skipped
-		if (Array.isArray(options.checkOptions.linksToSkip)) {
-			const skips = options.checkOptions.linksToSkip
-				.map((linkToSkip) => {
-					return new RegExp(linkToSkip).test(options.url.href);
-				})
-				.filter(Boolean);
-
-			if (skips.length > 0) {
-				const result: LinkResult = {
-					url: mapUrl(options.url.href, options.checkOptions),
-					state: LinkState.SKIPPED,
-					parent: mapUrl(options.parent, options.checkOptions),
-				};
-				options.results.push(result);
-				this.emit('link', result);
-				return;
-			}
 		}
 
 		// Check if this host has been marked for delay due to 429
@@ -371,35 +329,43 @@ export class LinkChecker extends EventEmitter {
 		let status = 0;
 		let state = LinkState.BROKEN;
 		let shouldRecurse = false;
-		let response: HttpResponse | undefined;
+		let response: RequestResponse | undefined;
 		const failures: Array<Error | HttpResponse> = [];
 		const originalUrl = options.url.href;
 		const redirectMode =
 			options.checkOptions.redirects === 'error' ? 'manual' : 'follow';
+		const requestOptions = {
+			headers: options.checkOptions.headers,
+			timeout: options.checkOptions.timeout,
+			redirect: redirectMode,
+			allowInsecureCerts: options.checkOptions.allowInsecureCerts,
+			shouldSkipRedirect:
+				redirectMode === 'follow' && this.hasSkipRules(options.checkOptions)
+					? (url: string) => this.shouldSkipUrl(url, options.checkOptions)
+					: undefined,
+		} as const;
 
 		try {
 			response = await makeRequest(
 				options.crawl ? 'GET' : 'HEAD',
 				options.url.href,
-				{
-					headers: options.checkOptions.headers,
-					timeout: options.checkOptions.timeout,
-					redirect: redirectMode,
-					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-				},
+				requestOptions,
 			);
+			if (response.redirectSkipped) {
+				this.recordSkippedResult(options);
+				return;
+			}
 			if (this.shouldRetryAfter(response, options)) {
 				return;
 			}
 
 			// If we got an HTTP 405, the server may not like HEAD. GET instead!
 			if (response.status === 405) {
-				response = await makeRequest('GET', options.url.href, {
-					headers: options.checkOptions.headers,
-					timeout: options.checkOptions.timeout,
-					redirect: redirectMode,
-					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-				});
+				response = await makeRequest('GET', options.url.href, requestOptions);
+				if (response.redirectSkipped) {
+					this.recordSkippedResult(options);
+					return;
+				}
 				if (this.shouldRetryAfter(response, options)) {
 					return;
 				}
@@ -420,12 +386,11 @@ export class LinkChecker extends EventEmitter {
 					response.status >= 300) &&
 				!options.crawl
 			) {
-				response = await makeRequest('GET', options.url.href, {
-					headers: options.checkOptions.headers,
-					timeout: options.checkOptions.timeout,
-					redirect: redirectMode,
-					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-				});
+				response = await makeRequest('GET', options.url.href, requestOptions);
+				if (response.redirectSkipped) {
+					this.recordSkippedResult(options);
+					return;
+				}
 				if (this.shouldRetryAfter(response, options)) {
 					return;
 				}
@@ -453,12 +418,11 @@ export class LinkChecker extends EventEmitter {
 			options.checkOptions.checkCss
 		) {
 			try {
-				response = await makeRequest('GET', options.url.href, {
-					headers: options.checkOptions.headers,
-					timeout: options.checkOptions.timeout,
-					redirect: redirectMode,
-					allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-				});
+				response = await makeRequest('GET', options.url.href, requestOptions);
+				if (response.redirectSkipped) {
+					this.recordSkippedResult(options);
+					return;
+				}
 				if (response !== undefined) {
 					status = response.status;
 				}
@@ -478,12 +442,11 @@ export class LinkChecker extends EventEmitter {
 			const fragmentsToCheck = this.fragmentsToCheck.get(options.url.href);
 			if (fragmentsToCheck && fragmentsToCheck.size > 0) {
 				try {
-					response = await makeRequest('GET', options.url.href, {
-						headers: options.checkOptions.headers,
-						timeout: options.checkOptions.timeout,
-						redirect: redirectMode,
-						allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-					});
+					response = await makeRequest('GET', options.url.href, requestOptions);
+					if (response.redirectSkipped) {
+						this.recordSkippedResult(options);
+						return;
+					}
 					if (response !== undefined) {
 						status = response.status;
 					}
@@ -918,6 +881,48 @@ export class LinkChecker extends EventEmitter {
 		await drainStream(response?.body);
 	}
 
+	private hasSkipRules(checkOptions: InternalCheckOptions): boolean {
+		return (
+			typeof checkOptions.linksToSkip === 'function' ||
+			(Array.isArray(checkOptions.linksToSkip) &&
+				checkOptions.linksToSkip.length > 0)
+		);
+	}
+
+	private async shouldSkipUrl(
+		href: string,
+		checkOptions: InternalCheckOptions,
+	): Promise<boolean> {
+		const url = new URL(href);
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+			return true;
+		}
+
+		if (typeof checkOptions.linksToSkip === 'function') {
+			return checkOptions.linksToSkip(href);
+		}
+
+		return Boolean(
+			checkOptions.linksToSkip?.some((linkToSkip) =>
+				new RegExp(linkToSkip).test(href),
+			),
+		);
+	}
+
+	private recordSkippedResult(options: CrawlOptions): void {
+		const result: LinkResult = {
+			url: mapUrl(options.url.href, options.checkOptions),
+			status:
+				options.url.protocol === 'http:' || options.url.protocol === 'https:'
+					? undefined
+					: 0,
+			state: LinkState.SKIPPED,
+			parent: mapUrl(options.parent, options.checkOptions),
+		};
+		options.results.push(result);
+		this.emit('link', result);
+	}
+
 	/**
 	 * Parse the retry-after header value into a timestamp.
 	 * Supports standard formats (seconds, HTTP date) and non-standard formats (30s, 1m30s).
@@ -1127,8 +1132,9 @@ async function makeRequest(
 		timeout?: number;
 		redirect?: 'follow' | 'manual';
 		allowInsecureCerts?: boolean;
+		shouldSkipRedirect?: (url: string) => Promise<boolean>;
 	} = {},
-): Promise<HttpResponse> {
+): Promise<RequestResponse> {
 	// Build browser-like headers to avoid bot detection
 	const defaultHeaders: Record<string, string> = {
 		Accept:
@@ -1144,54 +1150,100 @@ async function makeRequest(
 		'User-Agent': 'node',
 	};
 
-	const requestOptions: RequestInit = {
-		method,
-		headers: { ...defaultHeaders, ...options.headers },
-		redirect: options.redirect ?? 'follow',
-	};
+	let currentUrl = url;
+	let currentHeaders = { ...defaultHeaders, ...options.headers };
+	const manuallyFollow = Boolean(options.shouldSkipRedirect);
+	const signal = options.timeout
+		? AbortSignal.timeout(options.timeout)
+		: undefined;
 
-	if (options.timeout) {
-		requestOptions.signal = AbortSignal.timeout(options.timeout);
-	}
+	for (let redirectCount = 0; ; redirectCount++) {
+		const requestOptions: RequestInit = {
+			method,
+			headers: currentHeaders,
+			redirect: manuallyFollow ? 'manual' : (options.redirect ?? 'follow'),
+		};
 
-	// For normal requests, use undici fetch so tests and callers can control
-	// request dispatching with undici.setGlobalDispatcher across Node versions.
-	//
-	// For insecure cert requests, we must use undiciFetch with a custom
-	// dispatcher because the global dispatcher doesn't support disabling
-	// certificate validation. We use a shared agent to prevent port exhaustion
-	// from creating new agents per request (which was the original bug).
-	//
-	// For proxy requests, Node's native fetch does not automatically read
-	// http_proxy / https_proxy environment variables, so we must explicitly
-	// create a ProxyAgent dispatcher when those env vars are present.
-	const proxyUrl = getProxyUrl();
-	const response = options.allowInsecureCerts
-		? await undiciFetch(url, {
-				...requestOptions,
-				dispatcher: getSharedAgent(true),
-			})
-		: proxyUrl
-			? await undiciFetch(url, {
+		if (signal) {
+			requestOptions.signal = signal;
+		}
+
+		// For normal requests, use undici fetch so tests and callers can control
+		// request dispatching with undici.setGlobalDispatcher across Node versions.
+		// Custom agents are shared to preserve connection pooling.
+		const proxyUrl = getProxyUrl();
+		const response = options.allowInsecureCerts
+			? await undiciFetch(currentUrl, {
 					...requestOptions,
-					dispatcher: getSharedProxyAgent(proxyUrl),
+					dispatcher: getSharedAgent(true),
 				})
-			: await undiciFetch(url, requestOptions);
+			: proxyUrl
+				? await undiciFetch(currentUrl, {
+						...requestOptions,
+						dispatcher: getSharedProxyAgent(proxyUrl),
+					})
+				: await undiciFetch(currentUrl, requestOptions);
 
-	// Convert headers to a plain object
-	const headers: Record<string, string> = {};
-	response.headers.forEach((value: string, key: string) => {
-		headers[key] = value;
-	});
+		const headers: Record<string, string> = {};
+		response.headers.forEach((value: string, key: string) => {
+			headers[key] = value;
+		});
 
-	const status = response.status;
+		const result: HttpResponse = {
+			status: response.status,
+			headers,
+			body: (response.body ?? undefined) as ReadableStream | undefined,
+			url: response.url,
+		};
 
-	return {
-		status,
-		headers,
-		body: (response.body ?? undefined) as ReadableStream | undefined,
-		url: response.url,
-	};
+		const location = headers.location;
+		if (
+			!manuallyFollow ||
+			!isFetchRedirectStatus(response.status) ||
+			!location
+		) {
+			return result;
+		}
+
+		const targetUrl = new URL(location, currentUrl).href;
+		if (await options.shouldSkipRedirect?.(targetUrl)) {
+			await drainStream(result.body);
+			return { ...result, body: undefined, redirectSkipped: targetUrl };
+		}
+
+		if (redirectCount >= 20) {
+			await drainStream(result.body);
+			throw new TypeError('redirect count exceeded');
+		}
+
+		const currentOrigin = new URL(currentUrl).origin;
+		const targetOrigin = new URL(targetUrl).origin;
+		if (currentOrigin !== targetOrigin) {
+			currentHeaders = stripSensitiveHeaders(currentHeaders);
+		}
+
+		await drainStream(result.body);
+		currentUrl = targetUrl;
+	}
+}
+
+function isFetchRedirectStatus(status: number): boolean {
+	return [301, 302, 303, 307, 308].includes(status);
+}
+
+function stripSensitiveHeaders(
+	headers: Record<string, string>,
+): Record<string, string> {
+	const sensitiveHeaders = new Set([
+		'authorization',
+		'cookie',
+		'proxy-authorization',
+	]);
+	return Object.fromEntries(
+		Object.entries(headers).filter(
+			([name]) => !sensitiveHeaders.has(name.toLowerCase()),
+		),
+	);
 }
 
 /**

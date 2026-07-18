@@ -395,4 +395,322 @@ describe('redirects', () => {
 			assert.ok(redirectWarnings[0].targetUrl?.includes('/target'));
 		});
 	});
+
+	describe('skip rules', () => {
+		it('does not request a skipped redirect target', async () => {
+			let targetRequests = 0;
+			const targetServer = http.createServer((_req, res) => {
+				targetRequests++;
+				res.end('unexpected');
+			});
+			await new Promise<void>((resolve) => targetServer.listen(0, resolve));
+			const targetAddress = targetServer.address() as AddressInfo;
+			const targetUrl = `http://localhost:${targetAddress.port}/external`;
+
+			const redirectServer = http.createServer((_req, res) => {
+				res.writeHead(302, { Location: targetUrl });
+				res.end();
+			});
+			await new Promise<void>((resolve) => redirectServer.listen(0, resolve));
+			const redirectAddress = redirectServer.address() as AddressInfo;
+			const redirectUrl = `http://localhost:${redirectAddress.port}/redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: [`^${targetUrl}`],
+				});
+				assert.ok(results.passed);
+				assert.strictEqual(results.links[0].state, LinkState.SKIPPED);
+				assert.strictEqual(results.links[0].url, redirectUrl);
+				assert.strictEqual(targetRequests, 0);
+			} finally {
+				redirectServer.close();
+				targetServer.close();
+			}
+		});
+
+		it('checks every target in a redirect chain with function rules', async () => {
+			let skippedTargetRequests = 0;
+			const chainServer = http.createServer((req, res) => {
+				if (req.url === '/start') {
+					res.writeHead(302, { Location: '/middle' });
+					res.end();
+					return;
+				}
+				if (req.url === '/middle') {
+					res.writeHead(307, { Location: '/skipped' });
+					res.end();
+					return;
+				}
+				skippedTargetRequests++;
+				res.end('unexpected');
+			});
+			await new Promise<void>((resolve) => chainServer.listen(0, resolve));
+			const address = chainServer.address() as AddressInfo;
+			const chainUrl = `http://localhost:${address.port}`;
+
+			try {
+				const results = await check({
+					path: `${chainUrl}/start`,
+					linksToSkip: async (url) => url === `${chainUrl}/skipped`,
+				});
+				assert.strictEqual(results.links[0].state, LinkState.SKIPPED);
+				assert.strictEqual(skippedTargetRequests, 0);
+			} finally {
+				chainServer.close();
+			}
+		});
+
+		it('does not forward sensitive headers across origins', async () => {
+			let receivedAuthorization: string | undefined;
+			let receivedCookie: string | undefined;
+			let receivedCustomHeader: string | undefined;
+			const targetServer = http.createServer((req, res) => {
+				receivedAuthorization = req.headers.authorization;
+				receivedCookie = req.headers.cookie;
+				receivedCustomHeader = req.headers['x-linkinator-test'] as string;
+				res.writeHead(200, { 'Content-Type': 'text/html' });
+				res.end('ok');
+			});
+			await new Promise<void>((resolve) => targetServer.listen(0, resolve));
+			const targetAddress = targetServer.address() as AddressInfo;
+			const targetUrl = `http://localhost:${targetAddress.port}/target`;
+
+			const redirectServer = http.createServer((_req, res) => {
+				res.writeHead(302, { Location: targetUrl });
+				res.end();
+			});
+			await new Promise<void>((resolve) => redirectServer.listen(0, resolve));
+			const redirectAddress = redirectServer.address() as AddressInfo;
+			const redirectUrl = `http://localhost:${redirectAddress.port}/redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: ['never-match'],
+					headers: {
+						Authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+						'X-Linkinator-Test': 'preserved',
+					},
+				});
+				assert.ok(results.passed);
+				assert.strictEqual(results.links[0].url, redirectUrl);
+				assert.strictEqual(receivedAuthorization, undefined);
+				assert.strictEqual(receivedCookie, undefined);
+				assert.strictEqual(receivedCustomHeader, 'preserved');
+			} finally {
+				redirectServer.close();
+				targetServer.close();
+			}
+		});
+
+		it('preserves sensitive headers for same-origin redirects', async () => {
+			let receivedAuthorization: string | undefined;
+			const sameOriginServer = http.createServer((req, res) => {
+				if (req.url === '/redirect') {
+					res.writeHead(302, { Location: '/target' });
+					res.end();
+					return;
+				}
+				receivedAuthorization = req.headers.authorization;
+				res.writeHead(200, { 'Content-Type': 'text/html' });
+				res.end('ok');
+			});
+			await new Promise<void>((resolve) => sameOriginServer.listen(0, resolve));
+			const address = sameOriginServer.address() as AddressInfo;
+			const redirectUrl = `http://localhost:${address.port}/redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: ['never-match'],
+					headers: { Authorization: 'Bearer same-origin' },
+				});
+				assert.ok(results.passed);
+				assert.strictEqual(receivedAuthorization, 'Bearer same-origin');
+			} finally {
+				sameOriginServer.close();
+			}
+		});
+
+		it('does not follow non-redirect 3xx statuses with Location headers', async () => {
+			let targetRequests = 0;
+			const statusServer = http.createServer((req, res) => {
+				if (req.url === '/not-modified') {
+					res.writeHead(304, { Location: '/target' });
+					res.end();
+					return;
+				}
+				targetRequests++;
+				res.end('unexpected');
+			});
+			await new Promise<void>((resolve) => statusServer.listen(0, resolve));
+			const address = statusServer.address() as AddressInfo;
+
+			try {
+				const results = await check({
+					path: `http://localhost:${address.port}/not-modified`,
+					linksToSkip: ['never-match'],
+				});
+				assert.ok(!results.passed);
+				assert.strictEqual(results.links[0].status, 304);
+				assert.strictEqual(targetRequests, 0);
+			} finally {
+				statusServer.close();
+			}
+		});
+
+		it('keeps redirects in error mode broken without applying target skips', async () => {
+			let targetRequests = 0;
+			const errorModeServer = http.createServer((req, res) => {
+				if (req.url === '/redirect') {
+					res.writeHead(302, { Location: '/target' });
+					res.end();
+					return;
+				}
+				targetRequests++;
+				res.end('unexpected');
+			});
+			await new Promise<void>((resolve) => errorModeServer.listen(0, resolve));
+			const address = errorModeServer.address() as AddressInfo;
+			const serverUrl = `http://localhost:${address.port}`;
+
+			try {
+				const results = await check({
+					path: `${serverUrl}/redirect`,
+					linksToSkip: [`${serverUrl}/target`],
+					redirects: 'error',
+				});
+				assert.ok(!results.passed);
+				assert.strictEqual(results.links[0].state, LinkState.BROKEN);
+				assert.strictEqual(results.links[0].status, 302);
+				assert.strictEqual(targetRequests, 0);
+			} finally {
+				errorModeServer.close();
+			}
+		});
+
+		it('fails redirect chains that exceed the fetch redirect limit', async () => {
+			let requests = 0;
+			const loopServer = http.createServer((req, res) => {
+				requests++;
+				const current = Number(
+					new URL(req.url || '/', 'http://localhost').searchParams.get('n'),
+				);
+				res.writeHead(302, { Location: `/loop?n=${current + 1}` });
+				res.end();
+			});
+			await new Promise<void>((resolve) => loopServer.listen(0, resolve));
+			const address = loopServer.address() as AddressInfo;
+			const loopUrl = `http://localhost:${address.port}/loop?n=0`;
+
+			try {
+				const results = await check({
+					path: loopUrl,
+					linksToSkip: ['never-match'],
+				});
+				assert.ok(!results.passed);
+				assert.strictEqual(results.links[0].state, LinkState.BROKEN);
+				// One initial request plus the maximum 20 followed redirects.
+				assert.strictEqual(requests, 21);
+			} finally {
+				loopServer.close();
+			}
+		});
+
+		it('allows exactly the fetch limit of 20 redirects', async () => {
+			let requests = 0;
+			const limitServer = http.createServer((req, res) => {
+				requests++;
+				const current = Number(
+					new URL(req.url || '/', 'http://localhost').searchParams.get('n'),
+				);
+				if (current < 20) {
+					res.writeHead(302, { Location: `/chain?n=${current + 1}` });
+					res.end();
+					return;
+				}
+				res.writeHead(200, { 'Content-Type': 'text/html' });
+				res.end('ok');
+			});
+			await new Promise<void>((resolve) => limitServer.listen(0, resolve));
+			const address = limitServer.address() as AddressInfo;
+			const limitUrl = `http://localhost:${address.port}/chain?n=0`;
+
+			try {
+				const results = await check({
+					path: limitUrl,
+					linksToSkip: ['never-match'],
+				});
+				assert.ok(results.passed);
+				assert.strictEqual(results.links[0].status, 200);
+				assert.strictEqual(requests, 21);
+			} finally {
+				limitServer.close();
+			}
+		});
+
+		it('reports a failed redirect target as broken', async () => {
+			const redirectServer = http.createServer((_req, res) => {
+				res.writeHead(302, { Location: 'http://localhost:1/unreachable' });
+				res.end();
+			});
+			await new Promise<void>((resolve) => redirectServer.listen(0, resolve));
+			const address = redirectServer.address() as AddressInfo;
+			const redirectUrl = `http://localhost:${address.port}/redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: ['never-match'],
+				});
+				assert.ok(!results.passed);
+				assert.strictEqual(results.links[0].state, LinkState.BROKEN);
+				assert.strictEqual(results.links[0].url, redirectUrl);
+			} finally {
+				redirectServer.close();
+			}
+		});
+
+		it('applies retry handling to the final redirect response', async () => {
+			let targetRequests = 0;
+			const targetServer = http.createServer((_req, res) => {
+				targetRequests++;
+				if (targetRequests === 1) {
+					res.writeHead(429, { 'Retry-After': '0' });
+					res.end();
+					return;
+				}
+				res.writeHead(200, { 'Content-Type': 'text/html' });
+				res.end('ok');
+			});
+			await new Promise<void>((resolve) => targetServer.listen(0, resolve));
+			const targetAddress = targetServer.address() as AddressInfo;
+			const targetUrl = `http://localhost:${targetAddress.port}/target`;
+
+			const redirectServer = http.createServer((_req, res) => {
+				res.writeHead(302, { Location: targetUrl });
+				res.end();
+			});
+			await new Promise<void>((resolve) => redirectServer.listen(0, resolve));
+			const redirectAddress = redirectServer.address() as AddressInfo;
+			const redirectUrl = `http://localhost:${redirectAddress.port}/redirect`;
+
+			try {
+				const results = await check({
+					path: redirectUrl,
+					linksToSkip: ['never-match'],
+					retry: true,
+				});
+				assert.ok(results.passed);
+				assert.strictEqual(results.links[0].status, 200);
+				assert.strictEqual(targetRequests, 2);
+			} finally {
+				redirectServer.close();
+				targetServer.close();
+			}
+		});
+	});
 });
