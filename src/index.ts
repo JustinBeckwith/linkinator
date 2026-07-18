@@ -165,6 +165,29 @@ export class LinkChecker extends EventEmitter {
 	// Track which fragments need to be checked for each URL
 	private fragmentsToCheck = new Map<string, Set<string>>();
 
+	/**
+	 * Register a crawl as pending, then start it only after the queue grants a
+	 * concurrency slot. The separate completion promise lets duplicate links
+	 * wait for the original check without starting that check eagerly.
+	 */
+	private enqueueCrawl(options: CrawlOptions): Promise<void> {
+		let resolveCompletion: () => void;
+		const completion = new Promise<void>((resolve) => {
+			resolveCompletion = resolve;
+		});
+
+		options.pendingChecks.set(options.url.href, completion);
+		options.queue.add(async () => {
+			try {
+				await this.crawl(options);
+			} finally {
+				resolveCompletion();
+			}
+		});
+
+		return completion;
+	}
+
 	on(event: 'link', listener: (result: LinkResult) => void): this;
 	on(event: 'pagestart', listener: (link: string) => void): this;
 	on(event: 'retry', listener: (details: RetryInfo) => void): this;
@@ -243,32 +266,23 @@ export class LinkChecker extends EventEmitter {
 			const url = new URL(path);
 			initCache.add(url.href);
 
-			// Create a promise for this starting page so other pages can wait for it
-			const crawlPromise = (async () => {
-				await this.crawl({
-					url,
-					crawl: true,
-					checkOptions: options,
-					results,
-					cache: initCache,
-					relationshipCache,
-					pendingChecks,
-					delayCache,
-					retryErrorsCache,
-					queue,
-					rootPath: path,
-					retry: Boolean(options_.retry),
-					retryErrors: Boolean(options_.retryErrors),
-					retryErrorsCount: options_.retryErrorsCount ?? 5,
-					retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
-				});
-			})();
-
-			// Store the promise
-			pendingChecks.set(url.href, crawlPromise);
-
-			// Queue the crawl
-			queue.add(() => crawlPromise);
+			this.enqueueCrawl({
+				url,
+				crawl: true,
+				checkOptions: options,
+				results,
+				cache: initCache,
+				relationshipCache,
+				pendingChecks,
+				delayCache,
+				retryErrorsCache,
+				queue,
+				rootPath: path,
+				retry: Boolean(options_.retry),
+				retryErrors: Boolean(options_.retryErrors),
+				retryErrorsCount: options_.retryErrorsCount ?? 5,
+				retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+			});
 		}
 
 		await queue.onIdle();
@@ -784,36 +798,27 @@ export class LinkChecker extends EventEmitter {
 					// URL hasn't been checked, add to cache and create a promise for the check
 					options.cache.add(result.url.href);
 
-					// Create a promise that will resolve when the check completes
-					const checkPromise = (async () => {
-						if (result.url === undefined) {
-							throw new Error('url is undefined');
-						}
-						await this.crawl({
-							url: result.url,
-							crawl: crawl ?? false,
-							cache: options.cache,
-							relationshipCache: options.relationshipCache,
-							pendingChecks: options.pendingChecks,
-							delayCache: options.delayCache,
-							retryErrorsCache: options.retryErrorsCache,
-							results: options.results,
-							checkOptions: options.checkOptions,
-							queue: options.queue,
-							parent: options.url.href,
-							rootPath: options.rootPath,
-							retry: options.retry,
-							retryErrors: options.retryErrors,
-							retryErrorsCount: options.retryErrorsCount,
-							retryErrorsJitter: options.retryErrorsJitter,
-						});
-					})();
-
-					// Store the promise so other parents can wait for it
-					options.pendingChecks.set(result.url.href, checkPromise);
-
-					// Queue the check
-					options.queue.add(() => checkPromise);
+					if (result.url === undefined) {
+						throw new Error('url is undefined');
+					}
+					this.enqueueCrawl({
+						url: result.url,
+						crawl: crawl ?? false,
+						cache: options.cache,
+						relationshipCache: options.relationshipCache,
+						pendingChecks: options.pendingChecks,
+						delayCache: options.delayCache,
+						retryErrorsCache: options.retryErrorsCache,
+						results: options.results,
+						checkOptions: options.checkOptions,
+						queue: options.queue,
+						parent: options.url.href,
+						rootPath: options.rootPath,
+						retry: options.retry,
+						retryErrors: options.retryErrors,
+						retryErrorsCount: options.retryErrorsCount,
+						retryErrorsJitter: options.retryErrorsJitter,
+					});
 				} else {
 					// URL is being checked or has been checked
 					// Only report duplicate results for BROKEN links so users can see
