@@ -44,6 +44,7 @@ export type ParsedUrl = {
 	link: string;
 	error?: Error;
 	url?: URL;
+	urlWithFragment?: string;
 	fragment?: string;
 };
 
@@ -219,11 +220,12 @@ function parseAttribute(name: string, value: string): string[] {
 function parseLink(link: string, baseUrl: string): ParsedUrl {
 	try {
 		const url = new URL(link, baseUrl);
+		const urlWithFragment = url.href;
 		const fragment = url.hash
 			? decodeURIComponent(url.hash.slice(1))
 			: undefined;
 		url.hash = '';
-		return { link, url, fragment };
+		return { link, url, urlWithFragment, fragment };
 	} catch (error) {
 		return { link, error: error as Error };
 	}
