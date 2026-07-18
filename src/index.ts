@@ -716,6 +716,28 @@ export class LinkChecker extends EventEmitter {
 					continue;
 				}
 
+				// Requests are deduplicated by the fragmentless URL, but skip rules
+				// should see the complete URL as it appeared in the document.
+				if (
+					this.hasSkipRules(options.checkOptions) &&
+					(result.url.protocol === 'http:' ||
+						result.url.protocol === 'https:') &&
+					result.urlWithFragment &&
+					(await this.shouldSkipUrl(
+						result.urlWithFragment,
+						options.checkOptions,
+					))
+				) {
+					const skippedResult: LinkResult = {
+						url: mapUrl(result.urlWithFragment, options.checkOptions),
+						state: LinkState.SKIPPED,
+						parent: mapUrl(options.url.href, options.checkOptions),
+					};
+					options.results.push(skippedResult);
+					this.emit('link', skippedResult);
+					continue;
+				}
+
 				// Track fragments that need validation if checkFragments is enabled
 				if (
 					options.checkOptions.checkFragments &&

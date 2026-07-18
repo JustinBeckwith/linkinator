@@ -83,6 +83,76 @@ describe('linkinator', () => {
 		);
 	});
 
+	it('should match linksToSkip against URL fragments', async () => {
+		const mockPool = mockAgent.get('https://github.com');
+		mockPool
+			.intercept({ path: '/example/project', method: 'HEAD' })
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/skip-fragments',
+			linksToSkip: ['.*#(?:readme|L\\d+(?:-L\\d+)?)$'],
+		});
+
+		expect(results.links).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					url: 'https://github.com/example/project#readme',
+					state: LinkState.SKIPPED,
+				}),
+				expect.objectContaining({
+					url: 'https://github.com/example/project#L12-L14',
+					state: LinkState.SKIPPED,
+				}),
+				expect.objectContaining({
+					url: 'https://github.com/example/project',
+					state: LinkState.OK,
+				}),
+			]),
+		);
+		expect(
+			results.links.filter((link) => link.state === LinkState.SKIPPED),
+		).toHaveLength(2);
+	});
+
+	it('should skip an exact URL fragment without fragment validation', async () => {
+		const results = await check({
+			path: 'test/fixtures/skip-fragments',
+			linksToSkip: [
+				'https://github.com/example/project#readme',
+				'https://github.com/example/project#L12-L14',
+				'https://github.com/example/project#overview',
+			],
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(
+			results.links.filter((link) => link.state === LinkState.SKIPPED),
+		).toHaveLength(3);
+	});
+
+	it('should pass URL fragments to a linksToSkip function', async () => {
+		const linksSeen: string[] = [];
+		const results = await check({
+			path: 'test/fixtures/skip-fragments',
+			linksToSkip: async (link) => {
+				linksSeen.push(link);
+				return link.includes('#');
+			},
+		});
+
+		expect(linksSeen).toEqual(
+			expect.arrayContaining([
+				'https://github.com/example/project#readme',
+				'https://github.com/example/project#L12-L14',
+				'https://github.com/example/project#overview',
+			]),
+		);
+		expect(
+			results.links.filter((link) => link.state === LinkState.SKIPPED),
+		).toHaveLength(3);
+	});
+
 	it('should skip links if passed a linksToSkip function', async () => {
 		const mockPool = mockAgent.get('https://good.com');
 		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(200, '');
