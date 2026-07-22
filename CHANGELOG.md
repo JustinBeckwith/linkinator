@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.0...linkinator-v8.0.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* honor no_proxy environment variables ([#852](https://github.com/JustinBeckwith/linkinator/issues/852)) ([cec93d5](https://github.com/JustinBeckwith/linkinator/commit/cec93d5552e5aad855f9064fa5173537dd1b881a))
+
 ## [8.0.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v7.6.1...linkinator-v8.0.0) (2026-07-21)
 
 
