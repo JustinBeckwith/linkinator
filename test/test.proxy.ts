@@ -13,6 +13,16 @@ describe('proxy', () => {
 
 	beforeEach(async () => {
 		proxiedHosts = [];
+		for (const name of [
+			'http_proxy',
+			'HTTP_PROXY',
+			'https_proxy',
+			'HTTPS_PROXY',
+			'no_proxy',
+			'NO_PROXY',
+		]) {
+			vi.stubEnv(name, undefined);
+		}
 
 		// Target server: serves a simple HTML page with no outbound links
 		targetServer = http.createServer((_req, res) => {
@@ -122,6 +132,34 @@ describe('proxy', () => {
 			proxiedHosts.length,
 			0,
 			'Proxy should not have been contacted when env vars are unset',
+		);
+	});
+
+	it('should honor no_proxy', async () => {
+		vi.stubEnv('http_proxy', proxyUrl);
+		vi.stubEnv('no_proxy', '127.0.0.1');
+
+		const results = await check({ path: targetUrl });
+
+		assert.ok(results.passed);
+		assert.strictEqual(
+			proxiedHosts.length,
+			0,
+			'Proxy should not be contacted for hosts in no_proxy',
+		);
+	});
+
+	it('should honor NO_PROXY', async () => {
+		vi.stubEnv('HTTP_PROXY', proxyUrl);
+		vi.stubEnv('NO_PROXY', '127.0.0.1');
+
+		const results = await check({ path: targetUrl });
+
+		assert.ok(results.passed);
+		assert.strictEqual(
+			proxiedHosts.length,
+			0,
+			'Proxy should not be contacted for hosts in NO_PROXY',
 		);
 	});
 });
