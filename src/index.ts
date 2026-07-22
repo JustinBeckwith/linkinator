@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import process from 'node:process';
 import {
 	Agent,
-	ProxyAgent,
+	EnvHttpProxyAgent,
 	type RequestInit,
 	fetch as undiciFetch,
 } from 'undici';
@@ -17,7 +17,7 @@ import { getCssLinks, getLinks, validateFragments } from './links.js';
 let sharedInsecureAgent: Agent | undefined;
 
 // Shared proxy agent, cached per proxy URL to avoid repeated allocations.
-let sharedProxyAgent: ProxyAgent | undefined;
+let sharedProxyAgent: EnvHttpProxyAgent | undefined;
 let cachedProxyUrl: string | undefined;
 
 /**
@@ -43,9 +43,12 @@ function getProxyUrl(): string | undefined {
 	return url || undefined;
 }
 
-function getSharedProxyAgent(proxyUrl: string): ProxyAgent {
+function getSharedProxyAgent(proxyUrl: string): EnvHttpProxyAgent {
 	if (!sharedProxyAgent || cachedProxyUrl !== proxyUrl) {
-		sharedProxyAgent = new ProxyAgent(proxyUrl);
+		sharedProxyAgent = new EnvHttpProxyAgent({
+			httpProxy: proxyUrl,
+			httpsProxy: proxyUrl,
+		});
 		cachedProxyUrl = proxyUrl;
 	}
 	return sharedProxyAgent;
