@@ -163,6 +163,19 @@ describe('proxy', () => {
 		);
 	});
 
+	it('should still use the proxy when NO_PROXY does not match', async () => {
+		vi.stubEnv('HTTP_PROXY', proxyUrl);
+		vi.stubEnv('NO_PROXY', 'example.com');
+
+		const results = await check({ path: targetUrl });
+
+		assert.ok(results.passed);
+		assert.ok(
+			proxiedHosts.length > 0,
+			'Non-matching NO_PROXY entries should not disable the proxy',
+		);
+	});
+
 	it('should bypass the proxy for local file scans excluded by NO_PROXY', async () => {
 		vi.stubEnv('HTTP_PROXY', proxyUrl);
 		vi.stubEnv('NO_PROXY', '127.0.0.1');
