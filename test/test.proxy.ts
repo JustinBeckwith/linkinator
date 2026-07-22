@@ -162,4 +162,21 @@ describe('proxy', () => {
 			'Proxy should not be contacted for hosts in NO_PROXY',
 		);
 	});
+
+	it('should bypass the proxy for local file scans excluded by NO_PROXY', async () => {
+		vi.stubEnv('HTTP_PROXY', proxyUrl);
+		vi.stubEnv('NO_PROXY', '127.0.0.1');
+
+		const results = await check({
+			path: 'test/fixtures/local',
+			recurse: true,
+		});
+
+		assert.ok(results.passed);
+		assert.strictEqual(
+			proxiedHosts.length,
+			0,
+			'The internal static server should not be contacted through the proxy',
+		);
+	});
 });
