@@ -19,17 +19,12 @@ export class Queue extends EventEmitter {
 	private readonly q: QueueItem[] = [];
 	private activeFunctions = 0;
 	private readonly concurrency: number;
+	private wakeup: NodeJS.Timeout | undefined;
+	private wakeupTime: number | undefined;
 
 	constructor(options: QueueOptions) {
 		super();
 		this.concurrency = options.concurrency;
-		// It was noticed in test that setTimeout() could sometimes trigger an event
-		// moments before it was scheduled. This leads to a delta between timeToRun
-		// and Date.now(), and a link may never crawl. This setInterval() ensures
-		// these items are eventually processed.
-		setInterval(() => {
-			if (this.activeFunctions === 0) this.tick();
-		}, 2500).unref();
 	}
 
 	on(event: 'done', listener: () => void): this;
@@ -45,14 +40,16 @@ export class Queue extends EventEmitter {
 			fn: function_,
 			timeToRun,
 		});
-		setTimeout(() => {
-			this.tick();
-		}, delay);
+		this.scheduleWakeup();
 	}
 
 	async onIdle() {
+		if (this.activeFunctions === 0 && this.q.length === 0) {
+			return;
+		}
+
 		return new Promise<void>((resolve) => {
-			this.on('done', () => {
+			this.once('done', () => {
 				resolve();
 			});
 		});
@@ -61,14 +58,18 @@ export class Queue extends EventEmitter {
 	private tick() {
 		// Check if we're complete
 		if (this.activeFunctions === 0 && this.q.length === 0) {
+			this.cancelWakeup();
 			this.emit('done');
 			return;
 		}
 
-		for (let i = 0; i < this.q.length; i++) {
+		// Inspect each currently queued item once. Delayed items are moved to the
+		// back and handled by a referenced timer for the earliest due item.
+		const queuedItems = this.q.length;
+		for (let i = 0; i < queuedItems; i++) {
 			// Check if we have too many concurrent functions executing
 			if (this.activeFunctions >= this.concurrency) {
-				return;
+				break;
 			}
 
 			// Grab the element at the front of the array
@@ -94,5 +95,52 @@ export class Queue extends EventEmitter {
 				this.q.push(item);
 			}
 		}
+
+		if (this.q.length === 0) {
+			this.cancelWakeup();
+			return;
+		}
+
+		this.scheduleWakeup();
+	}
+
+	private cancelWakeup() {
+		if (this.wakeup !== undefined) {
+			clearTimeout(this.wakeup);
+			this.wakeup = undefined;
+			this.wakeupTime = undefined;
+		}
+	}
+
+	private scheduleWakeup() {
+		if (this.activeFunctions >= this.concurrency || this.q.length === 0) {
+			return;
+		}
+
+		let nextRun = Number.POSITIVE_INFINITY;
+		for (const item of this.q) {
+			nextRun = Math.min(nextRun, item.timeToRun);
+		}
+		if (
+			this.wakeup !== undefined &&
+			this.wakeupTime !== undefined &&
+			this.wakeupTime <= nextRun
+		) {
+			return;
+		}
+
+		if (this.wakeup !== undefined) {
+			this.cancelWakeup();
+		}
+
+		this.wakeupTime = nextRun;
+		this.wakeup = setTimeout(
+			() => {
+				this.wakeup = undefined;
+				this.wakeupTime = undefined;
+				this.tick();
+			},
+			Math.max(0, nextRun - Date.now()),
+		);
 	}
 }

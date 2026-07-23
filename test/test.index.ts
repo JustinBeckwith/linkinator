@@ -1151,80 +1151,48 @@ describe('linkinator', () => {
 		);
 	});
 
-	it('should resolve relative URLs without ./ prefix correctly (issue #374)', async () => {
-		// This test reproduces issue #374: relative URLs without "./" prefix
-		// should resolve to the current directory, not the parent directory.
-		//
-		// When a page at /apps/web contains <a href="harmonograph">, it should
-		// resolve to /apps/web/harmonograph (current directory), not /apps/harmonograph
+	it('should resolve relative URLs from extensionless documents like a browser', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 
 		const htmlContent = `
 			<html>
 				<body>
-					<a href="harmonograph">Relative link without prefix</a>
-					<a href="./other">Relative link with ./ prefix</a>
+					<a href="../styling/compact.html">Relative parent link</a>
 				</body>
 			</html>
 		`;
 
-		// Page at /apps/web returns HTML content
 		mockPool
 			.intercept({
-				path: '/apps/web',
+				path: '/examples/basic/zero_configuration',
 				method: 'GET',
 			})
 			.reply(200, htmlContent, {
 				headers: { 'content-type': 'text/html' },
 			});
 
-		// Mock the expected correct resolution: /apps/web/harmonograph
-		// These links will be checked with GET since they're being crawled (recurse: true)
 		mockPool
-			.intercept({ path: '/apps/web/harmonograph', method: 'GET' })
-			.reply(200, '');
-
-		// Mock the expected correct resolution: /apps/web/other
-		mockPool
-			.intercept({ path: '/apps/web/other', method: 'GET' })
+			.intercept({ path: '/examples/styling/compact.html', method: 'GET' })
 			.reply(200, '');
 
 		const results = await check({
-			path: 'http://example.invalid/apps/web',
+			path: 'http://example.invalid/examples/basic/zero_configuration',
 			recurse: true,
 		});
 
-		// All links should pass
 		assert.ok(results.passed, 'All links should be valid');
-
-		// Verify that "harmonograph" was resolved to /apps/web/harmonograph
-		const harmonographLink = results.links.find((x) =>
-			x.url.includes('harmonograph'),
+		const compactLink = results.links.find((x) =>
+			x.url.includes('compact.html'),
 		);
-		assert.ok(harmonographLink, 'Should find the harmonograph link');
+		assert.ok(compactLink, 'Should find the compact link');
 		assert.strictEqual(
-			harmonographLink?.url,
-			'http://example.invalid/apps/web/harmonograph',
-			'harmonograph should resolve to /apps/web/harmonograph, not /apps/harmonograph',
+			compactLink?.url,
+			'http://example.invalid/examples/styling/compact.html',
 		);
 		assert.strictEqual(
-			harmonographLink?.state,
+			compactLink?.state,
 			LinkState.OK,
-			'harmonograph link should be OK',
-		);
-
-		// Verify that "./other" was also resolved correctly
-		const otherLink = results.links.find((x) => x.url.includes('other'));
-		assert.ok(otherLink, 'Should find the other link');
-		assert.strictEqual(
-			otherLink?.url,
-			'http://example.invalid/apps/web/other',
-			'other should resolve to /apps/web/other',
-		);
-		assert.strictEqual(
-			otherLink?.state,
-			LinkState.OK,
-			'other link should be OK',
+			'compact link should be OK',
 		);
 	});
 });
