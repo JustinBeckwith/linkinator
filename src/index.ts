@@ -86,7 +86,6 @@ import {
 import { Queue } from './queue.js';
 import { startWebServer, stopWebServer } from './server.js';
 import { bufferStream, drainStream, toNodeReadable } from './stream-utils.js';
-import { normalizeBaseUrl } from './url-utils.js';
 
 const STATIC_SERVER_HOST = '127.0.0.1';
 
@@ -685,13 +684,10 @@ export class LinkChecker extends EventEmitter {
 				// Use the final URL after redirects (if available) as the base for resolving
 				// relative links. This ensures relative links are resolved correctly even when
 				// the original URL doesn't have a trailing slash but redirects to one.
-				let baseUrl = response.url || options.url.href;
-
-				// Fix for issue #374: Normalize the base URL to ensure relative links resolve
-				// correctly. See normalizeBaseUrl() in url-utils.ts for details.
-				if (isHtml(response)) {
-					baseUrl = normalizeBaseUrl(baseUrl, options.checkOptions.cleanUrls);
-				}
+				// Resolve links against the final response URL exactly as a browser does.
+				// In particular, an extensionless URL without a trailing slash is still
+				// a document URL; inventing a slash changes the meaning of relative links.
+				const baseUrl = response.url || options.url.href;
 
 				// Parse HTML or CSS depending on content type
 				if (isHtml(response)) {

@@ -357,7 +357,7 @@ describe('retries', () => {
 			});
 
 			// Advance time enough for all retries to complete
-			await clock.advanceTimersByTime(20000);
+			await clock.advanceTimersByTimeAsync(20_000);
 			const results = await checkPromise;
 
 			// Should complete without crashing, with failed link result
