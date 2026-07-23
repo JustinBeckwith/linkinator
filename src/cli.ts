@@ -71,6 +71,10 @@ const cli = meow(
 			Invalid fragments will be marked as broken. Only checks server-rendered HTML (not JavaScript-added fragments).
 			Defaults to false.
 
+		--skip-fragment
+			List of regular expressions for fragments whose validation should be skipped.
+			The underlying URL is still checked. Can be specified multiple times.
+
 		--redirects
 			Control how redirects are handled. Options are 'allow' (default, follows redirects),
 			'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
@@ -151,6 +155,7 @@ const cli = meow(
 			markdown: { type: 'boolean' },
 			checkCss: { type: 'boolean' },
 			checkFragments: { type: 'boolean' },
+			skipFragment: { type: 'string', isMultiple: true },
 			serverRoot: { type: 'string' },
 			verbosity: { type: 'string' },
 			directoryListing: { type: 'boolean' },
@@ -366,6 +371,20 @@ async function main() {
 			for (const skip of flags.skip) {
 				const rules = skip.split(/[\s,]+/).filter(Boolean);
 				options.linksToSkip.push(...rules);
+			}
+		}
+	}
+
+	if (flags.skipFragment) {
+		if (typeof flags.skipFragment === 'string') {
+			options.fragmentsToSkip = flags.skipFragment
+				.split(/[\s,]+/)
+				.filter(Boolean);
+		} else if (Array.isArray(flags.skipFragment)) {
+			options.fragmentsToSkip = [];
+			for (const skipFragment of flags.skipFragment) {
+				const rules = skipFragment.split(/[\s,]+/).filter(Boolean);
+				options.fragmentsToSkip.push(...rules);
 			}
 		}
 	}

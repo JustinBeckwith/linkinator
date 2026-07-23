@@ -33,6 +33,9 @@ export type CheckOptions = {
 	allowInsecureCerts?: boolean;
 	checkCss?: boolean;
 	checkFragments?: boolean;
+	fragmentsToSkip?:
+		| string[]
+		| ((fragment: string, url: string) => Promise<boolean>);
 	statusCodes?: Record<string, StatusCodeAction>;
 };
 

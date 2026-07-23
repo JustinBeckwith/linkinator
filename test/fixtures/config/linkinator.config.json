@@ -4,5 +4,6 @@
   "silent": true,
   "concurrency": 17,
   "skip": "🌳",
+  "skipFragment": ["^code/", "^!/"],
   "directoryListing": false
 }

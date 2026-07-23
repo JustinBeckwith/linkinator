@@ -169,6 +169,82 @@ describe('fragment identifier validation', () => {
 		expect(fragmentResult).toBeUndefined();
 	});
 
+	it('should skip matching fragment validation but still check the URL', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		const results = await check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			fragmentsToSkip: ['^invalid-'],
+		});
+
+		expect(results.passed).toBe(true);
+		expect(
+			results.links.find((link) => link.url === 'http://example.com/page.html')
+				?.state,
+		).toBe(LinkState.OK);
+		expect(
+			results.links.find(
+				(link) => link.url === 'http://example.com/page.html#invalid-section',
+			)?.state,
+		).toBe(LinkState.SKIPPED);
+	});
+
+	it('should pass decoded fragments and full URLs to a skip function', async () => {
+		const received: Array<{ fragment: string; url: string }> = [];
+
+		const results = await check({
+			path: 'test/fixtures/fragments-client-state',
+			checkFragments: true,
+			fragmentsToSkip: async (fragment, url) => {
+				received.push({ fragment, url });
+				return true;
+			},
+		});
+
+		expect(results.passed).toBe(true);
+		const encodedState = received.find(
+			({ fragment }) => fragment === 'encoded state',
+		);
+		expect(encodedState?.url).toMatch(/\/target\.html#encoded%20state$/);
+		expect(
+			results.links.filter((link) => link.state === LinkState.SKIPPED),
+		).toHaveLength(6);
+	});
+
+	it('should skip common client-state fragments while retaining strict checks', async () => {
+		const results = await check({
+			path: 'test/fixtures/fragments-client-state',
+			checkFragments: true,
+			fragmentsToSkip: [
+				'^code/',
+				'^show-examples$',
+				'^/',
+				'^!/',
+				'^encoded state$',
+			],
+		});
+
+		expect(results.passed).toBe(false);
+		expect(
+			results.links.filter((link) => link.state === LinkState.SKIPPED),
+		).toHaveLength(5);
+		expect(
+			results.links.find((link) => link.url.endsWith('#missing-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+		expect(
+			results.links.find(
+				(link) =>
+					/[\\/]target\.html$/.test(link.url) && link.state === LinkState.OK,
+			),
+		).toBeDefined();
+	});
+
 	it('should handle URL-encoded fragments', async () => {
 		const html = `
 			<html>
