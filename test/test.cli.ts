@@ -331,6 +331,29 @@ describe('cli', () => {
 		assert.match(response.stderr, /Successfully scanned/);
 	});
 
+	it('should skip fragment validation without skipping the underlying URL', async () => {
+		const response = await execa(node, [
+			linkinator,
+			'test/fixtures/fragments-client-state',
+			'--check-fragments',
+			'--verbosity',
+			'INFO',
+			'--skip-fragment',
+			'^code/',
+			'--skip-fragment',
+			'^show-examples$,^/,^!/,^encoded\\sstate$,^missing-section$',
+		]);
+
+		assert.strictEqual(response.exitCode, 0);
+		const stdout = stripAnsi(response.stdout);
+		const skippedUrls = [...stdout.matchAll(/\[SKP] ([^\n]+)/g)].map((match) =>
+			match[1].trim(),
+		);
+		assert.strictEqual(new Set(skippedUrls).size, 6);
+		assert.match(stdout, /\[200].*[\\/]target\.html$/m);
+		assert.match(stripAnsi(response.stderr), /Successfully scanned/);
+	});
+
 	it('should warn on retries', async () => {
 		// Start a web server to return the 429
 		let requestCount = 0;

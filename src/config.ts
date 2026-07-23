@@ -14,6 +14,7 @@ export type Flags = {
 	markdown?: boolean;
 	checkCss?: boolean;
 	checkFragments?: boolean;
+	skipFragment?: string | string[];
 	serverRoot?: string;
 	directoryListing?: boolean;
 	cleanUrls?: boolean;

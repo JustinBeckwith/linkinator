@@ -757,11 +757,30 @@ export class LinkChecker extends EventEmitter {
 					result.fragment &&
 					result.fragment.length > 0
 				) {
-					const urlKey = result.url.href;
-					if (!this.fragmentsToCheck.has(urlKey)) {
-						this.fragmentsToCheck.set(urlKey, new Set());
+					if (
+						await this.shouldSkipFragment(
+							result.fragment,
+							result.urlWithFragment ?? result.url.href,
+							options.checkOptions,
+						)
+					) {
+						const skippedFragmentResult: LinkResult = {
+							url: mapUrl(
+								result.urlWithFragment ?? result.url.href,
+								options.checkOptions,
+							),
+							state: LinkState.SKIPPED,
+							parent: mapUrl(options.url.href, options.checkOptions),
+						};
+						options.results.push(skippedFragmentResult);
+						this.emit('link', skippedFragmentResult);
+					} else {
+						const urlKey = result.url.href;
+						if (!this.fragmentsToCheck.has(urlKey)) {
+							this.fragmentsToCheck.set(urlKey, new Set());
+						}
+						this.fragmentsToCheck.get(urlKey)?.add(result.fragment);
 					}
-					this.fragmentsToCheck.get(urlKey)?.add(result.fragment);
 				}
 
 				let crawl =
@@ -931,6 +950,22 @@ export class LinkChecker extends EventEmitter {
 		return Boolean(
 			checkOptions.linksToSkip?.some((linkToSkip) =>
 				new RegExp(linkToSkip).test(href),
+			),
+		);
+	}
+
+	private async shouldSkipFragment(
+		fragment: string,
+		url: string,
+		checkOptions: InternalCheckOptions,
+	): Promise<boolean> {
+		if (typeof checkOptions.fragmentsToSkip === 'function') {
+			return checkOptions.fragmentsToSkip(fragment, url);
+		}
+
+		return Boolean(
+			checkOptions.fragmentsToSkip?.some((fragmentToSkip) =>
+				new RegExp(fragmentToSkip).test(fragment),
 			),
 		);
 	}

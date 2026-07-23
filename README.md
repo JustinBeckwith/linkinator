@@ -115,6 +115,10 @@ $ linkinator LOCATIONS [ --arguments ]
         Invalid fragments will be marked as broken. Only checks server-rendered HTML (not JavaScript-added fragments).
         Defaults to false.
 
+    --skip-fragment
+        List of regular expressions for fragments whose validation should be skipped.
+        The underlying URL is still checked. Can be specified multiple times.
+
     --redirects
         Control how redirects are handled. Options are 'allow' (default, follows redirects),
         'warn' (follows but emits warnings), or 'error' (treats redirects as broken).
@@ -266,6 +270,7 @@ All options are optional. It should look like this:
   "markdown": true,
   "checkCss": true,
   "checkFragments": true,
+  "skipFragment": ["^code/", "^show-examples$", "^/", "^!/"],
   "serverRoot": "./",
   "directoryListing": true,
   "cleanUrls": true,
@@ -402,6 +407,8 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
 - `checkCss` (boolean) - Extract and check URLs found in CSS properties (inline styles, `<style>` tags, and external CSS files when using `recurse`). This includes `url()` functions, `@import` statements, and other CSS URL references. Defaults to `false`.
+- `checkFragments` (boolean) - Validate fragment identifiers against server-rendered HTML. Defaults to `false`.
+- `fragmentsToSkip` (array | function) - Regular expression strings matched against decoded fragment identifiers, or an async function receiving the fragment and full URL. Matching fragments are reported as skipped while the underlying URL is still checked.
 - `retry` (boolean|RetryConfig) - Automatically retry requests that respond with an HTTP 429, and include a `retry-after` header.  The `RetryConfig` option is a placeholder for fine-grained controls to be implemented at a later time, and is only included here to signal forward-compatibility.
 - `serverRoot` (string) - When scanning a locally directory, customize the location on disk
 where the server is started.  Defaults to the path passed in `path`.
