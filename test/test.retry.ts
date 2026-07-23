@@ -231,6 +231,40 @@ describe('retries', () => {
 	}
 
 	describe('retry-errors', () => {
+		it.each([
+			{ retryErrorsCount: 0, expectedRetries: 0 },
+			{ retryErrorsCount: 1, expectedRetries: 1 },
+			{ retryErrorsCount: 2, expectedRetries: 2 },
+			{ retryErrorsCount: 5, expectedRetries: 5 },
+		])('retries exactly $expectedRetries times when retryErrorsCount is $retryErrorsCount', async ({
+			retryErrorsCount,
+			expectedRetries,
+		}) => {
+			const mockPool = mockAgent.get('http://example.invalid');
+			mockPool
+				.intercept({ path: '/', method: 'GET' })
+				.reply(503, '')
+				.times(expectedRetries + 1);
+
+			let retryEvents = 0;
+			const checker = new LinkChecker().on('retry', () => {
+				retryEvents++;
+			});
+			const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
+			const checkPromise = checker.check({
+				path: 'http://example.invalid/',
+				retryErrors: true,
+				retryErrorsCount,
+				retryErrorsJitter: 0,
+			});
+
+			await clock.advanceTimersByTimeAsync(70_000);
+			const results = await checkPromise;
+
+			assert.ok(!results.passed);
+			assert.strictEqual(retryEvents, expectedRetries);
+		});
+
 		it('should retry 5xx status code', async () => {
 			const mockPool = mockAgent.get('http://example.invalid');
 			mockPool.intercept({ path: '/', method: 'GET' }).reply(522, '');
@@ -279,7 +313,11 @@ describe('retries', () => {
 				.times(2);
 
 			const { promise, resolve } = invertedPromise();
-			const checker = new LinkChecker().on('retry', resolve);
+			let retryEvents = 0;
+			const checker = new LinkChecker().on('retry', () => {
+				retryEvents++;
+				resolve();
+			});
 			const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
 			const checkPromise = checker.check({
 				path: 'test/fixtures/basic',
@@ -291,6 +329,7 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
+			assert.strictEqual(retryEvents, 1);
 		});
 
 		it('should handle 429s without retry-after header as retry error', async () => {
@@ -314,9 +353,13 @@ describe('retries', () => {
 
 		it('should stop retrying 429s without retry-after header', async () => {
 			const mockPool = mockAgent.get('http://example.invalid');
-			mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '');
+			mockPool.intercept({ path: '/', method: 'GET' }).reply(429, '').times(2);
 			const { promise, resolve } = invertedPromise();
-			const checker = new LinkChecker().on('retry', resolve);
+			let retryEvents = 0;
+			const checker = new LinkChecker().on('retry', () => {
+				retryEvents++;
+				resolve();
+			});
 			const clock = vi.useFakeTimers({ shouldAdvanceTime: true });
 			const checkPromise = checker.check({
 				path: 'test/fixtures/basic',
@@ -328,6 +371,7 @@ describe('retries', () => {
 			await clock.advanceTimersByTime(10000);
 			const results = await checkPromise;
 			assert.ok(!results.passed);
+			assert.strictEqual(retryEvents, 1);
 		});
 
 		it('should handle all retries failing without crashing (issue #754)', async () => {
@@ -362,8 +406,8 @@ describe('retries', () => {
 
 			// Should complete without crashing, with failed link result
 			assert.ok(!results.passed);
-			// Verify retries happened (exact count depends on HEAD/GET fallback)
-			assert.ok(retryCount.count >= 1);
+			// HEAD-to-GET fallback is part of an attempt, not an additional retry.
+			assert.strictEqual(retryCount.count, 1);
 		});
 	});
 });

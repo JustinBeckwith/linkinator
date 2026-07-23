@@ -1043,21 +1043,18 @@ export class LinkChecker extends EventEmitter {
 			return false;
 		}
 
-		// Check to see if there is already a request to wait for this URL:
-		let currentRetries = 1;
-		const cachedRetries = options.retryErrorsCache.get(options.url.href);
-		if (cachedRetries !== undefined) {
-			// Use whichever time is higher in the cache
-			currentRetries = cachedRetries;
-			if (currentRetries > maxRetries) return false;
-			options.retryErrorsCache.set(options.url.href, currentRetries + 1);
-		} else {
-			options.retryErrorsCache.set(options.url.href, 1);
+		const retriesScheduled =
+			options.retryErrorsCache.get(options.url.href) ?? 0;
+		if (retriesScheduled >= maxRetries) {
+			return false;
 		}
+
+		const currentRetry = retriesScheduled + 1;
+		options.retryErrorsCache.set(options.url.href, currentRetry);
 
 		// Use exponential backoff algorithm to take pressure off upstream service:
 		const retryAfter =
-			2 ** currentRetries * 1000 + Math.random() * options.retryErrorsJitter;
+			2 ** currentRetry * 1000 + Math.random() * options.retryErrorsJitter;
 
 		options.queue.add(
 			async () => {
