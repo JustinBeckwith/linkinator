@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.1...linkinator-v8.0.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* allow skipping client-side fragment validation ([1b28af6](https://github.com/JustinBeckwith/linkinator/commit/1b28af67ec24bf62a2d774a772cfc29b5237d98f)), closes [#858](https://github.com/JustinBeckwith/linkinator/issues/858)
+
 ## [8.0.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.0...linkinator-v8.0.1) (2026-07-22)
 
 
