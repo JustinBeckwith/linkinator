@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.3](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.2...linkinator-v8.0.3) (2026-07-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency chalk to v6 ([#867](https://github.com/JustinBeckwith/linkinator/issues/867)) ([c3c1265](https://github.com/JustinBeckwith/linkinator/commit/c3c1265ef035e01bee0ca8a3675a92fa00236fe8))
+
 ## [8.0.2](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.1...linkinator-v8.0.2) (2026-07-23)
 
 
