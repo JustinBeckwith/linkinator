@@ -177,6 +177,17 @@ const cli = meow(
 
 let flags: Flags;
 
+function compileRewritePattern(pattern: string | RegExp): RegExp {
+	if (pattern instanceof RegExp) {
+		return pattern;
+	}
+
+	// URL rewrite patterns are intentionally executable regex syntax supplied by
+	// the operator through a trusted local CLI or config file. Escaping them would
+	// break the documented configuration contract.
+	return new RegExp(pattern);
+}
+
 function isBunExecutable() {
 	// When compiled with `bun build --compile`, process.argv[0] is typically "bun".
 	// When run directly with `bun`, process.argv[0] is the path to the bun executable.
@@ -392,10 +403,7 @@ async function main() {
 	if (flags.urlRewriteExpressions) {
 		options.urlRewriteExpressions = flags.urlRewriteExpressions.map(
 			(expression) => ({
-				pattern:
-					typeof expression.pattern === 'string'
-						? new RegExp(expression.pattern)
-						: expression.pattern,
+				pattern: compileRewritePattern(expression.pattern),
 				replacement: expression.replacement,
 			}),
 		);
@@ -404,7 +412,7 @@ async function main() {
 	if (flags.urlRewriteSearch && flags.urlRewriteReplace) {
 		options.urlRewriteExpressions = [
 			{
-				pattern: new RegExp(flags.urlRewriteSearch),
+				pattern: compileRewritePattern(flags.urlRewriteSearch),
 				replacement: flags.urlRewriteReplace,
 			},
 		];
