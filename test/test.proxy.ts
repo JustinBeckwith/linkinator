@@ -36,10 +36,27 @@ describe('proxy', () => {
 		const targetAddr = targetServer.address() as AddressInfo;
 		targetUrl = `http://127.0.0.1:${targetAddr.port}`;
 
-		// Proxy server: undici's ProxyAgent tunnels all traffic via HTTP CONNECT,
-		// even for plain HTTP targets. The proxy records the tunneled host:port,
-		// then splices the client and target sockets together.
-		proxyServer = http.createServer();
+		// Proxy server: newer versions of undici forward plain HTTP requests using
+		// an absolute-form request target, while HTTPS requests use HTTP CONNECT.
+		// Support both forms so these tests exercise proxy routing rather than a
+		// particular ProxyAgent implementation detail.
+		proxyServer = http.createServer((req, res) => {
+			proxiedHosts.push(req.url ?? '');
+
+			const proxyRequest = http.request(
+				req.url ?? '',
+				{ method: req.method, headers: req.headers },
+				(proxyResponse) => {
+					res.writeHead(proxyResponse.statusCode ?? 500, proxyResponse.headers);
+					proxyResponse.pipe(res);
+				},
+			);
+			proxyRequest.on('error', () => {
+				res.writeHead(502);
+				res.end();
+			});
+			req.pipe(proxyRequest);
+		});
 		proxyServer.on('connect', (req, clientSocket, head) => {
 			proxiedHosts.push(req.url ?? '');
 
