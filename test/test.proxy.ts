@@ -44,7 +44,7 @@ describe('proxy', () => {
 			proxiedHosts.push(req.url ?? '');
 
 			const proxyRequest = http.request(
-				req.url ?? '',
+				targetUrl,
 				{ method: req.method, headers: req.headers },
 				(proxyResponse) => {
 					res.writeHead(proxyResponse.statusCode ?? 500, proxyResponse.headers);
