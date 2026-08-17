@@ -389,6 +389,18 @@ async function main() {
 		}
 	}
 
+	if (flags.urlRewriteExpressions) {
+		options.urlRewriteExpressions = flags.urlRewriteExpressions.map(
+			(expression) => ({
+				pattern:
+					typeof expression.pattern === 'string'
+						? new RegExp(expression.pattern)
+						: expression.pattern,
+				replacement: expression.replacement,
+			}),
+		);
+	}
+
 	if (flags.urlRewriteSearch && flags.urlRewriteReplace) {
 		options.urlRewriteExpressions = [
 			{

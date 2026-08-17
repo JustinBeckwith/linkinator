@@ -397,6 +397,65 @@ describe('redirects', () => {
 	});
 
 	describe('skip rules', () => {
+		it('recursively checks links from the final redirect target', async () => {
+			const requestedPaths: string[] = [];
+			const crawlServer = http.createServer((req, res) => {
+				requestedPaths.push(req.url || '');
+				if (req.url === '/') {
+					res.writeHead(200, { 'Content-Type': 'text/html' });
+					res.end('<a href="/redirect">redirect</a>');
+					return;
+				}
+				if (req.url === '/redirect') {
+					res.writeHead(302, { Location: '/nested/' });
+					res.end();
+					return;
+				}
+				if (req.url === '/nested/') {
+					res.writeHead(200, { 'Content-Type': 'text/html' });
+					res.end('<a href="child">child</a>');
+					return;
+				}
+				if (req.url === '/nested/child') {
+					res.writeHead(200, { 'Content-Type': 'text/html' });
+					res.end('<a href="grandchild">grandchild</a>');
+					return;
+				}
+				res.writeHead(404);
+				res.end('missing');
+			});
+			await new Promise<void>((resolve) => crawlServer.listen(0, resolve));
+			const address = crawlServer.address() as AddressInfo;
+			const serverUrl = `http://localhost:${address.port}`;
+
+			try {
+				const results = await check({
+					path: `${serverUrl}/`,
+					recurse: true,
+					linksToSkip: ['^(?!http://localhost)'],
+					retryErrors: true,
+				});
+
+				assert.ok(!results.passed);
+				assert.ok(
+					results.links.some(
+						(link) =>
+							link.url === `${serverUrl}/nested/grandchild` &&
+							link.state === LinkState.BROKEN,
+					),
+				);
+				assert.deepStrictEqual(requestedPaths, [
+					'/',
+					'/redirect',
+					'/nested/',
+					'/nested/child',
+					'/nested/grandchild',
+				]);
+			} finally {
+				crawlServer.close();
+			}
+		});
+
 		it('does not request a skipped redirect target', async () => {
 			let targetRequests = 0;
 			const targetServer = http.createServer((_req, res) => {
@@ -562,7 +621,7 @@ describe('redirects', () => {
 			}
 		});
 
-		it('keeps redirects in error mode broken without applying target skips', async () => {
+		it('keeps redirects in error mode broken without processing the target', async () => {
 			let targetRequests = 0;
 			const errorModeServer = http.createServer((req, res) => {
 				if (req.url === '/redirect') {
@@ -581,6 +640,9 @@ describe('redirects', () => {
 				const results = await check({
 					path: `${serverUrl}/redirect`,
 					linksToSkip: [`${serverUrl}/target`],
+					urlRewriteExpressions: [
+						{ pattern: /\/target$/, replacement: '/rewritten-target' },
+					],
 					redirects: 'error',
 				});
 				assert.ok(!results.passed);

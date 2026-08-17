@@ -427,6 +427,20 @@ where the server is started.  Defaults to the path passed in `path`.
     }
   ]
   ```
+  JavaScript configuration files may use `RegExp` patterns as shown above. In
+  `linkinator.config.json`, provide the pattern as a string instead:
+  ```json
+  {
+    "urlRewriteExpressions": [
+      {
+        "pattern": "^https://example\\.com",
+        "replacement": "http://localhost:3000"
+      }
+    ]
+  }
+  ```
+  Rewrites are applied to both discovered URLs and every target in an HTTP
+  redirect chain.
 
 - `userAgent` (string) - The [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) that should be passed with each request. This uses a reasonable default.
 - `headers` (object) - Custom HTTP headers to include in all requests. Object with header names as keys and values as strings. These headers are merged with the default headers (including User-Agent). Example: `{ 'Authorization': 'Bearer token', 'X-Custom': 'value' }`.

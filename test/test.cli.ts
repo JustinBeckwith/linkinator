@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import util from 'node:util';
 import { execa } from 'execa';
 import stripAnsi from 'strip-ansi';
@@ -329,6 +330,59 @@ describe('cli', () => {
 			'test/fixtures/rewrite/README.md',
 		]);
 		assert.match(response.stderr, /Successfully scanned/);
+	});
+
+	it('should respect URL rewrite expressions from config files across redirects', async () => {
+		const requestedPaths: string[] = [];
+		server = http.createServer((request, response) => {
+			requestedPaths.push(request.url || '');
+			if (request.url === '/start') {
+				response.writeHead(302, { Location: '/legacy-target' });
+				response.end();
+				return;
+			}
+			if (request.url === '/rewritten-target') {
+				response.writeHead(403, { 'cf-mitigated': 'challenge' });
+				response.end('challenge');
+				return;
+			}
+			response.writeHead(500);
+			response.end('unrewritten target requested');
+		});
+		await new Promise<void>((resolve) => server.listen(0, resolve));
+		const address = server.address() as AddressInfo;
+		const startUrl = `http://localhost:${address.port}/start`;
+
+		for (const config of [
+			'test/fixtures/config/url-rewrite-expressions.json',
+			'test/fixtures/config/url-rewrite-expressions.mjs',
+		]) {
+			const response = await execa(node, [
+				linkinator,
+				startUrl,
+				'--config',
+				config,
+				'--format',
+				'json',
+				'--verbosity',
+				'info',
+			]);
+			const result = JSON.parse(response.stdout) as {
+				passed: boolean;
+				links: LinkResult[];
+			};
+			assert.ok(result.passed);
+			assert.strictEqual(result.links[0].url, startUrl);
+			assert.strictEqual(result.links[0].status, 403);
+			assert.strictEqual(result.links[0].state, LinkState.SKIPPED);
+		}
+
+		assert.deepStrictEqual(requestedPaths, [
+			'/start',
+			'/rewritten-target',
+			'/start',
+			'/rewritten-target',
+		]);
 	});
 
 	it('should skip fragment validation without skipping the underlying URL', async () => {
