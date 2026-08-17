@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.4](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.3...linkinator-v8.0.4) (2026-08-17)
+
+
+### Bug Fixes
+
+* rewrite redirect targets and preserve recursive crawling ([#878](https://github.com/JustinBeckwith/linkinator/issues/878)) ([7d99a3b](https://github.com/JustinBeckwith/linkinator/commit/7d99a3b5b1778553976821b99adb9d3b402bba90))
+
 ## [8.0.3](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.2...linkinator-v8.0.3) (2026-07-30)
 
 
