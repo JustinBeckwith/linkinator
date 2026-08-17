@@ -3,80 +3,7 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import {
-	Agent,
-	EnvHttpProxyAgent,
-	type RequestInit,
-	fetch as undiciFetch,
-} from 'undici';
 import { getCssLinks, getLinks, validateFragments } from './links.js';
-
-// Shared HTTP agent for insecure certificate requests.
-// Using a single shared agent prevents port exhaustion from creating
-// new agents per request (which was the original bug).
-let sharedInsecureAgent: Agent | undefined;
-
-// Shared proxy agent, cached per proxy URL to avoid repeated allocations.
-let sharedProxyAgent: EnvHttpProxyAgent | undefined;
-let cachedProxyUrl: string | undefined;
-
-/**
- * Reset the shared HTTP agents. This is primarily useful for testing
- * to ensure a fresh agent state between tests.
- */
-export function resetSharedAgents(): void {
-	sharedInsecureAgent = undefined;
-	sharedProxyAgent = undefined;
-	cachedProxyUrl = undefined;
-}
-
-/**
- * Returns the proxy URL from well-known environment variables, or undefined
- * if none are set. Precedence: https_proxy > HTTPS_PROXY > http_proxy > HTTP_PROXY.
- */
-function getProxyUrl(): string | undefined {
-	const url =
-		process.env.https_proxy ??
-		process.env.HTTPS_PROXY ??
-		process.env.http_proxy ??
-		process.env.HTTP_PROXY;
-	return url || undefined;
-}
-
-function getSharedProxyAgent(proxyUrl: string): EnvHttpProxyAgent {
-	if (!sharedProxyAgent || cachedProxyUrl !== proxyUrl) {
-		sharedProxyAgent = new EnvHttpProxyAgent({
-			httpProxy: proxyUrl,
-			httpsProxy: proxyUrl,
-		});
-		cachedProxyUrl = proxyUrl;
-	}
-	return sharedProxyAgent;
-}
-
-/**
- * Get or create a shared HTTP agent that accepts insecure certificates.
- * This is used when allowInsecureCerts is enabled to bypass certificate
- * validation while still maintaining connection pooling.
- * @param _allowInsecureCerts Always true when called (parameter kept for clarity)
- * @returns The shared insecure agent instance
- */
-function getSharedAgent(_allowInsecureCerts: boolean): Agent {
-	if (!sharedInsecureAgent) {
-		sharedInsecureAgent = new Agent({
-			connect: {
-				rejectUnauthorized: false,
-			},
-			// Keep connections alive for reuse
-			keepAliveTimeout: 30_000,
-			keepAliveMaxTimeout: 60_000,
-			// Allow multiple connections per host for concurrency
-			connections: 100,
-		});
-	}
-	return sharedInsecureAgent;
-}
-
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -84,12 +11,19 @@ import {
 	type StatusCodeAction,
 } from './options.js';
 import { Queue } from './queue.js';
+import {
+	type HttpResponse,
+	makeRequest,
+	type RedirectTarget,
+	type RequestResponse,
+} from './request.js';
 import { startWebServer, stopWebServer } from './server.js';
 import { bufferStream, drainStream, toNodeReadable } from './stream-utils.js';
 
 const STATIC_SERVER_HOST = '127.0.0.1';
 
 export { getConfig } from './config.js';
+export { type HttpResponse, resetSharedAgents } from './request.js';
 
 export enum LinkState {
 	OK = 'OK',
@@ -118,15 +52,6 @@ export type StatusCodeWarning = {
 	url: string;
 	status: number;
 };
-
-export type HttpResponse = {
-	status: number;
-	headers: Record<string, string>;
-	body?: ReadableStream;
-	url?: string;
-};
-
-type RequestResponse = HttpResponse & { redirectSkipped?: string };
 
 export type LinkResult = {
 	url: string;
@@ -307,15 +232,7 @@ export class LinkChecker extends EventEmitter {
 	 * @returns A list of crawl results consisting of urls and status codes
 	 */
 	async crawl(options: CrawlOptions): Promise<void> {
-		// Apply any regex url replacements
-		if (options.checkOptions.urlRewriteExpressions) {
-			for (const exp of options.checkOptions.urlRewriteExpressions) {
-				const newUrl = options.url.href.replace(exp.pattern, exp.replacement);
-				if (options.url.href !== newUrl) {
-					options.url.href = newUrl;
-				}
-			}
-		}
+		options.url.href = this.rewriteUrl(options.url.href, options.checkOptions);
 
 		if (await this.shouldSkipUrl(options.url.href, options.checkOptions)) {
 			this.recordSkippedResult(options);
@@ -350,15 +267,18 @@ export class LinkChecker extends EventEmitter {
 		const originalUrl = options.url.href;
 		const redirectMode =
 			options.checkOptions.redirects === 'error' ? 'manual' : 'follow';
+		const processRedirectTarget =
+			redirectMode === 'follow' &&
+			(this.hasSkipRules(options.checkOptions) ||
+				Boolean(options.checkOptions.urlRewriteExpressions?.length))
+				? (url: string) => this.processRedirectTarget(url, options.checkOptions)
+				: undefined;
 		const requestOptions = {
 			headers: options.checkOptions.headers,
 			timeout: options.checkOptions.timeout,
 			redirect: redirectMode,
 			allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-			shouldSkipRedirect:
-				redirectMode === 'follow' && this.hasSkipRules(options.checkOptions)
-					? (url: string) => this.shouldSkipUrl(url, options.checkOptions)
-					: undefined,
+			processRedirectTarget,
 		} as const;
 
 		try {
@@ -934,6 +854,28 @@ export class LinkChecker extends EventEmitter {
 		);
 	}
 
+	private rewriteUrl(href: string, checkOptions: InternalCheckOptions): string {
+		let rewrittenUrl = href;
+		for (const expression of checkOptions.urlRewriteExpressions ?? []) {
+			rewrittenUrl = rewrittenUrl.replace(
+				expression.pattern,
+				expression.replacement,
+			);
+		}
+		return rewrittenUrl;
+	}
+
+	private async processRedirectTarget(
+		href: string,
+		checkOptions: InternalCheckOptions,
+	): Promise<RedirectTarget> {
+		const url = this.rewriteUrl(href, checkOptions);
+		return {
+			url,
+			shouldSkip: await this.shouldSkipUrl(url, checkOptions),
+		};
+	}
+
 	private async shouldSkipUrl(
 		href: string,
 		checkOptions: InternalCheckOptions,
@@ -1173,135 +1115,6 @@ function mapUrl<T extends string | undefined>(
 	}
 
 	return newUrl as T;
-}
-
-/**
- * Helper function to make HTTP requests using native fetch
- * @param method HTTP method
- * @param url URL to request
- * @param options Additional options (headers, timeout, allowInsecureCerts)
- * @returns Response with status, headers, and body stream
- */
-async function makeRequest(
-	method: string,
-	url: string,
-	options: {
-		headers?: Record<string, string>;
-		timeout?: number;
-		redirect?: 'follow' | 'manual';
-		allowInsecureCerts?: boolean;
-		shouldSkipRedirect?: (url: string) => Promise<boolean>;
-	} = {},
-): Promise<RequestResponse> {
-	// Build browser-like headers to avoid bot detection
-	const defaultHeaders: Record<string, string> = {
-		Accept:
-			'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-		'Accept-Language': 'en-US,en;q=0.9',
-		'Accept-Encoding': 'gzip, deflate, br',
-		'Cache-Control': 'no-cache',
-		Pragma: 'no-cache',
-		'Sec-Fetch-Dest': 'document',
-		'Sec-Fetch-Mode': 'navigate',
-		'Sec-Fetch-Site': 'none',
-		'Upgrade-Insecure-Requests': '1',
-		'User-Agent': 'node',
-	};
-
-	let currentUrl = url;
-	let currentHeaders = { ...defaultHeaders, ...options.headers };
-	const manuallyFollow = Boolean(options.shouldSkipRedirect);
-	const signal = options.timeout
-		? AbortSignal.timeout(options.timeout)
-		: undefined;
-
-	for (let redirectCount = 0; ; redirectCount++) {
-		const requestOptions: RequestInit = {
-			method,
-			headers: currentHeaders,
-			redirect: manuallyFollow ? 'manual' : (options.redirect ?? 'follow'),
-		};
-
-		if (signal) {
-			requestOptions.signal = signal;
-		}
-
-		// For normal requests, use undici fetch so tests and callers can control
-		// request dispatching with undici.setGlobalDispatcher across Node versions.
-		// Custom agents are shared to preserve connection pooling.
-		const proxyUrl = getProxyUrl();
-		const response = options.allowInsecureCerts
-			? await undiciFetch(currentUrl, {
-					...requestOptions,
-					dispatcher: getSharedAgent(true),
-				})
-			: proxyUrl
-				? await undiciFetch(currentUrl, {
-						...requestOptions,
-						dispatcher: getSharedProxyAgent(proxyUrl),
-					})
-				: await undiciFetch(currentUrl, requestOptions);
-
-		const headers: Record<string, string> = {};
-		response.headers.forEach((value: string, key: string) => {
-			headers[key] = value;
-		});
-
-		const result: HttpResponse = {
-			status: response.status,
-			headers,
-			body: (response.body ?? undefined) as ReadableStream | undefined,
-			url: response.url,
-		};
-
-		const location = headers.location;
-		if (
-			!manuallyFollow ||
-			!isFetchRedirectStatus(response.status) ||
-			!location
-		) {
-			return result;
-		}
-
-		const targetUrl = new URL(location, currentUrl).href;
-		if (await options.shouldSkipRedirect?.(targetUrl)) {
-			await drainStream(result.body);
-			return { ...result, body: undefined, redirectSkipped: targetUrl };
-		}
-
-		if (redirectCount >= 20) {
-			await drainStream(result.body);
-			throw new TypeError('redirect count exceeded');
-		}
-
-		const currentOrigin = new URL(currentUrl).origin;
-		const targetOrigin = new URL(targetUrl).origin;
-		if (currentOrigin !== targetOrigin) {
-			currentHeaders = stripSensitiveHeaders(currentHeaders);
-		}
-
-		await drainStream(result.body);
-		currentUrl = targetUrl;
-	}
-}
-
-function isFetchRedirectStatus(status: number): boolean {
-	return [301, 302, 303, 307, 308].includes(status);
-}
-
-function stripSensitiveHeaders(
-	headers: Record<string, string>,
-): Record<string, string> {
-	const sensitiveHeaders = new Set([
-		'authorization',
-		'cookie',
-		'proxy-authorization',
-	]);
-	return Object.fromEntries(
-		Object.entries(headers).filter(
-			([name]) => !sensitiveHeaders.has(name.toLowerCase()),
-		),
-	);
 }
 
 /**
