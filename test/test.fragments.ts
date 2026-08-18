@@ -609,6 +609,95 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
+	it('should validate fragments discovered after the target was checked', async () => {
+		// The target is checked first as a seed, so the fragments that page.html
+		// contributes for it arrive after it has already been fetched.
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-late-discovery/target.html',
+				'test/fixtures/fragments-late-discovery/page.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+
+		// The fragment that does exist on the target must not be reported.
+		const validFragments = results.links.filter(
+			(l) => l.url.includes('#exists') && l.state === LinkState.BROKEN,
+		);
+		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should validate late fragments found while recursing', async () => {
+		// The crawl reaches a.html from index.html first; b.html links
+		// a.html#missing only afterwards.
+		const results = await check({
+			path: 'test/fixtures/fragments-late-recurse',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should report a broken fragment for the page that links it', async () => {
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-late-discovery/target.html',
+				'test/fixtures/fragments-late-discovery/page.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.parent).toContain('page.html');
+	});
+
+	it('should report a broken fragment once per referring page', async () => {
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-multiple-parents/pageA.html',
+				'test/fixtures/fragments-multiple-parents/pageB.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragments = results.links.filter(
+			(l) => l.url.includes('#missing') && l.state === LinkState.BROKEN,
+		);
+		expect(brokenFragments).toHaveLength(2);
+
+		const parents = brokenFragments.map((l) => l.parent ?? '').sort();
+		expect(parents[0]).toContain('pageA.html');
+		expect(parents[1]).toContain('pageB.html');
+	});
+
 	describe('validateFragments', () => {
 		it('should validate fragments against HTML content', async () => {
 			const html = `
