@@ -404,20 +404,17 @@ export type FragmentValidationResult = {
 };
 
 /**
- * Validates fragment identifiers against HTML content.
- * @param htmlContent The HTML content as a Buffer
+ * Validates fragment identifiers against fragment ids already extracted from a
+ * page. Kept separate from `validateFragments` so a page's ids can be extracted
+ * once and reused for fragments that are discovered later in the crawl.
+ * @param validFragments Fragment identifiers the page actually offers
  * @param fragmentsToValidate Set of fragment identifiers to validate
  * @returns Array of validation results for each fragment
  */
-export async function validateFragments(
-	htmlContent: Buffer,
-	fragmentsToValidate: Set<string>,
-): Promise<FragmentValidationResult[]> {
-	// Extract valid fragment IDs from the HTML
-	const fragmentStream = Readable.from([htmlContent]);
-	const validFragments = await extractFragmentIds(fragmentStream);
-
-	// Check each fragment
+export function validateFragmentsAgainstIds(
+	validFragments: Set<string>,
+	fragmentsToValidate: Iterable<string>,
+): FragmentValidationResult[] {
 	const results: FragmentValidationResult[] = [];
 	for (const fragment of fragmentsToValidate) {
 		results.push({
@@ -427,4 +424,32 @@ export async function validateFragments(
 	}
 
 	return results;
+}
+
+/**
+ * Validates fragment identifiers against HTML content.
+ * @param htmlContent The HTML content as a Buffer
+ * @param fragmentsToValidate Set of fragment identifiers to validate
+ * @returns Array of validation results for each fragment
+ */
+export async function validateFragments(
+	htmlContent: Buffer,
+	fragmentsToValidate: Set<string>,
+): Promise<FragmentValidationResult[]> {
+	const fragmentStream = Readable.from([htmlContent]);
+	const validFragments = await extractFragmentIds(fragmentStream);
+	return validateFragmentsAgainstIds(validFragments, fragmentsToValidate);
+}
+
+/**
+ * Detects pages that answer 200 but render a "not found" page. Many of them opt
+ * out of indexing, which is the only signal available without knowing the site.
+ * @param htmlContent The HTML content as a Buffer
+ * @returns True when the page looks like a soft 404
+ */
+export function isSoftNotFound(htmlContent: Buffer): boolean {
+	const htmlString = htmlContent.toString('utf-8');
+	return (
+		htmlString.includes('content="noindex') && htmlString.includes('nofollow')
+	);
 }
