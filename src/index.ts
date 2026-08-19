@@ -4,13 +4,8 @@ import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
 import { Readable } from 'node:stream';
-import {
-	extractFragmentIds,
-	getCssLinks,
-	getLinks,
-	isSoftNotFound,
-	validateFragmentsAgainstIds,
-} from './links.js';
+import { FragmentChecker } from './fragments.js';
+import { getCssLinks, getLinks } from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -20,6 +15,8 @@ import {
 import { Queue } from './queue.js';
 import {
 	type HttpResponse,
+	isCss,
+	isHtml,
 	makeRequest,
 	type RedirectTarget,
 	type RequestResponse,
@@ -81,7 +78,7 @@ type CrawlOptions = {
 	cache: Set<string>;
 	relationshipCache: Set<string>;
 	pendingChecks: Map<string, Promise<void>>;
-	fragmentState: FragmentState;
+	fragments: FragmentChecker;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
 	checkOptions: InternalCheckOptions;
@@ -91,20 +88,6 @@ type CrawlOptions = {
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
-};
-
-/**
- * Fragment bookkeeping for a single crawl. A fragment can be discovered long
- * after its target page was fetched, so what was requested, what the page
- * actually offers and what has already been reported are tracked separately.
- */
-type FragmentState = {
-	/** Target URL -> fragment -> pages that link to it. */
-	requested: Map<string, Map<string, Set<string>>>;
-	/** Target URL -> fragment -> whether the page offers it. */
-	outcomes: Map<string, Map<string, boolean>>;
-	/** `url|fragment|parent` triples already emitted. */
-	reported: Set<string>;
 };
 
 /**
@@ -207,11 +190,33 @@ export class LinkChecker extends EventEmitter {
 		const pendingChecks = new Map<string, Promise<void>>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
-		const fragmentState: FragmentState = {
-			requested: new Map(),
-			outcomes: new Map(),
-			reported: new Set(),
-		};
+		const fragments = new FragmentChecker({
+			checkOptions: options,
+			pageStatus: (url) =>
+				results.find(
+					(result) =>
+						result.url === mapUrl(url, options) &&
+						result.state === LinkState.OK,
+				)?.status,
+			reportSkipped: (urlWithFragment, parent) => {
+				this.recordResult(results, {
+					url: mapUrl(urlWithFragment, options),
+					state: LinkState.SKIPPED,
+					parent: mapUrl(parent, options),
+				});
+			},
+			reportBroken: ({ url, fragment, parent, status }) => {
+				this.recordResult(results, {
+					url: mapUrl(`${url}#${fragment}`, options),
+					status,
+					state: LinkState.BROKEN,
+					parent: mapUrl(parent, options),
+					failureDetails: [
+						new Error(`Fragment identifier '#${fragment}' not found on page`),
+					],
+				});
+			},
+		});
 
 		for (const path of options.path) {
 			const url = new URL(path);
@@ -225,7 +230,7 @@ export class LinkChecker extends EventEmitter {
 				cache: initCache,
 				relationshipCache,
 				pendingChecks,
-				fragmentState,
+				fragments,
 				delayCache,
 				retryErrorsCache,
 				queue,
@@ -243,12 +248,9 @@ export class LinkChecker extends EventEmitter {
 		// be validated during the crawl, since each page is only fetched once.
 		// Resolve those now that every link is known.
 		if (options.checkFragments) {
-			this.enqueueDeferredFragmentChecks({
-				results,
-				fragmentState,
-				checkOptions: options,
-				queue,
-			});
+			for (const task of fragments.deferredTasks()) {
+				queue.add(task);
+			}
 			await queue.onIdle();
 		}
 
@@ -413,10 +415,7 @@ export class LinkChecker extends EventEmitter {
 			isHtml(response) &&
 			!response.body
 		) {
-			const fragmentsToCheck = options.fragmentState.requested.get(
-				options.url.href,
-			);
-			if (fragmentsToCheck && fragmentsToCheck.size > 0) {
+			if (options.fragments.wants(options.url.href)) {
 				try {
 					response = await makeRequest('GET', options.url.href, requestOptions);
 					if (response.redirectSkipped) {
@@ -581,25 +580,16 @@ export class LinkChecker extends EventEmitter {
 			isHtml(response) &&
 			state === LinkState.OK
 		) {
-			const fragmentsToValidate = options.fragmentState.requested.get(
-				options.url.href,
-			);
-			if (fragmentsToValidate && fragmentsToValidate.size > 0) {
+			if (options.fragments.wants(options.url.href)) {
 				// Convert and buffer the response body
 				const nodeStream = toNodeReadable(response.body);
 				const htmlContent = await bufferStream(nodeStream);
 
-				if (!isSoftNotFound(htmlContent)) {
-					const validIds = await extractFragmentIds(
-						Readable.from([htmlContent]),
-					);
-					this.reportFragmentResults(
-						options.url.href,
-						validIds,
-						response.status,
-						options,
-					);
-				}
+				await options.fragments.validate(
+					options.url.href,
+					htmlContent,
+					response.status,
+				);
 
 				// Create a new stream from the buffered content for link extraction
 				const linkStream = Readable.from([htmlContent]);
@@ -691,39 +681,12 @@ export class LinkChecker extends EventEmitter {
 					result.fragment &&
 					result.fragment.length > 0
 				) {
-					if (
-						await this.shouldSkipFragment(
-							result.fragment,
-							result.urlWithFragment ?? result.url.href,
-							options.checkOptions,
-						)
-					) {
-						const skippedFragmentResult: LinkResult = {
-							url: mapUrl(
-								result.urlWithFragment ?? result.url.href,
-								options.checkOptions,
-							),
-							state: LinkState.SKIPPED,
-							parent: mapUrl(options.url.href, options.checkOptions),
-						};
-						options.results.push(skippedFragmentResult);
-						this.emit('link', skippedFragmentResult);
-					} else {
-						// Remember which page linked the fragment so a breakage is
-						// reported against the page that has to be fixed.
-						const urlKey = result.url.href;
-						let fragmentParents = options.fragmentState.requested.get(urlKey);
-						if (!fragmentParents) {
-							fragmentParents = new Map();
-							options.fragmentState.requested.set(urlKey, fragmentParents);
-						}
-						let parents = fragmentParents.get(result.fragment);
-						if (!parents) {
-							parents = new Set();
-							fragmentParents.set(result.fragment, parents);
-						}
-						parents.add(options.url.href);
-					}
+					await options.fragments.record({
+						url: result.url.href,
+						fragment: result.fragment,
+						urlWithFragment: result.urlWithFragment,
+						parent: options.url.href,
+					});
 				}
 
 				let crawl =
@@ -768,7 +731,7 @@ export class LinkChecker extends EventEmitter {
 						cache: options.cache,
 						relationshipCache: options.relationshipCache,
 						pendingChecks: options.pendingChecks,
-						fragmentState: options.fragmentState,
+						fragments: options.fragments,
 						delayCache: options.delayCache,
 						retryErrorsCache: options.retryErrorsCache,
 						results: options.results,
@@ -826,23 +789,13 @@ export class LinkChecker extends EventEmitter {
 				htmlContentForFragments &&
 				response &&
 				isHtml(response) &&
-				state === LinkState.OK &&
-				!isSoftNotFound(htmlContentForFragments)
+				state === LinkState.OK
 			) {
-				const fragmentsToValidate = options.fragmentState.requested.get(
+				await options.fragments.validate(
 					options.url.href,
+					htmlContentForFragments,
+					response.status,
 				);
-				if (fragmentsToValidate && fragmentsToValidate.size > 0) {
-					const validIds = await extractFragmentIds(
-						Readable.from([htmlContentForFragments]),
-					);
-					this.reportFragmentResults(
-						options.url.href,
-						validIds,
-						response.status,
-						options,
-					);
-				}
 			}
 		}
 
@@ -850,205 +803,6 @@ export class LinkChecker extends EventEmitter {
 		// This is critical for preventing port exhaustion - if the body isn't consumed,
 		// the underlying TCP connection may not be reused.
 		await drainStream(response?.body);
-	}
-
-	/**
-	 * Record which of a page's requested fragments it actually offers and report
-	 * the ones it does not, once per page that links them. Fragments already
-	 * reported are skipped, so a page may be validated more than once without
-	 * emitting duplicates.
-	 */
-	private reportFragmentResults(
-		url: string,
-		validIds: Set<string>,
-		status: number,
-		options: Pick<CrawlOptions, 'checkOptions' | 'fragmentState' | 'results'>,
-	): void {
-		const requested = options.fragmentState.requested.get(url);
-		if (!requested) {
-			return;
-		}
-
-		let outcomes = options.fragmentState.outcomes.get(url);
-		if (!outcomes) {
-			outcomes = new Map();
-			options.fragmentState.outcomes.set(url, outcomes);
-		}
-
-		const validationResults = validateFragmentsAgainstIds(
-			validIds,
-			requested.keys(),
-		);
-		for (const { fragment, isValid } of validationResults) {
-			outcomes.set(fragment, isValid);
-			if (isValid) {
-				continue;
-			}
-
-			for (const parent of requested.get(fragment) ?? []) {
-				this.reportBrokenFragment(url, fragment, parent, status, options);
-			}
-		}
-	}
-
-	/**
-	 * Emit a single broken fragment result, unless the same fragment was already
-	 * reported for the same referring page.
-	 */
-	private reportBrokenFragment(
-		url: string,
-		fragment: string,
-		parent: string,
-		status: number,
-		options: Pick<CrawlOptions, 'checkOptions' | 'fragmentState' | 'results'>,
-	): void {
-		const reportKey = `${url}|${fragment}|${parent}`;
-		if (options.fragmentState.reported.has(reportKey)) {
-			return;
-		}
-		options.fragmentState.reported.add(reportKey);
-
-		const fragmentResult: LinkResult = {
-			url: mapUrl(`${url}#${fragment}`, options.checkOptions),
-			status,
-			state: LinkState.BROKEN,
-			parent: mapUrl(parent, options.checkOptions),
-			failureDetails: [
-				new Error(`Fragment identifier '#${fragment}' not found on page`),
-			],
-		};
-		options.results.push(fragmentResult);
-		this.emit('link', fragmentResult);
-	}
-
-	/**
-	 * Queue validation for fragments that were discovered after their target page
-	 * had already been fetched. Their page bodies are long gone - response bodies
-	 * are single-use streams and are deliberately not cached - so any page whose
-	 * fragment ids are unknown is requested once more.
-	 */
-	private enqueueDeferredFragmentChecks(options: {
-		results: LinkResult[];
-		fragmentState: FragmentState;
-		checkOptions: InternalCheckOptions;
-		queue: Queue;
-	}): void {
-		for (const [url, requested] of options.fragmentState.requested) {
-			const outcomes = options.fragmentState.outcomes.get(url);
-			const unresolved = [...requested.keys()].filter(
-				(fragment) => !outcomes?.has(fragment),
-			);
-
-			// Only pages that were reachable can offer fragments. A page that failed
-			// is already reported as broken in its own right.
-			const pageResult = options.results.find(
-				(result) =>
-					result.url === mapUrl(url, options.checkOptions) &&
-					result.state === LinkState.OK,
-			);
-
-			// Fragments whose target page was already parsed only need reporting for
-			// the pages that linked them after that page was validated.
-			if (unresolved.length === 0) {
-				this.reportKnownFragmentOutcomes(
-					url,
-					requested,
-					outcomes,
-					pageResult?.status ?? 0,
-					options,
-				);
-				continue;
-			}
-
-			if (!pageResult) {
-				continue;
-			}
-
-			options.queue.add(async () => {
-				await this.validateDeferredFragments(
-					url,
-					pageResult.status ?? 0,
-					options,
-				);
-			});
-		}
-	}
-
-	/**
-	 * Report fragments whose validity is already known, for referring pages that
-	 * were discovered after the target page was validated.
-	 */
-	private reportKnownFragmentOutcomes(
-		url: string,
-		requested: Map<string, Set<string>>,
-		outcomes: Map<string, boolean> | undefined,
-		status: number,
-		options: {
-			results: LinkResult[];
-			fragmentState: FragmentState;
-			checkOptions: InternalCheckOptions;
-		},
-	): void {
-		for (const [fragment, parents] of requested) {
-			if (outcomes?.get(fragment) !== false) {
-				continue;
-			}
-			for (const parent of parents) {
-				this.reportBrokenFragment(url, fragment, parent, status, options);
-			}
-		}
-	}
-
-	/**
-	 * Re-request a page to learn which fragments it offers, then report the
-	 * fragments pointing at it that are missing.
-	 */
-	private async validateDeferredFragments(
-		url: string,
-		status: number,
-		options: {
-			results: LinkResult[];
-			fragmentState: FragmentState;
-			checkOptions: InternalCheckOptions;
-		},
-	): Promise<void> {
-		let response: RequestResponse | undefined;
-		try {
-			response = await makeRequest('GET', url, {
-				headers: options.checkOptions.headers,
-				timeout: options.checkOptions.timeout,
-				redirect: 'follow',
-				allowInsecureCerts: options.checkOptions.allowInsecureCerts,
-			});
-		} catch {
-			// The page answered during the crawl, so a failure here says nothing
-			// about the fragments. Leave them unvalidated rather than reporting a
-			// breakage that cannot be confirmed.
-			return;
-		}
-
-		if (
-			!response.body ||
-			!isHtml(response) ||
-			response.status < 200 ||
-			response.status >= 300
-		) {
-			await drainStream(response.body);
-			return;
-		}
-
-		const htmlContent = await bufferStream(toNodeReadable(response.body));
-		if (isSoftNotFound(htmlContent)) {
-			return;
-		}
-
-		const validIds = await extractFragmentIds(Readable.from([htmlContent]));
-		this.reportFragmentResults(
-			url,
-			validIds,
-			status || response.status,
-			options,
-		);
 	}
 
 	private hasSkipRules(checkOptions: InternalCheckOptions): boolean {
@@ -1101,20 +855,10 @@ export class LinkChecker extends EventEmitter {
 		);
 	}
 
-	private async shouldSkipFragment(
-		fragment: string,
-		url: string,
-		checkOptions: InternalCheckOptions,
-	): Promise<boolean> {
-		if (typeof checkOptions.fragmentsToSkip === 'function') {
-			return checkOptions.fragmentsToSkip(fragment, url);
-		}
-
-		return Boolean(
-			checkOptions.fragmentsToSkip?.some((fragmentToSkip) =>
-				new RegExp(fragmentToSkip).test(fragment),
-			),
-		);
+	/** Store a result and hand it to any listener. */
+	private recordResult(results: LinkResult[], result: LinkResult): void {
+		results.push(result);
+		this.emit('link', result);
 	}
 
 	private recordSkippedResult(options: CrawlOptions): void {
@@ -1264,24 +1008,6 @@ export async function check(options: CheckOptions) {
 	const checker = new LinkChecker();
 	const results = await checker.check(options);
 	return results;
-}
-
-/**
- * Checks to see if a given source is HTML.
- * @param {object} response Page response.
- * @returns {boolean}
- */
-function isHtml(response: HttpResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
-	return (
-		Boolean(/text\/html/g.test(contentType)) ||
-		Boolean(/application\/xhtml\+xml/g.test(contentType))
-	);
-}
-
-function isCss(response: HttpResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
-	return Boolean(/text\/css/g.test(contentType));
 }
 
 /**
