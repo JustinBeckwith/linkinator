@@ -3,7 +3,9 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import { getCssLinks, getLinks, validateFragments } from './links.js';
+import { Readable } from 'node:stream';
+import { FragmentChecker } from './fragments.js';
+import { getCssLinks, getLinks } from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -13,6 +15,8 @@ import {
 import { Queue } from './queue.js';
 import {
 	type HttpResponse,
+	isCss,
+	isHtml,
 	makeRequest,
 	type RedirectTarget,
 	type RequestResponse,
@@ -74,6 +78,7 @@ type CrawlOptions = {
 	cache: Set<string>;
 	relationshipCache: Set<string>;
 	pendingChecks: Map<string, Promise<void>>;
+	fragments: FragmentChecker;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
 	checkOptions: InternalCheckOptions;
@@ -89,9 +94,6 @@ type CrawlOptions = {
  * Instance class used to perform a crawl job.
  */
 export class LinkChecker extends EventEmitter {
-	// Track which fragments need to be checked for each URL
-	private fragmentsToCheck = new Map<string, Set<string>>();
-
 	/**
 	 * Register a crawl as pending, then start it only after the queue grants a
 	 * concurrency slot. The separate completion promise lets duplicate links
@@ -188,6 +190,33 @@ export class LinkChecker extends EventEmitter {
 		const pendingChecks = new Map<string, Promise<void>>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
+		const fragments = new FragmentChecker({
+			checkOptions: options,
+			pageStatus: (url) =>
+				results.find(
+					(result) =>
+						result.url === mapUrl(url, options) &&
+						result.state === LinkState.OK,
+				)?.status,
+			reportSkipped: (urlWithFragment, parent) => {
+				this.recordResult(results, {
+					url: mapUrl(urlWithFragment, options),
+					state: LinkState.SKIPPED,
+					parent: mapUrl(parent, options),
+				});
+			},
+			reportBroken: ({ url, fragment, parent, status }) => {
+				this.recordResult(results, {
+					url: mapUrl(`${url}#${fragment}`, options),
+					status,
+					state: LinkState.BROKEN,
+					parent: mapUrl(parent, options),
+					failureDetails: [
+						new Error(`Fragment identifier '#${fragment}' not found on page`),
+					],
+				});
+			},
+		});
 
 		for (const path of options.path) {
 			const url = new URL(path);
@@ -201,6 +230,7 @@ export class LinkChecker extends EventEmitter {
 				cache: initCache,
 				relationshipCache,
 				pendingChecks,
+				fragments,
 				delayCache,
 				retryErrorsCache,
 				queue,
@@ -213,6 +243,16 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		await queue.onIdle();
+
+		// Fragments discovered after their target page was already fetched cannot
+		// be validated during the crawl, since each page is only fetched once.
+		// Resolve those now that every link is known.
+		if (options.checkFragments) {
+			for (const task of fragments.deferredTasks()) {
+				queue.add(task);
+			}
+			await queue.onIdle();
+		}
 
 		const result = {
 			links: results,
@@ -375,8 +415,7 @@ export class LinkChecker extends EventEmitter {
 			isHtml(response) &&
 			!response.body
 		) {
-			const fragmentsToCheck = this.fragmentsToCheck.get(options.url.href);
-			if (fragmentsToCheck && fragmentsToCheck.size > 0) {
+			if (options.fragments.wants(options.url.href)) {
 				try {
 					response = await makeRequest('GET', options.url.href, requestOptions);
 					if (response.redirectSkipped) {
@@ -541,52 +580,18 @@ export class LinkChecker extends EventEmitter {
 			isHtml(response) &&
 			state === LinkState.OK
 		) {
-			const fragmentsToValidate = this.fragmentsToCheck.get(options.url.href);
-			if (fragmentsToValidate && fragmentsToValidate.size > 0) {
+			if (options.fragments.wants(options.url.href)) {
 				// Convert and buffer the response body
 				const nodeStream = toNodeReadable(response.body);
 				const htmlContent = await bufferStream(nodeStream);
 
-				// Check if this is likely a soft 404 by looking for noindex/nofollow meta tags
-				// Many soft 404 pages (pages that return 200 but show "Page Not Found") include these tags
-				const htmlString = htmlContent.toString('utf-8');
-				const isSoft404 =
-					htmlString.includes('content="noindex') &&
-					htmlString.includes('nofollow');
-
-				// Only validate fragments if this is NOT a soft 404
-				if (!isSoft404) {
-					// Validate fragments
-					const validationResults = await validateFragments(
-						htmlContent,
-						fragmentsToValidate,
-					);
-
-					// Emit results for invalid fragments
-					for (const result of validationResults) {
-						if (!result.isValid) {
-							const fragmentResult: LinkResult = {
-								url: mapUrl(
-									`${options.url.href}#${result.fragment}`,
-									options.checkOptions,
-								),
-								status: response.status,
-								state: LinkState.BROKEN,
-								parent: mapUrl(options.parent, options.checkOptions),
-								failureDetails: [
-									new Error(
-										`Fragment identifier '#${result.fragment}' not found on page`,
-									),
-								],
-							};
-							options.results.push(fragmentResult);
-							this.emit('link', fragmentResult);
-						}
-					}
-				}
+				await options.fragments.validate(
+					options.url.href,
+					htmlContent,
+					response.status,
+				);
 
 				// Create a new stream from the buffered content for link extraction
-				const { Readable } = await import('node:stream');
 				const linkStream = Readable.from([htmlContent]);
 				response.body = linkStream as never;
 			}
@@ -616,7 +621,6 @@ export class LinkChecker extends EventEmitter {
 					if (options.checkOptions.checkFragments) {
 						htmlContentForFragments = await bufferStream(nodeStream);
 						// Create a new stream from the buffer for link extraction
-						const { Readable } = await import('node:stream');
 						const linkStream = Readable.from([htmlContentForFragments]);
 						urlResults = await getLinks(
 							linkStream,
@@ -677,30 +681,12 @@ export class LinkChecker extends EventEmitter {
 					result.fragment &&
 					result.fragment.length > 0
 				) {
-					if (
-						await this.shouldSkipFragment(
-							result.fragment,
-							result.urlWithFragment ?? result.url.href,
-							options.checkOptions,
-						)
-					) {
-						const skippedFragmentResult: LinkResult = {
-							url: mapUrl(
-								result.urlWithFragment ?? result.url.href,
-								options.checkOptions,
-							),
-							state: LinkState.SKIPPED,
-							parent: mapUrl(options.url.href, options.checkOptions),
-						};
-						options.results.push(skippedFragmentResult);
-						this.emit('link', skippedFragmentResult);
-					} else {
-						const urlKey = result.url.href;
-						if (!this.fragmentsToCheck.has(urlKey)) {
-							this.fragmentsToCheck.set(urlKey, new Set());
-						}
-						this.fragmentsToCheck.get(urlKey)?.add(result.fragment);
-					}
+					await options.fragments.record({
+						url: result.url.href,
+						fragment: result.fragment,
+						urlWithFragment: result.urlWithFragment,
+						parent: options.url.href,
+					});
 				}
 
 				let crawl =
@@ -745,6 +731,7 @@ export class LinkChecker extends EventEmitter {
 						cache: options.cache,
 						relationshipCache: options.relationshipCache,
 						pendingChecks: options.pendingChecks,
+						fragments: options.fragments,
 						delayCache: options.delayCache,
 						retryErrorsCache: options.retryErrorsCache,
 						results: options.results,
@@ -795,9 +782,8 @@ export class LinkChecker extends EventEmitter {
 				}
 			}
 
-			// Validate same-page fragments that were found during link extraction
-			// These fragments reference the current page and need immediate validation
-			// since the page won't be checked again (it's already in the cache)
+			// Validate fragments that point at this page, including the ones this
+			// page links to itself, which are only known after link extraction.
 			if (
 				options.checkOptions.checkFragments &&
 				htmlContentForFragments &&
@@ -805,38 +791,11 @@ export class LinkChecker extends EventEmitter {
 				isHtml(response) &&
 				state === LinkState.OK
 			) {
-				const samePageFragments = this.fragmentsToCheck.get(options.url.href);
-				if (samePageFragments && samePageFragments.size > 0) {
-					const validationResults = await validateFragments(
-						htmlContentForFragments,
-						samePageFragments,
-					);
-
-					// Emit results for invalid same-page fragments
-					for (const result of validationResults) {
-						if (!result.isValid) {
-							const fragmentResult: LinkResult = {
-								url: mapUrl(
-									`${options.url.href}#${result.fragment}`,
-									options.checkOptions,
-								),
-								status: response.status,
-								state: LinkState.BROKEN,
-								parent: mapUrl(options.parent, options.checkOptions),
-								failureDetails: [
-									new Error(
-										`Fragment identifier '#${result.fragment}' not found on page`,
-									),
-								],
-							};
-							options.results.push(fragmentResult);
-							this.emit('link', fragmentResult);
-						}
-					}
-
-					// Clear the validated fragments to avoid duplicate validation
-					this.fragmentsToCheck.delete(options.url.href);
-				}
+				await options.fragments.validate(
+					options.url.href,
+					htmlContentForFragments,
+					response.status,
+				);
 			}
 		}
 
@@ -896,20 +855,10 @@ export class LinkChecker extends EventEmitter {
 		);
 	}
 
-	private async shouldSkipFragment(
-		fragment: string,
-		url: string,
-		checkOptions: InternalCheckOptions,
-	): Promise<boolean> {
-		if (typeof checkOptions.fragmentsToSkip === 'function') {
-			return checkOptions.fragmentsToSkip(fragment, url);
-		}
-
-		return Boolean(
-			checkOptions.fragmentsToSkip?.some((fragmentToSkip) =>
-				new RegExp(fragmentToSkip).test(fragment),
-			),
-		);
+	/** Store a result and hand it to any listener. */
+	private recordResult(results: LinkResult[], result: LinkResult): void {
+		results.push(result);
+		this.emit('link', result);
 	}
 
 	private recordSkippedResult(options: CrawlOptions): void {
@@ -1059,24 +1008,6 @@ export async function check(options: CheckOptions) {
 	const checker = new LinkChecker();
 	const results = await checker.check(options);
 	return results;
-}
-
-/**
- * Checks to see if a given source is HTML.
- * @param {object} response Page response.
- * @returns {boolean}
- */
-function isHtml(response: HttpResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
-	return (
-		Boolean(/text\/html/g.test(contentType)) ||
-		Boolean(/application\/xhtml\+xml/g.test(contentType))
-	);
-}
-
-function isCss(response: HttpResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
-	return Boolean(/text\/css/g.test(contentType));
 }
 
 /**

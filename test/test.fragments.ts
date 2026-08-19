@@ -1,8 +1,9 @@
 import { Readable } from 'node:stream';
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { validateFragmentsAgainstIds } from '../src/fragments.js';
 import { check, LinkChecker, LinkState } from '../src/index.js';
-import { extractFragmentIds, validateFragments } from '../src/links.js';
+import { extractFragmentIds } from '../src/links.js';
 
 describe('fragment identifier validation', () => {
 	let mockAgent: MockAgent;
@@ -515,8 +516,97 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
-	describe('validateFragments', () => {
-		it('should validate fragments against HTML content', async () => {
+	it('should validate fragments discovered after the target was checked', async () => {
+		// The target is checked first as a seed, so the fragments that page.html
+		// contributes for it arrive after it has already been fetched.
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-late-discovery/target.html',
+				'test/fixtures/fragments-late-discovery/page.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+
+		// The fragment that does exist on the target must not be reported.
+		const validFragments = results.links.filter(
+			(l) => l.url.includes('#exists') && l.state === LinkState.BROKEN,
+		);
+		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should validate late fragments found while recursing', async () => {
+		// The crawl reaches a.html from index.html first; b.html links
+		// a.html#missing only afterwards.
+		const results = await check({
+			path: 'test/fixtures/fragments-late-recurse',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should report a broken fragment for the page that links it', async () => {
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-late-discovery/target.html',
+				'test/fixtures/fragments-late-discovery/page.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.parent).toContain('page.html');
+	});
+
+	it('should report a broken fragment once per referring page', async () => {
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-multiple-parents/pageA.html',
+				'test/fixtures/fragments-multiple-parents/pageB.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragments = results.links.filter(
+			(l) => l.url.includes('#missing') && l.state === LinkState.BROKEN,
+		);
+		expect(brokenFragments).toHaveLength(2);
+
+		const parents = brokenFragments.map((l) => l.parent ?? '').sort();
+		expect(parents[0]).toContain('pageA.html');
+		expect(parents[1]).toContain('pageB.html');
+	});
+
+	describe('validateFragmentsAgainstIds', () => {
+		it('should validate fragments against the ids a page offers', async () => {
 			const html = `
 				<html>
 					<body>
@@ -525,10 +615,10 @@ describe('fragment identifier validation', () => {
 					</body>
 				</html>
 			`;
-			const htmlContent = Buffer.from(html);
+			const validIds = await extractFragmentIds(Readable.from([html]));
 			const fragmentsToCheck = new Set(['exists', 'another', 'missing']);
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, fragmentsToCheck);
 
 			expect(results).toHaveLength(3);
 			expect(results.find((r) => r.fragment === 'exists')?.isValid).toBe(true);
@@ -540,10 +630,9 @@ describe('fragment identifier validation', () => {
 
 		it('should return empty array when no fragments to validate', async () => {
 			const html = '<html><body><div id="test">Content</div></body></html>';
-			const htmlContent = Buffer.from(html);
-			const fragmentsToCheck = new Set<string>();
+			const validIds = await extractFragmentIds(Readable.from([html]));
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, new Set<string>());
 
 			expect(results).toHaveLength(0);
 		});

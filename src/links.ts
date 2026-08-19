@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import type { Readable } from 'node:stream';
 import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 import schemaOrgUrlFields from './schema-org-url-fields.json' with {
@@ -398,33 +398,15 @@ export async function extractFragmentIds(
 	return fragments;
 }
 
-export type FragmentValidationResult = {
-	fragment: string;
-	isValid: boolean;
-};
-
 /**
- * Validates fragment identifiers against HTML content.
+ * Detects pages that answer 200 but render a "not found" page. Many of them opt
+ * out of indexing, which is the only signal available without knowing the site.
  * @param htmlContent The HTML content as a Buffer
- * @param fragmentsToValidate Set of fragment identifiers to validate
- * @returns Array of validation results for each fragment
+ * @returns True when the page looks like a soft 404
  */
-export async function validateFragments(
-	htmlContent: Buffer,
-	fragmentsToValidate: Set<string>,
-): Promise<FragmentValidationResult[]> {
-	// Extract valid fragment IDs from the HTML
-	const fragmentStream = Readable.from([htmlContent]);
-	const validFragments = await extractFragmentIds(fragmentStream);
-
-	// Check each fragment
-	const results: FragmentValidationResult[] = [];
-	for (const fragment of fragmentsToValidate) {
-		results.push({
-			fragment,
-			isValid: validFragments.has(fragment),
-		});
-	}
-
-	return results;
+export function isSoftNotFound(htmlContent: Buffer): boolean {
+	const htmlString = htmlContent.toString('utf-8');
+	return (
+		htmlString.includes('content="noindex') && htmlString.includes('nofollow')
+	);
 }
