@@ -1,12 +1,39 @@
 import { Readable } from 'node:stream';
-import {
-	extractFragmentIds,
-	isSoftNotFound,
-	validateFragmentsAgainstIds,
-} from './links.js';
+import { extractFragmentIds, isSoftNotFound } from './links.js';
 import type { InternalCheckOptions } from './options.js';
 import { isHtml, makeRequest, type RequestResponse } from './request.js';
 import { bufferStream, drainStream, toNodeReadable } from './stream-utils.js';
+
+export type FragmentValidationResult = {
+	fragment: string;
+	isValid: boolean;
+};
+
+/**
+ * Validates fragment identifiers against the ids a page offers. Takes the ids
+ * rather than the HTML so a page can be parsed once and still answer fragments
+ * that are discovered later in the crawl.
+ * @param validFragments Fragment identifiers the page actually offers
+ * @param fragmentsToValidate Fragment identifiers to validate
+ * @returns One validation result per requested fragment
+ */
+export function validateFragmentsAgainstIds(
+	validFragments: Set<string>,
+	fragmentsToValidate: Iterable<string>,
+): FragmentValidationResult[] {
+	const results: FragmentValidationResult[] = [];
+	for (const fragment of fragmentsToValidate) {
+		results.push({
+			fragment,
+			// `top` addresses the start of any document rather than an element, so
+			// no page has to offer an id for it. HTML matches the name ASCII
+			// case-insensitively, which leaves forms like `töp` ordinary ids.
+			isValid: /^[tT][oO][pP]$/.test(fragment) || validFragments.has(fragment),
+		});
+	}
+
+	return results;
+}
 
 /** A fragment link that turned out to point at nothing. */
 export type BrokenFragment = {
@@ -57,7 +84,7 @@ export type FragmentCheckerOptions = {
  *    {@link deferredTasks}. These settle the fragments that were discovered
  *    after their target page had already been fetched, re-requesting only those
  *    pages whose ids are still unknown. Skipping this step silently loses
- *    findings, which is the bug this class is built around.
+ *    findings.
  *
  * Results leave through the `reportSkipped` and `reportBroken` callbacks rather
  * than being returned, because they are produced in all three steps. Each

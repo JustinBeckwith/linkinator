@@ -1,8 +1,9 @@
 import { Readable } from 'node:stream';
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { validateFragmentsAgainstIds } from '../src/fragments.js';
 import { check, LinkChecker, LinkState } from '../src/index.js';
-import { extractFragmentIds, validateFragments } from '../src/links.js';
+import { extractFragmentIds } from '../src/links.js';
 
 describe('fragment identifier validation', () => {
 	let mockAgent: MockAgent;
@@ -698,8 +699,8 @@ describe('fragment identifier validation', () => {
 		expect(parents[1]).toContain('pageB.html');
 	});
 
-	describe('validateFragments', () => {
-		it('should validate fragments against HTML content', async () => {
+	describe('validateFragmentsAgainstIds', () => {
+		it('should validate fragments against the ids a page offers', async () => {
 			const html = `
 				<html>
 					<body>
@@ -708,10 +709,10 @@ describe('fragment identifier validation', () => {
 					</body>
 				</html>
 			`;
-			const htmlContent = Buffer.from(html);
+			const validIds = await extractFragmentIds(Readable.from([html]));
 			const fragmentsToCheck = new Set(['exists', 'another', 'missing']);
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, fragmentsToCheck);
 
 			expect(results).toHaveLength(3);
 			expect(results.find((r) => r.fragment === 'exists')?.isValid).toBe(true);
@@ -723,23 +724,23 @@ describe('fragment identifier validation', () => {
 
 		it('should return empty array when no fragments to validate', async () => {
 			const html = '<html><body><div id="test">Content</div></body></html>';
-			const htmlContent = Buffer.from(html);
-			const fragmentsToCheck = new Set<string>();
+			const validIds = await extractFragmentIds(Readable.from([html]));
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, new Set<string>());
 
 			expect(results).toHaveLength(0);
 		});
 
 		it('should only recognize ASCII case variants of top as special', async () => {
-			const htmlContent = Buffer.from(`
+			const html = `
 				<html>
 					<body>
 						<div id="ordinary-id">Content</div>
 						<a name="legacy-anchor">Legacy target</a>
 					</body>
 				</html>
-			`);
+			`;
+			const validIds = await extractFragmentIds(Readable.from([html]));
 			const fragmentsToCheck = new Set([
 				'top',
 				'TOP',
@@ -751,7 +752,7 @@ describe('fragment identifier validation', () => {
 				'missing',
 			]);
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, fragmentsToCheck);
 			const validity = Object.fromEntries(
 				results.map(({ fragment, isValid }) => [fragment, isValid]),
 			);

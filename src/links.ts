@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import type { Readable } from 'node:stream';
 import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 import schemaOrgUrlFields from './schema-org-url-fields.json' with {
@@ -412,49 +412,6 @@ export async function extractFragmentIds(
 	});
 
 	return fragments;
-}
-
-export type FragmentValidationResult = {
-	fragment: string;
-	isValid: boolean;
-};
-
-/**
- * Validates fragment identifiers against fragment ids already extracted from a
- * page. Kept separate from `validateFragments` so a page's ids can be extracted
- * once and reused for fragments that are discovered later in the crawl.
- * @param validFragments Fragment identifiers the page actually offers
- * @param fragmentsToValidate Set of fragment identifiers to validate
- * @returns Array of validation results for each fragment
- */
-export function validateFragmentsAgainstIds(
-	validFragments: Set<string>,
-	fragmentsToValidate: Iterable<string>,
-): FragmentValidationResult[] {
-	const results: FragmentValidationResult[] = [];
-	for (const fragment of fragmentsToValidate) {
-		results.push({
-			fragment,
-			isValid: /^[tT][oO][pP]$/.test(fragment) || validFragments.has(fragment),
-		});
-	}
-
-	return results;
-}
-
-/**
- * Validates fragment identifiers against HTML content.
- * @param htmlContent The HTML content as a Buffer
- * @param fragmentsToValidate Set of fragment identifiers to validate
- * @returns Array of validation results for each fragment
- */
-export async function validateFragments(
-	htmlContent: Buffer,
-	fragmentsToValidate: Set<string>,
-): Promise<FragmentValidationResult[]> {
-	const fragmentStream = Readable.from([htmlContent]);
-	const validFragments = await extractFragmentIds(fragmentStream);
-	return validateFragmentsAgainstIds(validFragments, fragmentsToValidate);
 }
 
 /**
