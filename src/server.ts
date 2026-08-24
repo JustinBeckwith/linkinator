@@ -110,7 +110,13 @@ async function handleRequest(
 			response.statusCode = 301;
 			response.setHeader('Content-Type', 'text/html; charset=UTF-8');
 			response.setHeader('Content-Length', Buffer.byteLength(document));
-			response.setHeader('Location', redirectUrl.href);
+			// Keep the redirect relative so the client preserves the hostname it used
+			// to reach the temporary server. An absolute localhost URL changes the
+			// origin of crawls started on 127.0.0.1 and stops recursive traversal.
+			response.setHeader(
+				'Location',
+				`${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`,
+			);
 			response.end(document);
 			return;
 		}

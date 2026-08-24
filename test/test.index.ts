@@ -365,6 +365,30 @@ describe('linkinator', () => {
 		assert.strictEqual(results.links.length, 4);
 	});
 
+	it('should recurse through local directory redirects without changing hosts', async () => {
+		const results = await check({
+			path: 'test/fixtures/redirect-recurse',
+			recurse: true,
+		});
+		const brokenLinks = results.links
+			.filter((link) => link.state === LinkState.BROKEN)
+			.map((link) => path.basename(link.url))
+			.sort();
+
+		assert.deepStrictEqual(brokenLinks, ['also-broken', 'broken']);
+		assert.strictEqual(results.links.length, 7);
+		assert.ok(
+			results.links.every((link) => !link.url.startsWith('http://localhost:')),
+		);
+		assert.ok(
+			results.links.some(
+				(link) =>
+					path.basename(link.url) === 'also-broken' &&
+					link.parent?.endsWith(path.join('child-two', 'grandchild')),
+			),
+		);
+	});
+
 	it('should not recurse non-html files', async () => {
 		const results = await check({
 			path: 'test/fixtures/scripts',
