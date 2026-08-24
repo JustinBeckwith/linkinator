@@ -662,7 +662,7 @@ describe('fragment identifier validation', () => {
 		});
 
 		const results = await checker.check({
-			path: 'test/fixtures/fragments-deferred-failure',
+			path: 'test/fixtures/fragments-late-remote',
 			recurse: true,
 			checkFragments: true,
 			concurrency: 1,
@@ -679,6 +679,75 @@ describe('fragment identifier validation', () => {
 			"Fragment identifier '#missing' could not be verified",
 		);
 		expect(unverified).toEqual(['http://example.com/target.html#missing']);
+	});
+
+	it('should answer fragments on an accepted non-2xx target, referrer first', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(403, '', { headers: { 'content-type': 'text/html' } })
+			.persist();
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(403, '<html><body><div id="exists">Content</div></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.persist();
+
+		const results = await check({
+			path: 'test/fixtures/fragments-late-remote/ref.html',
+			statusCodes: { '403': 'ok' },
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should answer fragments on an accepted non-2xx target, target first', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		// The target is checked before any fragment for it is known, so the
+		// deferred pass has to accept the 403 the same way the crawl did.
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(403, '', { headers: { 'content-type': 'text/html' } })
+			.persist();
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(403, '<html><body><div id="exists">Content</div></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.persist();
+
+		const results = await check({
+			path: 'test/fixtures/fragments-late-remote',
+			recurse: true,
+			statusCodes: { '403': 'ok' },
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
 	});
 
 	it('should not request a crawled page again to answer late fragments', async () => {

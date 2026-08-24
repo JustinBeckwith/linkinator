@@ -210,6 +210,13 @@ export class LinkChecker extends EventEmitter {
 		const retryErrorsCache = new Map<string, number>();
 		const fragments = new FragmentChecker({
 			checkOptions: options,
+			classify: (url, status, response) => {
+				const { state } = classifyResponse(status, response, url, options);
+				if (state === LinkState.OK) {
+					return 'usable';
+				}
+				return state === LinkState.SKIPPED ? 'ignore' : 'failed';
+			},
 			pageStatus: (url) =>
 				results.find(
 					(result) =>

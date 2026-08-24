@@ -72,8 +72,30 @@ export type UnverifiedFragment = {
 	cause?: Error | HttpResponse;
 };
 
+/**
+ * What the crawl would make of a response, expressed as what it means for
+ * fragment checking rather than in the crawl's own vocabulary.
+ */
+export type TargetVerdict =
+	/** The crawl counts this page as reachable, so its body can be parsed. */
+	| 'usable'
+	/** The crawl passes over pages like this, so nothing is reported. */
+	| 'ignore'
+	/** The crawl calls this a failure, so its fragments stay unverified. */
+	| 'failed';
+
 export type FragmentCheckerOptions = {
 	checkOptions: InternalCheckOptions;
+	/**
+	 * How the crawl grades a response. Asked instead of testing for 2xx here, so
+	 * a page the crawl accepts through `statusCodes` answers its fragments no
+	 * matter which crawl order discovered them.
+	 */
+	classify: (
+		url: string,
+		status: number,
+		response: HttpResponse,
+	) => TargetVerdict;
 	/**
 	 * Status of an already-crawled page, or undefined when it was not reachable.
 	 * A page that failed is reported broken in its own right, and cannot be
@@ -316,7 +338,13 @@ export class FragmentChecker {
 			return;
 		}
 
-		if (response.status < 200 || response.status >= 300) {
+		const verdict = this.options.classify(url, response.status, response);
+		if (verdict === 'ignore') {
+			await drainStream(response.body);
+			return;
+		}
+
+		if (verdict === 'failed') {
 			await drainStream(response.body);
 			this.reportUnverifiable(
 				url,
