@@ -31,6 +31,7 @@ const linksAttribute: Record<string, string[]> = {
 	],
 	srcset: ['img', 'source'],
 };
+const ignoredLinkRelationships = new Set(['dns-prefetch', 'preconnect']);
 // Create lookup table for tag name to attribute that contains URL:
 const tagAttribute: Record<string, string[]> = {};
 for (const attribute of Object.keys(linksAttribute)) {
@@ -96,9 +97,17 @@ export async function getLinks(
 				jsonLdContent = '';
 			}
 
-			// ignore href properties for link tags where rel is likely to fail
-			const relValuesToIgnore = ['dns-prefetch', 'preconnect'];
-			if (tag === 'link' && relValuesToIgnore.includes(attributes.rel)) {
+			// Ignore href properties only when every rel token is a resource hint
+			// that Linkinator intentionally does not validate. HTML rel values are
+			// ASCII-case-insensitive sets of tokens separated by ASCII whitespace.
+			const relTokens = attributes.rel?.match(/[^\t\n\f\r ]+/g) ?? [];
+			if (
+				tag === 'link' &&
+				relTokens.length > 0 &&
+				relTokens.every((rel) =>
+					ignoredLinkRelationships.has(rel.toLowerCase()),
+				)
+			) {
 				return;
 			}
 

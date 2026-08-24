@@ -169,6 +169,7 @@ const cli = meow(
 			retryErrorsJitter: { type: 'number', default: 3000 },
 			urlRewriteSearch: { type: 'string' },
 			urlReWriteReplace: { type: 'string' },
+			userAgent: { type: 'string' },
 			header: { type: 'string', shortFlag: 'h', isMultiple: true },
 		},
 		booleanDefault: undefined,
@@ -369,6 +370,7 @@ async function main() {
 		retryErrors: flags.retryErrors,
 		retryErrorsCount: Number(flags.retryErrorsCount),
 		retryErrorsJitter: Number(flags.retryErrorsJitter),
+		userAgent: flags.userAgent,
 		headers,
 	};
 	if (flags.skip) {
