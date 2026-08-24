@@ -437,129 +437,16 @@ export class LinkChecker extends EventEmitter {
 			return;
 		}
 
-		// Detect if this was a redirect
-		const redirect = detectRedirect(status, originalUrl, response);
-
-		// Check for custom status code actions first (highest priority)
-		const customAction = getStatusCodeAction(
+		const classification = classifyResponse(
 			status,
-			options.checkOptions.statusCodes,
+			response,
+			originalUrl,
+			options.checkOptions,
 		);
-
-		if (customAction === 'ok') {
-			// Treat as success
-			state = LinkState.OK;
-		} else if (customAction === 'warn') {
-			// Treat as success but emit warning
-			state = LinkState.OK;
-			this.emit('statusCodeWarning', {
-				url: originalUrl,
-				status,
-			});
-		} else if (customAction === 'skip') {
-			// Skip this link entirely
-			state = LinkState.SKIPPED;
-		} else if (customAction === 'error') {
-			// Force failure
-			state = LinkState.BROKEN;
-			if (response !== undefined) {
-				failures.push(response);
-			}
-		}
-		// Special handling for bot protection responses
-		// Status 999: Used by LinkedIn and other sites to block automated requests
-		// Status 403 with cf-mitigated: Cloudflare bot protection challenge
-		// Since we cannot distinguish between valid and invalid URLs when blocked,
-		// treat these as skipped rather than broken.
-		else if (status === 999) {
-			state = LinkState.SKIPPED;
-		} else if (
-			status === 403 &&
-			response !== undefined &&
-			response.headers['cf-mitigated']
-		) {
-			state = LinkState.SKIPPED;
-		}
-		// Handle 'error' mode - treat any redirect as broken
-		else if (
-			options.checkOptions.redirects === 'error' &&
-			redirect.isRedirect
-		) {
-			state = LinkState.BROKEN;
-			const targetInfo = redirect.targetUrl ? ` to ${redirect.targetUrl}` : '';
-			failures.push({
-				status,
-				headers: response?.headers || {},
-			});
-			failures.push(
-				new Error(
-					`Redirect detected (${originalUrl}${targetInfo}) but redirects are disabled`,
-				),
-			);
-		}
-		// Handle 'warn' mode - allow but warn on redirects
-		else if (options.checkOptions.redirects === 'warn') {
-			// Check if a redirect happened (either 3xx status or URL changed)
-			if (redirect.isRedirect || redirect.wasFollowed) {
-				// Emit warning about redirect
-				this.emit('redirect', {
-					url: originalUrl,
-					targetUrl: redirect.targetUrl,
-					// Report actual redirect status if we have it, otherwise 200
-					status: redirect.isRedirect ? status : 200,
-					isNonStandard: redirect.isNonStandard,
-				});
-			}
-			// Still check final status for success/failure
-			if (status >= 200 && status < 300) {
-				state = LinkState.OK;
-			} else if (
-				redirect.isRedirect &&
-				redirect.wasFollowed &&
-				response?.body
-			) {
-				// Non-standard redirect with content - treat as OK even in warn mode
-				state = LinkState.OK;
-			} else if (response !== undefined) {
-				failures.push(response);
-			}
-		}
-		// Handle 'allow' mode (default) - accept 2xx or non-standard redirects with content
-		else if (status >= 200 && status < 300) {
-			state = LinkState.OK;
-		} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
-			// Non-standard redirect with content - treat as OK in allow mode
-			state = LinkState.OK;
-		} else if (response !== undefined) {
-			failures.push(response);
-		}
-
-		// Handle HTTPS enforcement
-		// Skip enforcement for our own local static server since it can't use HTTPS
-		const isHttpUrl = originalUrl.startsWith('http://');
-		const isLocalStaticServer =
-			options.checkOptions.staticHttpServerHost &&
-			originalUrl.startsWith(options.checkOptions.staticHttpServerHost);
-
-		if (
-			isHttpUrl &&
-			!isLocalStaticServer &&
-			options.checkOptions.requireHttps === 'error'
-		) {
-			// Treat HTTP as broken in error mode
-			state = LinkState.BROKEN;
-			failures.push(
-				new Error(`HTTP link detected (${originalUrl}) but HTTPS is required`),
-			);
-		} else if (
-			isHttpUrl &&
-			!isLocalStaticServer &&
-			options.checkOptions.requireHttps === 'warn'
-		) {
-			// Emit warning about HTTP link in warn mode
-			this.emit('httpInsecure', {
-				url: originalUrl,
-			});
+		state = classification.state;
+		failures.push(...classification.failures);
+		for (const warning of classification.warnings) {
+			this.emit(warning.event, warning.payload);
 		}
 
 		const result: LinkResult = {
@@ -1102,6 +989,150 @@ function getStatusCodeAction(
 	}
 
 	return undefined;
+}
+
+type ResponseWarning =
+	| { event: 'statusCodeWarning'; payload: StatusCodeWarning }
+	| { event: 'redirect'; payload: RedirectInfo }
+	| { event: 'httpInsecure'; payload: HttpInsecureInfo };
+
+/** How a response was graded, and what the caller still has to report. */
+type ResponseClassification = {
+	state: LinkState;
+	/** Failures to add to the ones the request itself already produced. */
+	failures: Array<Error | HttpResponse>;
+	/** Events for the caller to emit, so this stays a pure function. */
+	warnings: ResponseWarning[];
+};
+
+/**
+ * Grade a response: custom status code actions first, then bot protection, then
+ * the configured redirect mode, then HTTPS enforcement. Every path that has to
+ * decide whether a page counts as reachable goes through here, so the crawl and
+ * the deferred fragment re-request cannot disagree about which pages are
+ * acceptable.
+ * @param status Status the request ended with, or 0 when it never answered
+ * @param response The response, when there was one
+ * @param originalUrl URL as requested, before any redirect was followed
+ * @param checkOptions Options for this run
+ * @returns The state to report, plus failures to record and warnings to emit
+ */
+function classifyResponse(
+	status: number,
+	response: HttpResponse | undefined,
+	originalUrl: string,
+	checkOptions: InternalCheckOptions,
+): ResponseClassification {
+	const failures: Array<Error | HttpResponse> = [];
+	const warnings: ResponseWarning[] = [];
+	let state = LinkState.BROKEN;
+
+	const redirect = detectRedirect(status, originalUrl, response);
+	const customAction = getStatusCodeAction(status, checkOptions.statusCodes);
+
+	if (customAction === 'ok') {
+		state = LinkState.OK;
+	} else if (customAction === 'warn') {
+		// Treated as success, but the caller is told about it.
+		state = LinkState.OK;
+		warnings.push({
+			event: 'statusCodeWarning',
+			payload: { url: originalUrl, status },
+		});
+	} else if (customAction === 'skip') {
+		state = LinkState.SKIPPED;
+	} else if (customAction === 'error') {
+		state = LinkState.BROKEN;
+		if (response !== undefined) {
+			failures.push(response);
+		}
+	}
+	// Bot protection responses cannot be told apart from a genuinely broken
+	// link, so they are skipped rather than reported. Status 999 is used by
+	// LinkedIn and others; a 403 carrying `cf-mitigated` is a Cloudflare
+	// challenge.
+	else if (status === 999) {
+		state = LinkState.SKIPPED;
+	} else if (
+		status === 403 &&
+		response !== undefined &&
+		response.headers['cf-mitigated']
+	) {
+		state = LinkState.SKIPPED;
+	}
+	// 'error' mode - any redirect is a failure
+	else if (checkOptions.redirects === 'error' && redirect.isRedirect) {
+		state = LinkState.BROKEN;
+		const targetInfo = redirect.targetUrl ? ` to ${redirect.targetUrl}` : '';
+		failures.push({
+			status,
+			headers: response?.headers || {},
+		});
+		failures.push(
+			new Error(
+				`Redirect detected (${originalUrl}${targetInfo}) but redirects are disabled`,
+			),
+		);
+	}
+	// 'warn' mode - allowed, but reported, and the final status still decides
+	else if (checkOptions.redirects === 'warn') {
+		if (redirect.isRedirect || redirect.wasFollowed) {
+			warnings.push({
+				event: 'redirect',
+				payload: {
+					url: originalUrl,
+					targetUrl: redirect.targetUrl,
+					// Report the actual redirect status when there is one, otherwise 200
+					status: redirect.isRedirect ? status : 200,
+					isNonStandard: redirect.isNonStandard,
+				},
+			});
+		}
+
+		if (status >= 200 && status < 300) {
+			state = LinkState.OK;
+		} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
+			// A non-standard redirect that carried content is still reachable
+			state = LinkState.OK;
+		} else if (response !== undefined) {
+			failures.push(response);
+		}
+	}
+	// 'allow' mode (default) - 2xx, or a non-standard redirect with content
+	else if (status >= 200 && status < 300) {
+		state = LinkState.OK;
+	} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
+		state = LinkState.OK;
+	} else if (response !== undefined) {
+		failures.push(response);
+	}
+
+	// HTTPS enforcement. The bundled static server is exempt because it cannot
+	// serve HTTPS.
+	const isHttpUrl = originalUrl.startsWith('http://');
+	const isLocalStaticServer = Boolean(
+		checkOptions.staticHttpServerHost &&
+			originalUrl.startsWith(checkOptions.staticHttpServerHost),
+	);
+
+	if (
+		isHttpUrl &&
+		!isLocalStaticServer &&
+		checkOptions.requireHttps === 'error'
+	) {
+		state = LinkState.BROKEN;
+		failures.push(
+			new Error(`HTTP link detected (${originalUrl}) but HTTPS is required`),
+		);
+	} else if (
+		isHttpUrl &&
+		!isLocalStaticServer &&
+		checkOptions.requireHttps === 'warn'
+	) {
+		warnings.push({ event: 'httpInsecure', payload: { url: originalUrl } });
+	}
+
+	return { state, failures, warnings };
 }
 
 /**
