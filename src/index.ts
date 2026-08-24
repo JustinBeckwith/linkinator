@@ -524,36 +524,25 @@ export class LinkChecker extends EventEmitter {
 			options.fragments.markUnusable(options.url.href);
 		}
 
-		// Check for fragment identifiers if needed (before we start crawling deeper)
-		// Only validate fragments if the base URL returned a successful (2xx) response
+		// Fragment checking needs the body of every page that could answer for a
+		// fragment, whether or not one points at it yet, since the ids are kept
+		// for the fragments discovered later. Buffer it once here and replace the
+		// single-use stream, so link extraction below reads the same bytes.
+		let htmlForFragments: Buffer | undefined;
 		if (
 			options.checkOptions.checkFragments &&
 			response?.body &&
 			isHtml(response) &&
 			state === LinkState.OK
 		) {
-			if (options.fragments.wants(options.url.href)) {
-				// Convert and buffer the response body
-				const nodeStream = toNodeReadable(response.body);
-				const htmlContent = await bufferStream(nodeStream);
-
-				await options.fragments.validate(
-					options.url.href,
-					htmlContent,
-					response.status,
-				);
-
-				// Create a new stream from the buffered content for link extraction
-				const linkStream = Readable.from([htmlContent]);
-				response.body = linkStream as never;
-			}
+			htmlForFragments = await bufferStream(toNodeReadable(response.body));
+			response.body = Readable.from([htmlForFragments]) as never;
 		}
 
 		// If we need to go deeper, scan the next level of depth for links and crawl
 		if (options.crawl && shouldRecurse) {
 			this.emit('pagestart', options.url);
 			let urlResults: Awaited<ReturnType<typeof getLinks>> = [];
-			let htmlContentForFragments: Buffer | undefined;
 			if (response?.body) {
 				// Convert to Node.js Readable stream (handles both Web and Node.js streams)
 				const nodeStream = toNodeReadable(response.body);
@@ -568,24 +557,11 @@ export class LinkChecker extends EventEmitter {
 
 				// Parse HTML or CSS depending on content type
 				if (isHtml(response)) {
-					// If we're checking fragments, buffer the HTML content so we can validate
-					// same-page fragments after extracting links
-					if (options.checkOptions.checkFragments) {
-						htmlContentForFragments = await bufferStream(nodeStream);
-						// Create a new stream from the buffer for link extraction
-						const linkStream = Readable.from([htmlContentForFragments]);
-						urlResults = await getLinks(
-							linkStream,
-							baseUrl,
-							options.checkOptions.checkCss,
-						);
-					} else {
-						urlResults = await getLinks(
-							nodeStream,
-							baseUrl,
-							options.checkOptions.checkCss,
-						);
-					}
+					urlResults = await getLinks(
+						nodeStream,
+						baseUrl,
+						options.checkOptions.checkCss,
+					);
 				} else if (isCss(response) && options.checkOptions.checkCss) {
 					urlResults = await getCssLinks(nodeStream, baseUrl);
 				}
@@ -735,22 +711,16 @@ export class LinkChecker extends EventEmitter {
 					});
 				}
 			}
+		}
 
-			// Validate fragments that point at this page, including the ones this
-			// page links to itself, which are only known after link extraction.
-			if (
-				options.checkOptions.checkFragments &&
-				htmlContentForFragments &&
-				response &&
-				isHtml(response) &&
-				state === LinkState.OK
-			) {
-				await options.fragments.validate(
-					options.url.href,
-					htmlContentForFragments,
-					response.status,
-				);
-			}
+		// Validate fragments that point at this page, including the ones this page
+		// links to itself, which are only known after link extraction.
+		if (htmlForFragments && response) {
+			await options.fragments.validate(
+				options.url.href,
+				htmlForFragments,
+				response.status,
+			);
 		}
 
 		// Drain any unconsumed response body to release the connection back to the pool.
