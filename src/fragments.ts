@@ -96,12 +96,6 @@ export type FragmentCheckerOptions = {
 		status: number,
 		response: HttpResponse,
 	) => TargetVerdict;
-	/**
-	 * Status of an already-crawled page, or undefined when it was not reachable.
-	 * A page that failed is reported broken in its own right, and cannot be
-	 * asked which fragments it offers.
-	 */
-	pageStatus: (url: string) => number | undefined;
 	/** Called for fragments excluded by the skip rules. */
 	reportSkipped: (urlWithFragment: string, parent: string) => void;
 	/** Called once per broken fragment and referring page. */
@@ -160,13 +154,14 @@ export type FragmentCheckerOptions = {
  * ```ts
  * const fragments = new FragmentChecker({
  * 	checkOptions,
- * 	pageStatus: (url) => statusOfCrawledPage(url),
+ * 	classify: (url, status, response) => verdictForCrawledPage(status, response),
  * 	reportSkipped: (urlWithFragment, parent) => report(...),
  * 	reportBroken: ({ url, fragment, parent, status }) => report(...),
  * 	reportUnverified: ({ url, fragment, parent, reason }) => report(...),
  * });
  *
  * // while crawling a page
+ * fragments.noteStatus(pageUrl, pageStatus);
  * for (const link of linksOnPage) {
  * 	await fragments.record({ url: link.url, fragment: link.fragment, parent: pageUrl });
  * }
@@ -184,6 +179,12 @@ export class FragmentChecker {
 	private readonly requested = new Map<string, Map<string, Set<string>>>();
 	/** Target URL -> the ids that page offers, once its body has been parsed. */
 	private readonly knownIds = new Map<string, Set<string>>();
+	/**
+	 * Target URL -> the status it answered with, for the pages the crawl
+	 * reached. A page missing here was never reachable, is reported broken in
+	 * its own right, and cannot be asked which fragments it offers.
+	 */
+	private readonly statuses = new Map<string, number>();
 	/**
 	 * Targets that cannot answer for their fragments: pages that are not HTML,
 	 * and soft 404s whose ids mean nothing. Requesting them again would not
@@ -206,6 +207,18 @@ export class FragmentChecker {
 			!this.knownIds.has(url) &&
 			!this.unusable.has(url)
 		);
+	}
+
+	/**
+	 * Note that a page was reached, and with what status. Kept so the deferred
+	 * pass knows which targets can still be asked about their fragments, and
+	 * which status to report a breakage with, without searching the crawl's
+	 * results.
+	 * @param url Page URL, without a fragment
+	 * @param status Status the page responded with
+	 */
+	noteStatus(url: string, status: number): void {
+		this.statuses.set(url, status);
 	}
 
 	/**
@@ -283,7 +296,7 @@ export class FragmentChecker {
 	deferredTasks(): Array<() => Promise<void>> {
 		const tasks: Array<() => Promise<void>> = [];
 		for (const url of this.requested.keys()) {
-			const status = this.options.pageStatus(url);
+			const status = this.statuses.get(url);
 			const ids = this.knownIds.get(url);
 			if (ids) {
 				this.report(url, ids, status ?? 0);

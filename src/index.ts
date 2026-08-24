@@ -217,12 +217,6 @@ export class LinkChecker extends EventEmitter {
 				}
 				return state === LinkState.SKIPPED ? 'ignore' : 'failed';
 			},
-			pageStatus: (url) =>
-				results.find(
-					(result) =>
-						result.url === mapUrl(url, options) &&
-						result.state === LinkState.OK,
-				)?.status,
 			reportSkipped: (urlWithFragment, parent) => {
 				this.recordResult(results, {
 					url: mapUrl(urlWithFragment, options),
@@ -514,14 +508,16 @@ export class LinkChecker extends EventEmitter {
 		options.results.push(result);
 		this.emit('link', result);
 
-		// A target that is not HTML cannot offer fragments, so record that now
-		// rather than requesting it again once the crawl is done.
-		if (
-			options.checkOptions.checkFragments &&
-			response !== undefined &&
-			!isHtml(response)
-		) {
-			options.fragments.markUnusable(options.url.href);
+		if (options.checkOptions.checkFragments && response !== undefined) {
+			if (state === LinkState.OK) {
+				options.fragments.noteStatus(options.url.href, status);
+			}
+
+			// A target that is not HTML cannot offer fragments, so record that now
+			// rather than requesting it again once the crawl is done.
+			if (!isHtml(response)) {
+				options.fragments.markUnusable(options.url.href);
+			}
 		}
 
 		// Fragment checking needs the body of every page that could answer for a
