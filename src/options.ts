@@ -94,16 +94,26 @@ export async function processOptions(
 		);
 	}
 
-	// Only set User-Agent if explicitly provided by user
-	// Using Node.js's default "node" User-Agent works better with modern sites
-	// that have bot detection (they may redirect browser UAs into auth loops)
-	if (options.userAgent) {
+	const headers = options.headers ?? {};
+	if (
+		Object.keys(headers).some((name) => name.toLowerCase() === 'user-agent')
+	) {
+		options.headers = Object.fromEntries(
+			Object.entries(headers).map(([name, value]) => [
+				name.toLowerCase() === 'user-agent' ? 'User-Agent' : name,
+				value,
+			]),
+		);
+	} else if (options.userAgent) {
+		// Only set User-Agent if explicitly provided by user. Using Node.js's
+		// default "node" User-Agent works better with modern sites that have bot
+		// detection (they may redirect browser UAs into auth loops).
 		options.headers = {
 			'User-Agent': options.userAgent,
-			...(options.headers ?? {}),
+			...headers,
 		};
 	} else {
-		options.headers = options.headers ?? {};
+		options.headers = headers;
 	}
 	options.serverRoot &&= path.normalize(options.serverRoot);
 
