@@ -67,6 +67,20 @@ describe('redirects', () => {
 				return;
 			}
 
+			// Endpoint with an empty URI reference, which redirects back to itself
+			if (url.pathname === '/redirect-empty') {
+				res.writeHead(302, { Location: '' });
+				res.end();
+				return;
+			}
+
+			// Endpoint with a Location value that cannot be parsed as a URL
+			if (url.pathname === '/redirect-malformed') {
+				res.writeHead(302, { Location: 'http://[invalid' });
+				res.end();
+				return;
+			}
+
 			// Target endpoint that redirects point to
 			if (url.pathname === '/target') {
 				res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -233,6 +247,7 @@ describe('redirects', () => {
 			// but we know a redirect happened because URL changed
 			assert.strictEqual(redirectWarnings[0].status, 200);
 			assert.strictEqual(redirectWarnings[0].isNonStandard, false);
+			assert.strictEqual(redirectWarnings[0].targetUrl, `${rootUrl}/target`);
 		});
 
 		it('should mark redirects as broken in error mode', async () => {
@@ -272,6 +287,34 @@ describe('redirects', () => {
 			assert.strictEqual(
 				redirectError?.message,
 				`Redirect detected (${originalUrl} to ${rootUrl}/target?via=relative) but redirects are disabled`,
+			);
+		});
+
+		it('should resolve an empty Location header to the current URL', async () => {
+			const originalUrl = `${rootUrl}/redirect-empty`;
+			const results = await check({ path: originalUrl, redirects: 'error' });
+
+			assert.ok(!results.passed);
+			const redirectError = results.links[0].failureDetails?.find(
+				(detail) => detail instanceof Error,
+			);
+			assert.strictEqual(
+				redirectError?.message,
+				`Redirect detected (${originalUrl} to ${originalUrl}) but redirects are disabled`,
+			);
+		});
+
+		it('should preserve a malformed Location header for diagnostics', async () => {
+			const originalUrl = `${rootUrl}/redirect-malformed`;
+			const results = await check({ path: originalUrl, redirects: 'error' });
+
+			assert.ok(!results.passed);
+			const redirectError = results.links[0].failureDetails?.find(
+				(detail) => detail instanceof Error,
+			);
+			assert.strictEqual(
+				redirectError?.message,
+				`Redirect detected (${originalUrl} to http://[invalid) but redirects are disabled`,
 			);
 		});
 
@@ -397,10 +440,12 @@ describe('redirects', () => {
 				const results = await check({ path: ntUrl, redirects: 'error' });
 				assert.ok(!results.passed);
 				assert.strictEqual(results.links[0].state, LinkState.BROKEN);
-				// Should have error message about redirect being disabled
-				assert.ok(
-					results.links[0].failureDetails &&
-						results.links[0].failureDetails.length > 0,
+				const redirectError = results.links[0].failureDetails?.find(
+					(detail) => detail instanceof Error,
+				);
+				assert.strictEqual(
+					redirectError?.message,
+					`Redirect detected (${ntUrl}) but redirects are disabled`,
 				);
 			} finally {
 				noTargetServer.close();

@@ -1193,11 +1193,11 @@ function detectRedirect(
 	const isRedirectStatus = status >= 300 && status < 400;
 	const urlChanged = response?.url && response.url !== originalUrl;
 	const location = response?.headers.location;
-	const hasLocation = Boolean(location);
+	const hasLocation = location !== undefined;
 	const hasBody = response?.body !== undefined;
 	let targetUrl: string | undefined;
 
-	if (isRedirectStatus && location) {
+	if (isRedirectStatus && hasLocation) {
 		// Manual mode leaves response.url at the requested URL. The Location header
 		// identifies this redirect's immediate destination without following it.
 		try {
@@ -1212,9 +1212,8 @@ function detectRedirect(
 		targetUrl = response.url;
 	}
 
-	// Non-standard redirect: 3xx status without Location header or with body
-	const isNonStandard =
-		isRedirectStatus && (!hasLocation || (hasBody && !hasLocation));
+	// Non-standard redirect: 3xx status without a Location header.
+	const isNonStandard = isRedirectStatus && !hasLocation;
 
 	return {
 		isRedirect: isRedirectStatus,
