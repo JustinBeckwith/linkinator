@@ -782,6 +782,28 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
+	it('should apply custom User-Agent headers case-insensitively', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'HEAD',
+				headers: (headers) =>
+					headers['user-agent'] === 'HeaderCrawler/6.6' &&
+					headers['x-custom'] === 'preserved',
+			})
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/basic',
+			userAgent: 'OptionCrawler/5.5',
+			headers: {
+				'uSeR-aGeNt': 'HeaderCrawler/6.6',
+				'X-Custom': 'preserved',
+			},
+		});
+		assert.ok(results.passed);
+	});
+
 	it('should surface call stacks on failures in the API', async () => {
 		const results = await check({
 			path: 'http://example.invalid',
