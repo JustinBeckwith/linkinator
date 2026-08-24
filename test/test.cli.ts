@@ -296,6 +296,118 @@ describe('cli', () => {
 		assert.strictEqual(response.exitCode, 0);
 	});
 
+	describe('user agent', () => {
+		async function listenForUserAgent(expectedUserAgent: string) {
+			const receivedHeaders: http.IncomingHttpHeaders[] = [];
+			server = http.createServer((request, response) => {
+				receivedHeaders.push(request.headers);
+				response.writeHead(
+					request.headers['user-agent'] === expectedUserAgent ? 200 : 403,
+				);
+				response.end();
+			});
+			await new Promise<void>((resolve) => server.listen(0, resolve));
+			const address = server.address() as AddressInfo;
+			return {
+				receivedHeaders,
+				url: `http://localhost:${address.port}`,
+			};
+		}
+
+		it('should send the user agent provided on the CLI', async () => {
+			const expectedUserAgent = 'ExpectedCrawler/9.9';
+			const { receivedHeaders, url } =
+				await listenForUserAgent(expectedUserAgent);
+
+			const response = await execa(node, [
+				linkinator,
+				url,
+				'--user-agent',
+				expectedUserAgent,
+			]);
+
+			assert.strictEqual(response.exitCode, 0);
+			assert.deepStrictEqual(
+				receivedHeaders.map((headers) => headers['user-agent']),
+				[expectedUserAgent],
+			);
+		});
+
+		it('should send userAgent and custom headers from every config format', async () => {
+			const expectedUserAgent = 'ConfigCrawler/8.8';
+			const { receivedHeaders, url } =
+				await listenForUserAgent(expectedUserAgent);
+			const configs = [
+				'test/fixtures/config/linkinator.config.json',
+				'test/fixtures/config/linkinator.config.js',
+				'test/fixtures/config/linkinator.config.mjs',
+				'test/fixtures/config/linkinator.config.cjs',
+			];
+
+			for (const config of configs) {
+				const response = await execa(node, [
+					linkinator,
+					url,
+					'--config',
+					config,
+				]);
+				assert.strictEqual(response.exitCode, 0);
+			}
+
+			assert.deepStrictEqual(
+				receivedHeaders.map((headers) => ({
+					userAgent: headers['user-agent'],
+					customHeader: headers['x-config-header'],
+				})),
+				configs.map(() => ({
+					userAgent: expectedUserAgent,
+					customHeader: 'preserved',
+				})),
+			);
+		});
+
+		it('should prefer the CLI user agent over config', async () => {
+			const expectedUserAgent = 'CliCrawler/7.7';
+			const { receivedHeaders, url } =
+				await listenForUserAgent(expectedUserAgent);
+
+			const response = await execa(node, [
+				linkinator,
+				url,
+				'--config',
+				'test/fixtures/config/linkinator.config.json',
+				'--user-agent',
+				expectedUserAgent,
+			]);
+
+			assert.strictEqual(response.exitCode, 0);
+			assert.strictEqual(receivedHeaders[0]['user-agent'], expectedUserAgent);
+		});
+
+		it('should preserve User-Agent header overrides case-insensitively', async () => {
+			const expectedUserAgent = 'HeaderCrawler/6.6';
+			const { receivedHeaders, url } =
+				await listenForUserAgent(expectedUserAgent);
+
+			for (const headerName of ['User-Agent', 'user-agent', 'uSeR-aGeNt']) {
+				const response = await execa(node, [
+					linkinator,
+					url,
+					'--user-agent',
+					'FlagCrawler/5.5',
+					'--header',
+					`${headerName}:${expectedUserAgent}`,
+				]);
+				assert.strictEqual(response.exitCode, 0);
+			}
+
+			assert.deepStrictEqual(
+				receivedHeaders.map((headers) => headers['user-agent']),
+				[expectedUserAgent, expectedUserAgent, expectedUserAgent],
+			);
+		});
+	});
+
 	it('should fail if a url search is provided without a replacement', async () => {
 		const response = await execa(
 			node,
