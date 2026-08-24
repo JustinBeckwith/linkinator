@@ -450,9 +450,10 @@ describe('linkinator', () => {
 	it('should not attempt to validate preconnect or prefetch urls', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		mockPool.intercept({ path: '/site.css', method: 'HEAD' }).reply(200, '');
+		mockPool.intercept({ path: '/mixed.css', method: 'HEAD' }).reply(200, '');
 		const results = await check({ path: 'test/fixtures/prefetch' });
 		assert.ok(results.passed);
-		assert.strictEqual(results.links.length, 2);
+		assert.strictEqual(results.links.length, 3);
 	});
 
 	it('should attempt a GET request if a HEAD request fails on external links', async () => {
