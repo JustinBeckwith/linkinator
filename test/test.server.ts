@@ -111,9 +111,20 @@ describe('server', () => {
 		// This reproduces issue #595 - /checkout?services=setup-cctv
 		// where /checkout is a directory that should redirect to /checkout/
 		const url = `${rootUrl}/checkout?services=setup-cctv`;
+		const redirectResponse = await undiciFetch(url, { redirect: 'manual' });
+		assert.strictEqual(redirectResponse.status, 301);
+		assert.strictEqual(
+			redirectResponse.headers.get('location'),
+			'/checkout/?services=setup-cctv',
+		);
+
 		const response = await undiciFetch(url);
 		const data = await response.text();
 		assert.strictEqual(response.status, 200);
+		assert.strictEqual(
+			response.url,
+			`${rootUrl}/checkout/?services=setup-cctv`,
+		);
 		assert.strictEqual(data, '<html><body>Checkout page</body></html>');
 	});
 });
