@@ -57,6 +57,16 @@ describe('redirects', () => {
 				return;
 			}
 
+			// Endpoint with a relative redirect destination
+			if (url.pathname === '/nested/redirect-relative') {
+				res.writeHead(301, {
+					Location: '../target?via=relative',
+					'Content-Type': 'text/html',
+				});
+				res.end('Redirecting...');
+				return;
+			}
+
 			// Target endpoint that redirects point to
 			if (url.pathname === '/target') {
 				res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -238,6 +248,30 @@ describe('redirects', () => {
 				results.links[0].failureDetails &&
 					results.links[0].failureDetails.length > 0,
 				'Should have failure details',
+			);
+			const redirectError = results.links[0].failureDetails?.find(
+				(detail) => detail instanceof Error,
+			);
+			assert.strictEqual(
+				redirectError?.message,
+				`Redirect detected (${rootUrl}/redirect-301 to ${rootUrl}/target) but redirects are disabled`,
+			);
+		});
+
+		it('should resolve relative redirect destinations in error mode', async () => {
+			const originalUrl = `${rootUrl}/nested/redirect-relative`;
+			const results = await check({
+				path: originalUrl,
+				redirects: 'error',
+			});
+
+			assert.ok(!results.passed);
+			const redirectError = results.links[0].failureDetails?.find(
+				(detail) => detail instanceof Error,
+			);
+			assert.strictEqual(
+				redirectError?.message,
+				`Redirect detected (${originalUrl} to ${rootUrl}/target?via=relative) but redirects are disabled`,
 			);
 		});
 
@@ -621,10 +655,16 @@ describe('redirects', () => {
 			}
 		});
 
-		it('keeps redirects in error mode broken without processing the target', async () => {
+		it('reports the immediate destination without following a redirect chain in error mode', async () => {
 			let targetRequests = 0;
 			const errorModeServer = http.createServer((req, res) => {
 				if (req.url === '/redirect') {
+					res.writeHead(302, { Location: '/middle' });
+					res.end();
+					return;
+				}
+				if (req.url === '/middle') {
+					targetRequests++;
 					res.writeHead(302, { Location: '/target' });
 					res.end();
 					return;
@@ -649,6 +689,13 @@ describe('redirects', () => {
 				assert.strictEqual(results.links[0].state, LinkState.BROKEN);
 				assert.strictEqual(results.links[0].status, 302);
 				assert.strictEqual(targetRequests, 0);
+				const redirectError = results.links[0].failureDetails?.find(
+					(detail) => detail instanceof Error,
+				);
+				assert.strictEqual(
+					redirectError?.message,
+					`Redirect detected (${serverUrl}/redirect to ${serverUrl}/middle) but redirects are disabled`,
+				);
 			} finally {
 				errorModeServer.close();
 			}
