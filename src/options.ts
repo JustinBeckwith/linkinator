@@ -47,6 +47,45 @@ export type InternalCheckOptions = {
 export const DEFAULT_USER_AGENT =
 	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
+/** @internal */
+export async function findCommonPathRoot(
+	paths: string[],
+	pathImplementation = path,
+): Promise<string> {
+	const filesystemRoot = pathImplementation.parse(paths[0]).root;
+	const normalizedFilesystemRoot = filesystemRoot.toLowerCase();
+	if (
+		paths.some(
+			(filePath) =>
+				pathImplementation.parse(filePath).root.toLowerCase() !==
+				normalizedFilesystemRoot,
+		)
+	) {
+		throw new Error(
+			'Absolute paths must be on the same filesystem when checked together.',
+		);
+	}
+
+	const servingRoots = await Promise.all(
+		paths.map(async (filePath) => {
+			const stats = await fs.stat(filePath);
+			return stats.isDirectory()
+				? filePath
+				: pathImplementation.dirname(filePath);
+		}),
+	);
+	let commonRoot = servingRoots[0];
+	for (const servingRoot of servingRoots.slice(1)) {
+		let relativePath = pathImplementation.relative(commonRoot, servingRoot);
+		while (relativePath.split(pathImplementation.sep)[0] === '..') {
+			commonRoot = pathImplementation.dirname(commonRoot);
+			relativePath = pathImplementation.relative(commonRoot, servingRoot);
+		}
+	}
+
+	return commonRoot;
+}
+
 /**
  * Validate the provided flags all work with each other.
  * @param options CheckOptions passed in from the CLI (or API)
@@ -166,10 +205,23 @@ export async function processOptions(
 	// Figure out which directory should be used as the root for the web server,
 	// and how that impacts the path to the file for the first request.
 	if (!options.serverRoot && !isUrlType) {
-		// If the serverRoot wasn't defined, and there are multiple paths, just
-		// use process.cwd().
+		// If any path is absolute, normalize every path and serve them relative to
+		// their nearest common directory. This keeps the local server from
+		// incorrectly looking for absolute paths beneath process.cwd().
 		if (options.path.length > 1) {
-			options.serverRoot = process.cwd();
+			if (options.path.some((filePath) => path.isAbsolute(filePath))) {
+				const absolutePaths = options.path.map((filePath) =>
+					path.resolve(filePath),
+				);
+				const serverRoot = await findCommonPathRoot(absolutePaths);
+				options.serverRoot = serverRoot;
+				options.path = absolutePaths.map((filePath) =>
+					path.relative(serverRoot, filePath),
+				);
+				options.syntheticServerRoot = options.serverRoot;
+			} else {
+				options.serverRoot = process.cwd();
+			}
 		} else {
 			// If there's a single path, try to be smart and figure it out
 			const s = await fs.stat(options.path[0]);

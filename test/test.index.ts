@@ -518,6 +518,75 @@ describe('linkinator', () => {
 		assert.strictEqual(results.links.length, 6);
 	});
 
+	it('should accept multiple absolute file paths in the same directory', async () => {
+		const inputPaths = [
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
+		];
+		const results = await check({ path: inputPaths });
+		assert.ok(results.passed);
+		assert.deepStrictEqual(
+			results.links.map((link) => link.url).sort(),
+			inputPaths.sort(),
+		);
+	});
+
+	it('should accept multiple absolute file paths in different directories', async () => {
+		const inputPaths = [
+			path.resolve('test/fixtures/relative/ohai.html'),
+			path.resolve('test/fixtures/server/test.html'),
+		];
+		const results = await check({ path: inputPaths });
+		assert.ok(results.passed);
+		assert.deepStrictEqual(
+			results.links.map((link) => link.url).sort(),
+			inputPaths.sort(),
+		);
+	});
+
+	it('should accept an absolute glob that expands to multiple files', async () => {
+		const results = await check({
+			path: path.resolve('test/fixtures/srcset/_site/*.html'),
+		});
+		assert.ok(results.passed);
+		assert.deepStrictEqual(results.links.map((link) => link.url).sort(), [
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+		]);
+	});
+
+	it('should accept mixed absolute and relative paths after glob expansion', async () => {
+		const expectedPaths = [
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+		];
+		const results = await check({
+			path: [expectedPaths[1], 'test/fixtures/srcset/_site/b*.html'],
+		});
+		assert.ok(results.passed);
+		assert.deepStrictEqual(
+			results.links.map((link) => link.url).sort(),
+			expectedPaths,
+		);
+	});
+
+	it('should select the same root when an absolute directory comes first or last', async () => {
+		const directoryPath = path.resolve('test/fixtures/redirect-recurse');
+		const filePath = path.join(directoryPath, 'child-one/index.html');
+		for (const inputPaths of [
+			[directoryPath, filePath],
+			[filePath, directoryPath],
+		]) {
+			const results = await check({ path: inputPaths });
+			assert.ok(results.passed);
+			assert.ok(
+				results.links.some((link) =>
+					link.url.endsWith(path.join('child-one', path.sep)),
+				),
+			);
+		}
+	});
+
 	it('should not allow mixed local and remote paths', async () => {
 		await expect(
 			check({
