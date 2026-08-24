@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import path from 'node:path';
 import util from 'node:util';
 import { execa } from 'execa';
 import stripAnsi from 'strip-ansi';
@@ -53,6 +54,15 @@ describe('cli', () => {
 			linkinator,
 			'test/fixtures/markdown/unlinked.md',
 			'test/fixtures/markdown/README.md',
+		]);
+		assert.match(response.stderr, /Successfully scanned/);
+	});
+
+	it('should allow multiple absolute paths', async () => {
+		const response = await execa(node, [
+			linkinator,
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
 		]);
 		assert.match(response.stderr, /Successfully scanned/);
 	});
