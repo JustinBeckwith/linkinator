@@ -191,7 +191,7 @@ export class FragmentChecker {
 	 * help.
 	 */
 	private readonly unusable = new Set<string>();
-	/** `url|fragment|parent` triples already reported. */
+	/** Serialized target, fragment and referring page triples already reported. */
 	private readonly reported = new Set<string>();
 
 	constructor(private readonly options: FragmentCheckerOptions) {}
@@ -443,7 +443,9 @@ export class FragmentChecker {
 	 * @returns Whether the caller is the first to report this pair
 	 */
 	private claim(url: string, fragment: string, parent: string): boolean {
-		const key = `${url}|${fragment}|${parent}`;
+		// Serialized rather than concatenated: all three parts may contain any
+		// separator a url allows, so `a|b` and `a` plus `b` have to stay apart.
+		const key = JSON.stringify([url, fragment, parent]);
 		if (this.reported.has(key)) {
 			return false;
 		}

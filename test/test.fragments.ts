@@ -1,7 +1,10 @@
 import { Readable } from 'node:stream';
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { validateFragmentsAgainstIds } from '../src/fragments.js';
+import {
+	FragmentChecker,
+	validateFragmentsAgainstIds,
+} from '../src/fragments.js';
 import { check, LinkChecker, LinkState } from '../src/index.js';
 import { extractFragmentIds } from '../src/links.js';
 
@@ -901,6 +904,40 @@ describe('fragment identifier validation', () => {
 		const parents = brokenFragments.map((l) => l.parent ?? '').sort();
 		expect(parents[0]).toContain('pageA.html');
 		expect(parents[1]).toContain('pageB.html');
+	});
+
+	it('should keep fragment reports apart when a part contains a separator', async () => {
+		const broken: string[] = [];
+		const fragments = new FragmentChecker({
+			checkOptions: {} as never,
+			classify: () => 'usable',
+			reportSkipped: () => {},
+			reportBroken: ({ url, fragment }) => {
+				broken.push(`${url}#${fragment}`);
+			},
+			reportUnverified: () => {},
+		});
+
+		// Two different fragment links whose parts, concatenated, read the same.
+		await fragments.record({
+			url: 'http://example.com/a|b',
+			fragment: 'c',
+			parent: 'http://example.com/parent.html',
+		});
+		await fragments.record({
+			url: 'http://example.com/a',
+			fragment: 'b|c',
+			parent: 'http://example.com/parent.html',
+		});
+
+		const empty = Buffer.from('<html><body></body></html>');
+		await fragments.validate('http://example.com/a|b', empty, 200);
+		await fragments.validate('http://example.com/a', empty, 200);
+
+		expect(broken).toEqual([
+			'http://example.com/a|b#c',
+			'http://example.com/a#b|c',
+		]);
 	});
 
 	describe('validateFragmentsAgainstIds', () => {
