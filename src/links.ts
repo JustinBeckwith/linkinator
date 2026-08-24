@@ -422,7 +422,7 @@ export async function validateFragments(
 	for (const fragment of fragmentsToValidate) {
 		results.push({
 			fragment,
-			isValid: validFragments.has(fragment),
+			isValid: /^[tT][oO][pP]$/.test(fragment) || validFragments.has(fragment),
 		});
 	}
 
