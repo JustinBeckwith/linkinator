@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Top Fragment Test</title>
+</head>
+<body>
+	<a href="#top">Same-page lowercase top</a>
+	<a href="#TOP">Same-page uppercase top</a>
+	<a href="#%74op">Same-page percent-encoded top</a>
+	<a href="#ordinary%20id">Same-page encoded existing ID</a>
+	<a href="#missing%20id">Same-page encoded missing ID</a>
+	<a href="http://example.com/target.html#ToP">Cross-page mixed-case top</a>
+	<a href="http://example.com/target.html#%74op">Cross-page percent-encoded top</a>
+	<a href="http://example.com/target.html#missing">Cross-page missing fragment</a>
+	<div id="ordinary id">Existing encoded fragment target</div>
+</body>
+</html>

@@ -454,6 +454,27 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
+	it('should recognize the top target while checking local Markdown', async () => {
+		const results = await check({
+			path: 'test/fixtures/fragments-markdown-top',
+			markdown: true,
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(
+			results.links.find(
+				(link) => link.url.endsWith('#top') && link.state === LinkState.BROKEN,
+			),
+		).toBeUndefined();
+		expect(
+			results.links.find(
+				(link) =>
+					link.url.endsWith('#missing') && link.state === LinkState.BROKEN,
+			),
+		).toBeDefined();
+	});
+
 	it('should validate same-page fragment links (issue #770)', async () => {
 		const results = await check({
 			path: 'test/fixtures/fragments-same-page',
@@ -481,6 +502,79 @@ describe('fragment identifier validation', () => {
 				l.state === LinkState.BROKEN,
 		);
 		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should treat top and its ASCII case variants as valid document targets', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<html><body><p>No fragment targets</p></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: 'test/fixtures/fragments-top',
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(
+			results.links.filter(
+				(link) =>
+					/#(?:top|TOP|ToP)$/i.test(link.url) &&
+					link.state === LinkState.BROKEN,
+			),
+		).toHaveLength(0);
+		expect(
+			results.links.find(
+				(link) =>
+					link.url === 'http://example.com/target.html#missing' &&
+					link.state === LinkState.BROKEN,
+			),
+		).toBeDefined();
+		expect(
+			results.links.find(
+				(link) =>
+					link.url.endsWith('#missing id') && link.state === LinkState.BROKEN,
+			),
+		).toBeDefined();
+		expect(
+			results.links.find(
+				(link) =>
+					link.url.endsWith('#ordinary id') && link.state === LinkState.BROKEN,
+			),
+		).toBeUndefined();
+	});
+
+	it('should apply fragment skip rules before recognizing the top target', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<html><body><p>No fragment targets</p></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: 'test/fixtures/fragments-top',
+			checkFragments: true,
+			fragmentsToSkip: ['^TOP$'],
+		});
+
+		expect(
+			results.links.find(
+				(link) => link.url.endsWith('#TOP') && link.state === LinkState.SKIPPED,
+			),
+		).toBeDefined();
 	});
 
 	it('should validate GitHub-style permalink anchors', async () => {
@@ -546,6 +640,43 @@ describe('fragment identifier validation', () => {
 			const results = await validateFragments(htmlContent, fragmentsToCheck);
 
 			expect(results).toHaveLength(0);
+		});
+
+		it('should only recognize ASCII case variants of top as special', async () => {
+			const htmlContent = Buffer.from(`
+				<html>
+					<body>
+						<div id="ordinary-id">Content</div>
+						<a name="legacy-anchor">Legacy target</a>
+					</body>
+				</html>
+			`);
+			const fragmentsToCheck = new Set([
+				'top',
+				'TOP',
+				'ToP',
+				'ordinary-id',
+				'legacy-anchor',
+				'top ',
+				'töp',
+				'missing',
+			]);
+
+			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const validity = Object.fromEntries(
+				results.map(({ fragment, isValid }) => [fragment, isValid]),
+			);
+
+			expect(validity).toEqual({
+				top: true,
+				TOP: true,
+				ToP: true,
+				'ordinary-id': true,
+				'legacy-anchor': true,
+				'top ': false,
+				töp: false,
+				missing: false,
+			});
 		});
 	});
 });
