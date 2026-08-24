@@ -569,7 +569,9 @@ export class LinkChecker extends EventEmitter {
 					result.fragment.length > 0
 				) {
 					await options.fragments.record({
-						url: result.url.href,
+						// The fragment target has to be keyed the way the crawl will
+						// record it, which is after the rewrite.
+						url: this.rewriteUrl(result.url.href, options.checkOptions),
 						fragment: result.fragment,
 						urlWithFragment: result.urlWithFragment,
 						parent: options.url.href,

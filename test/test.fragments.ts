@@ -640,6 +640,54 @@ describe('fragment identifier validation', () => {
 		expect(validFragments).toHaveLength(0);
 	});
 
+	it('should validate fragments on a rewritten target, referrer first', async () => {
+		const results = await check({
+			path: 'test/fixtures/fragments-rewrite/ref.html',
+			urlRewriteExpressions: [
+				{ pattern: /old-target\.html/, replacement: 'new-target.html' },
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.url).toContain('new-target.html');
+
+		const validFragments = results.links.filter(
+			(l) => l.url.includes('#exists') && l.state === LinkState.BROKEN,
+		);
+		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should validate fragments on a rewritten target, target first', async () => {
+		// The rewritten target is seeded first, so the fragments that ref.html
+		// contributes for it arrive after it has already been fetched.
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-rewrite/new-target.html',
+				'test/fixtures/fragments-rewrite/ref.html',
+			],
+			urlRewriteExpressions: [
+				{ pattern: /old-target\.html/, replacement: 'new-target.html' },
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.parent).toContain('ref.html');
+	});
+
 	it('should validate late fragments found while recursing', async () => {
 		// The crawl reaches a.html from index.html first; b.html links
 		// a.html#missing only afterwards.
