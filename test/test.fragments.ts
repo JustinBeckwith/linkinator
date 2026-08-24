@@ -1,8 +1,12 @@
 import { Readable } from 'node:stream';
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from 'undici';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	FragmentChecker,
+	validateFragmentsAgainstIds,
+} from '../src/fragments.js';
 import { check, LinkChecker, LinkState } from '../src/index.js';
-import { extractFragmentIds, validateFragments } from '../src/links.js';
+import { extractFragmentIds } from '../src/links.js';
 
 describe('fragment identifier validation', () => {
 	let mockAgent: MockAgent;
@@ -609,8 +613,366 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
-	describe('validateFragments', () => {
-		it('should validate fragments against HTML content', async () => {
+	it('should validate fragments discovered after the target was checked', async () => {
+		// The target is checked first as a seed, so the fragments that page.html
+		// contributes for it arrive after it has already been fetched.
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-late-discovery/target.html',
+				'test/fixtures/fragments-late-discovery/page.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+
+		// The fragment that does exist on the target must not be reported.
+		const validFragments = results.links.filter(
+			(l) => l.url.includes('#exists') && l.state === LinkState.BROKEN,
+		);
+		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should report a fragment whose target cannot be requested again', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		// The crawl only ever sees a HEAD for the target, so the fragment
+		// ref.html adds can only be answered by requesting it again.
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(500, 'server error', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const checker = new LinkChecker();
+		const unverified: string[] = [];
+		checker.on('fragmentUnverified', (details) => {
+			unverified.push(`${details.url}#${details.fragment}`);
+		});
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-late-remote',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		// A fragment nobody could check must not be reported as fine.
+		expect(results.passed).toBe(false);
+
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' could not be verified",
+		);
+		expect(unverified).toEqual(['http://example.com/target.html#missing']);
+	});
+
+	it('should answer fragments on an accepted non-2xx target, referrer first', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(403, '', { headers: { 'content-type': 'text/html' } })
+			.persist();
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(403, '<html><body><div id="exists">Content</div></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.persist();
+
+		const results = await check({
+			path: 'test/fixtures/fragments-late-remote/ref.html',
+			statusCodes: { '403': 'ok' },
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should answer fragments on an accepted non-2xx target, target first', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		// The target is checked before any fragment for it is known, so the
+		// deferred pass has to accept the 403 the same way the crawl did.
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(403, '', { headers: { 'content-type': 'text/html' } })
+			.persist();
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(403, '<html><body><div id="exists">Content</div></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.persist();
+
+		const results = await check({
+			path: 'test/fixtures/fragments-late-remote',
+			recurse: true,
+			statusCodes: { '403': 'ok' },
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should not request a crawled page again to answer late fragments', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		// Exactly one request per page. A second request for the target would
+		// find no interceptor and surface as an unverified fragment.
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(
+			200,
+			`<html><body>
+				<a href="/target.html">Target</a>
+				<a href="/ref.html">Referring page</a>
+			</body></html>`,
+			{ headers: { 'content-type': 'text/html' } },
+		);
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<html><body><div id="exists">Content</div></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		mockPool
+			.intercept({ path: '/ref.html', method: 'GET' })
+			.reply(
+				200,
+				'<html><body><a href="/target.html#missing">Missing</a></body></html>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+
+		const results = await check({
+			path: 'http://example.com/',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragments = results.links.filter((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragments).toHaveLength(1);
+		expect((brokenFragments[0].failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should validate fragments on a rewritten target, referrer first', async () => {
+		const results = await check({
+			path: 'test/fixtures/fragments-rewrite/ref.html',
+			urlRewriteExpressions: [
+				{ pattern: /old-target\.html/, replacement: 'new-target.html' },
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.url).toContain('new-target.html');
+
+		const validFragments = results.links.filter(
+			(l) => l.url.includes('#exists') && l.state === LinkState.BROKEN,
+		);
+		expect(validFragments).toHaveLength(0);
+	});
+
+	it('should validate fragments on a rewritten target, target first', async () => {
+		// The rewritten target is seeded first, so the fragments that ref.html
+		// contributes for it arrive after it has already been fetched.
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-rewrite/new-target.html',
+				'test/fixtures/fragments-rewrite/ref.html',
+			],
+			urlRewriteExpressions: [
+				{ pattern: /old-target\.html/, replacement: 'new-target.html' },
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.parent).toContain('ref.html');
+	});
+
+	it('should validate late fragments found while recursing', async () => {
+		// The crawl reaches a.html from index.html first; b.html links
+		// a.html#missing only afterwards.
+		const results = await check({
+			path: 'test/fixtures/fragments-late-recurse',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
+	it('should report a broken fragment for the page that links it', async () => {
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-late-discovery/target.html',
+				'test/fixtures/fragments-late-discovery/page.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		const brokenFragment = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragment?.parent).toContain('page.html');
+	});
+
+	it('should report a broken fragment once per referring page', async () => {
+		const results = await check({
+			path: [
+				'test/fixtures/fragments-multiple-parents/pageA.html',
+				'test/fixtures/fragments-multiple-parents/pageB.html',
+			],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragments = results.links.filter(
+			(l) => l.url.includes('#missing') && l.state === LinkState.BROKEN,
+		);
+		expect(brokenFragments).toHaveLength(2);
+
+		const parents = brokenFragments.map((l) => l.parent ?? '').sort();
+		expect(parents[0]).toContain('pageA.html');
+		expect(parents[1]).toContain('pageB.html');
+	});
+
+	it('should not carry fragment state between check() calls', async () => {
+		// Fragment bookkeeping lives per check() call, not on the instance, so a
+		// second run reports the same late fragment as the first.
+		const checker = new LinkChecker();
+		const path = [
+			'test/fixtures/fragments-late-discovery/target.html',
+			'test/fixtures/fragments-late-discovery/page.html',
+		];
+
+		const first = await checker.check({
+			path,
+			checkFragments: true,
+			concurrency: 1,
+		});
+		const second = await checker.check({
+			path,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		for (const results of [first, second]) {
+			expect(results.passed).toBe(false);
+
+			const brokenFragments = results.links.filter(
+				(l) => l.url.includes('#missing') && l.state === LinkState.BROKEN,
+			);
+			expect(brokenFragments).toHaveLength(1);
+			expect(brokenFragments[0].parent).toContain('page.html');
+		}
+	});
+
+	it('should keep fragment reports apart when a part contains a separator', async () => {
+		const broken: string[] = [];
+		const fragments = new FragmentChecker({
+			checkOptions: {} as never,
+			classify: () => 'usable',
+			reportSkipped: () => {},
+			reportBroken: ({ url, fragment }) => {
+				broken.push(`${url}#${fragment}`);
+			},
+			reportUnverified: () => {},
+		});
+
+		// Two different fragment links whose parts, concatenated, read the same.
+		await fragments.record({
+			url: 'http://example.com/a|b',
+			fragment: 'c',
+			parent: 'http://example.com/parent.html',
+		});
+		await fragments.record({
+			url: 'http://example.com/a',
+			fragment: 'b|c',
+			parent: 'http://example.com/parent.html',
+		});
+
+		const empty = Buffer.from('<html><body></body></html>');
+		await fragments.validate('http://example.com/a|b', empty, 200);
+		await fragments.validate('http://example.com/a', empty, 200);
+
+		expect(broken).toEqual([
+			'http://example.com/a|b#c',
+			'http://example.com/a#b|c',
+		]);
+	});
+
+	describe('validateFragmentsAgainstIds', () => {
+		it('should validate fragments against the ids a page offers', async () => {
 			const html = `
 				<html>
 					<body>
@@ -619,10 +981,10 @@ describe('fragment identifier validation', () => {
 					</body>
 				</html>
 			`;
-			const htmlContent = Buffer.from(html);
+			const validIds = await extractFragmentIds(Readable.from([html]));
 			const fragmentsToCheck = new Set(['exists', 'another', 'missing']);
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, fragmentsToCheck);
 
 			expect(results).toHaveLength(3);
 			expect(results.find((r) => r.fragment === 'exists')?.isValid).toBe(true);
@@ -634,23 +996,23 @@ describe('fragment identifier validation', () => {
 
 		it('should return empty array when no fragments to validate', async () => {
 			const html = '<html><body><div id="test">Content</div></body></html>';
-			const htmlContent = Buffer.from(html);
-			const fragmentsToCheck = new Set<string>();
+			const validIds = await extractFragmentIds(Readable.from([html]));
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, new Set<string>());
 
 			expect(results).toHaveLength(0);
 		});
 
 		it('should only recognize ASCII case variants of top as special', async () => {
-			const htmlContent = Buffer.from(`
+			const html = `
 				<html>
 					<body>
 						<div id="ordinary-id">Content</div>
 						<a name="legacy-anchor">Legacy target</a>
 					</body>
 				</html>
-			`);
+			`;
+			const validIds = await extractFragmentIds(Readable.from([html]));
 			const fragmentsToCheck = new Set([
 				'top',
 				'TOP',
@@ -662,7 +1024,7 @@ describe('fragment identifier validation', () => {
 				'missing',
 			]);
 
-			const results = await validateFragments(htmlContent, fragmentsToCheck);
+			const results = validateFragmentsAgainstIds(validIds, fragmentsToCheck);
 			const validity = Object.fromEntries(
 				results.map(({ fragment, isValid }) => [fragment, isValid]),
 			);

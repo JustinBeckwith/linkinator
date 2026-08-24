@@ -3,7 +3,9 @@ import type * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
-import { getCssLinks, getLinks, validateFragments } from './links.js';
+import { Readable } from 'node:stream';
+import { FragmentChecker } from './fragments.js';
+import { getCssLinks, getLinks } from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -13,6 +15,8 @@ import {
 import { Queue } from './queue.js';
 import {
 	type HttpResponse,
+	isCss,
+	isHtml,
 	makeRequest,
 	type RedirectTarget,
 	type RequestResponse,
@@ -53,6 +57,20 @@ export type StatusCodeWarning = {
 	status: number;
 };
 
+/** A fragment link whose target could not be read, so it was never checked. */
+export type FragmentUnverifiedInfo = {
+	/** The target page, without the fragment. */
+	url: string;
+	/** The fragment identifier, without the leading `#`. */
+	fragment: string;
+	/** The page that contains the link. */
+	parent: string;
+	/** Status the target answered with during the crawl. */
+	status: number;
+	/** Why the target could not be read. */
+	reason: string;
+};
+
 export type LinkResult = {
 	url: string;
 	status?: number;
@@ -74,6 +92,7 @@ type CrawlOptions = {
 	cache: Set<string>;
 	relationshipCache: Set<string>;
 	pendingChecks: Map<string, Promise<void>>;
+	fragments: FragmentChecker;
 	delayCache: Map<string, number>;
 	retryErrorsCache: Map<string, number>;
 	checkOptions: InternalCheckOptions;
@@ -89,9 +108,6 @@ type CrawlOptions = {
  * Instance class used to perform a crawl job.
  */
 export class LinkChecker extends EventEmitter {
-	// Track which fragments need to be checked for each URL
-	private fragmentsToCheck = new Map<string, Set<string>>();
-
 	/**
 	 * Register a crawl as pending, then start it only after the queue grants a
 	 * concurrency slot. The separate completion promise lets duplicate links
@@ -126,6 +142,10 @@ export class LinkChecker extends EventEmitter {
 	on(
 		event: 'statusCodeWarning',
 		listener: (details: StatusCodeWarning) => void,
+	): this;
+	on(
+		event: 'fragmentUnverified',
+		listener: (details: FragmentUnverifiedInfo) => void,
 	): this;
 	// biome-ignore lint/suspicious/noExplicitAny: this can in fact be generic
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
@@ -188,6 +208,64 @@ export class LinkChecker extends EventEmitter {
 		const pendingChecks = new Map<string, Promise<void>>();
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
+		const fragments = new FragmentChecker({
+			checkOptions: options,
+			classify: (url, status, response) => {
+				const { state } = classifyResponse(status, response, url, options);
+				if (state === LinkState.OK) {
+					return 'usable';
+				}
+				return state === LinkState.SKIPPED ? 'ignore' : 'failed';
+			},
+			reportSkipped: (urlWithFragment, parent) => {
+				this.recordResult(results, {
+					url: mapUrl(urlWithFragment, options),
+					state: LinkState.SKIPPED,
+					parent: mapUrl(parent, options),
+				});
+			},
+			reportBroken: ({ url, fragment, parent, status }) => {
+				this.recordResult(results, {
+					url: mapUrl(`${url}#${fragment}`, options),
+					status,
+					state: LinkState.BROKEN,
+					parent: mapUrl(parent, options),
+					failureDetails: [
+						new Error(`Fragment identifier '#${fragment}' not found on page`),
+					],
+				});
+			},
+			reportUnverified: ({ url, fragment, parent, status, reason, cause }) => {
+				// An unchecked fragment is reported as broken rather than dropped: a
+				// dropped fragment is indistinguishable from a valid one in the
+				// result, so a genuinely broken link would pass silently. The
+				// `fragmentUnverified` event carries the distinction for consumers
+				// that need it.
+				const failureDetails: Array<Error | HttpResponse> = [
+					new Error(
+						`Fragment identifier '#${fragment}' could not be verified: ${reason}`,
+					),
+				];
+				if (cause) {
+					failureDetails.push(cause);
+				}
+
+				this.recordResult(results, {
+					url: mapUrl(`${url}#${fragment}`, options),
+					status,
+					state: LinkState.BROKEN,
+					parent: mapUrl(parent, options),
+					failureDetails,
+				});
+				this.emit('fragmentUnverified', {
+					url: mapUrl(url, options),
+					fragment,
+					parent: mapUrl(parent, options),
+					status,
+					reason,
+				});
+			},
+		});
 
 		for (const path of options.path) {
 			const url = new URL(path);
@@ -201,6 +279,7 @@ export class LinkChecker extends EventEmitter {
 				cache: initCache,
 				relationshipCache,
 				pendingChecks,
+				fragments,
 				delayCache,
 				retryErrorsCache,
 				queue,
@@ -213,6 +292,11 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		await queue.onIdle();
+
+		// Fragments discovered after their target page was already fetched cannot
+		// be validated during the crawl, since each page is only fetched once.
+		// Resolve those now that every link is known.
+		await fragments.finish(queue);
 
 		const result = {
 			links: results,
@@ -375,8 +459,7 @@ export class LinkChecker extends EventEmitter {
 			isHtml(response) &&
 			!response.body
 		) {
-			const fragmentsToCheck = this.fragmentsToCheck.get(options.url.href);
-			if (fragmentsToCheck && fragmentsToCheck.size > 0) {
+			if (options.fragments.wants(options.url.href)) {
 				try {
 					response = await makeRequest('GET', options.url.href, requestOptions);
 					if (response.redirectSkipped) {
@@ -398,129 +481,16 @@ export class LinkChecker extends EventEmitter {
 			return;
 		}
 
-		// Detect if this was a redirect
-		const redirect = detectRedirect(status, originalUrl, response);
-
-		// Check for custom status code actions first (highest priority)
-		const customAction = getStatusCodeAction(
+		const classification = classifyResponse(
 			status,
-			options.checkOptions.statusCodes,
+			response,
+			originalUrl,
+			options.checkOptions,
 		);
-
-		if (customAction === 'ok') {
-			// Treat as success
-			state = LinkState.OK;
-		} else if (customAction === 'warn') {
-			// Treat as success but emit warning
-			state = LinkState.OK;
-			this.emit('statusCodeWarning', {
-				url: originalUrl,
-				status,
-			});
-		} else if (customAction === 'skip') {
-			// Skip this link entirely
-			state = LinkState.SKIPPED;
-		} else if (customAction === 'error') {
-			// Force failure
-			state = LinkState.BROKEN;
-			if (response !== undefined) {
-				failures.push(response);
-			}
-		}
-		// Special handling for bot protection responses
-		// Status 999: Used by LinkedIn and other sites to block automated requests
-		// Status 403 with cf-mitigated: Cloudflare bot protection challenge
-		// Since we cannot distinguish between valid and invalid URLs when blocked,
-		// treat these as skipped rather than broken.
-		else if (status === 999) {
-			state = LinkState.SKIPPED;
-		} else if (
-			status === 403 &&
-			response !== undefined &&
-			response.headers['cf-mitigated']
-		) {
-			state = LinkState.SKIPPED;
-		}
-		// Handle 'error' mode - treat any redirect as broken
-		else if (
-			options.checkOptions.redirects === 'error' &&
-			redirect.isRedirect
-		) {
-			state = LinkState.BROKEN;
-			const targetInfo = redirect.targetUrl ? ` to ${redirect.targetUrl}` : '';
-			failures.push({
-				status,
-				headers: response?.headers || {},
-			});
-			failures.push(
-				new Error(
-					`Redirect detected (${originalUrl}${targetInfo}) but redirects are disabled`,
-				),
-			);
-		}
-		// Handle 'warn' mode - allow but warn on redirects
-		else if (options.checkOptions.redirects === 'warn') {
-			// Check if a redirect happened (either 3xx status or URL changed)
-			if (redirect.isRedirect || redirect.wasFollowed) {
-				// Emit warning about redirect
-				this.emit('redirect', {
-					url: originalUrl,
-					targetUrl: redirect.targetUrl,
-					// Report actual redirect status if we have it, otherwise 200
-					status: redirect.isRedirect ? status : 200,
-					isNonStandard: redirect.isNonStandard,
-				});
-			}
-			// Still check final status for success/failure
-			if (status >= 200 && status < 300) {
-				state = LinkState.OK;
-			} else if (
-				redirect.isRedirect &&
-				redirect.wasFollowed &&
-				response?.body
-			) {
-				// Non-standard redirect with content - treat as OK even in warn mode
-				state = LinkState.OK;
-			} else if (response !== undefined) {
-				failures.push(response);
-			}
-		}
-		// Handle 'allow' mode (default) - accept 2xx or non-standard redirects with content
-		else if (status >= 200 && status < 300) {
-			state = LinkState.OK;
-		} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
-			// Non-standard redirect with content - treat as OK in allow mode
-			state = LinkState.OK;
-		} else if (response !== undefined) {
-			failures.push(response);
-		}
-
-		// Handle HTTPS enforcement
-		// Skip enforcement for our own local static server since it can't use HTTPS
-		const isHttpUrl = originalUrl.startsWith('http://');
-		const isLocalStaticServer =
-			options.checkOptions.staticHttpServerHost &&
-			originalUrl.startsWith(options.checkOptions.staticHttpServerHost);
-
-		if (
-			isHttpUrl &&
-			!isLocalStaticServer &&
-			options.checkOptions.requireHttps === 'error'
-		) {
-			// Treat HTTP as broken in error mode
-			state = LinkState.BROKEN;
-			failures.push(
-				new Error(`HTTP link detected (${originalUrl}) but HTTPS is required`),
-			);
-		} else if (
-			isHttpUrl &&
-			!isLocalStaticServer &&
-			options.checkOptions.requireHttps === 'warn'
-		) {
-			// Emit warning about HTTP link in warn mode
-			this.emit('httpInsecure', {
-				url: originalUrl,
-			});
+		state = classification.state;
+		failures.push(...classification.failures);
+		for (const warning of classification.warnings) {
+			this.emit(warning.event, warning.payload);
 		}
 
 		const result: LinkResult = {
@@ -533,70 +503,37 @@ export class LinkChecker extends EventEmitter {
 		options.results.push(result);
 		this.emit('link', result);
 
-		// Check for fragment identifiers if needed (before we start crawling deeper)
-		// Only validate fragments if the base URL returned a successful (2xx) response
+		if (options.checkOptions.checkFragments && response !== undefined) {
+			if (state === LinkState.OK) {
+				options.fragments.noteStatus(options.url.href, status);
+			}
+
+			// A target that is not HTML cannot offer fragments, so record that now
+			// rather than requesting it again once the crawl is done.
+			if (!isHtml(response)) {
+				options.fragments.markUnusable(options.url.href);
+			}
+		}
+
+		// Fragment checking needs the body of every page that could answer for a
+		// fragment, whether or not one points at it yet, since the ids are kept
+		// for the fragments discovered later. Buffer it once here and replace the
+		// single-use stream, so link extraction below reads the same bytes.
+		let htmlForFragments: Buffer | undefined;
 		if (
 			options.checkOptions.checkFragments &&
 			response?.body &&
 			isHtml(response) &&
 			state === LinkState.OK
 		) {
-			const fragmentsToValidate = this.fragmentsToCheck.get(options.url.href);
-			if (fragmentsToValidate && fragmentsToValidate.size > 0) {
-				// Convert and buffer the response body
-				const nodeStream = toNodeReadable(response.body);
-				const htmlContent = await bufferStream(nodeStream);
-
-				// Check if this is likely a soft 404 by looking for noindex/nofollow meta tags
-				// Many soft 404 pages (pages that return 200 but show "Page Not Found") include these tags
-				const htmlString = htmlContent.toString('utf-8');
-				const isSoft404 =
-					htmlString.includes('content="noindex') &&
-					htmlString.includes('nofollow');
-
-				// Only validate fragments if this is NOT a soft 404
-				if (!isSoft404) {
-					// Validate fragments
-					const validationResults = await validateFragments(
-						htmlContent,
-						fragmentsToValidate,
-					);
-
-					// Emit results for invalid fragments
-					for (const result of validationResults) {
-						if (!result.isValid) {
-							const fragmentResult: LinkResult = {
-								url: mapUrl(
-									`${options.url.href}#${result.fragment}`,
-									options.checkOptions,
-								),
-								status: response.status,
-								state: LinkState.BROKEN,
-								parent: mapUrl(options.parent, options.checkOptions),
-								failureDetails: [
-									new Error(
-										`Fragment identifier '#${result.fragment}' not found on page`,
-									),
-								],
-							};
-							options.results.push(fragmentResult);
-							this.emit('link', fragmentResult);
-						}
-					}
-				}
-
-				// Create a new stream from the buffered content for link extraction
-				const { Readable } = await import('node:stream');
-				const linkStream = Readable.from([htmlContent]);
-				response.body = linkStream as never;
-			}
+			htmlForFragments = await bufferStream(toNodeReadable(response.body));
+			response.body = Readable.from([htmlForFragments]) as never;
 		}
 
 		// If we need to go deeper, scan the next level of depth for links and crawl
 		if (options.crawl && shouldRecurse) {
 			this.emit('pagestart', options.url);
 			let urlResults: Awaited<ReturnType<typeof getLinks>> = [];
-			let htmlContentForFragments: Buffer | undefined;
 			if (response?.body) {
 				// Convert to Node.js Readable stream (handles both Web and Node.js streams)
 				const nodeStream = toNodeReadable(response.body);
@@ -611,25 +548,11 @@ export class LinkChecker extends EventEmitter {
 
 				// Parse HTML or CSS depending on content type
 				if (isHtml(response)) {
-					// If we're checking fragments, buffer the HTML content so we can validate
-					// same-page fragments after extracting links
-					if (options.checkOptions.checkFragments) {
-						htmlContentForFragments = await bufferStream(nodeStream);
-						// Create a new stream from the buffer for link extraction
-						const { Readable } = await import('node:stream');
-						const linkStream = Readable.from([htmlContentForFragments]);
-						urlResults = await getLinks(
-							linkStream,
-							baseUrl,
-							options.checkOptions.checkCss,
-						);
-					} else {
-						urlResults = await getLinks(
-							nodeStream,
-							baseUrl,
-							options.checkOptions.checkCss,
-						);
-					}
+					urlResults = await getLinks(
+						nodeStream,
+						baseUrl,
+						options.checkOptions.checkCss,
+					);
 				} else if (isCss(response) && options.checkOptions.checkCss) {
 					urlResults = await getCssLinks(nodeStream, baseUrl);
 				}
@@ -677,30 +600,14 @@ export class LinkChecker extends EventEmitter {
 					result.fragment &&
 					result.fragment.length > 0
 				) {
-					if (
-						await this.shouldSkipFragment(
-							result.fragment,
-							result.urlWithFragment ?? result.url.href,
-							options.checkOptions,
-						)
-					) {
-						const skippedFragmentResult: LinkResult = {
-							url: mapUrl(
-								result.urlWithFragment ?? result.url.href,
-								options.checkOptions,
-							),
-							state: LinkState.SKIPPED,
-							parent: mapUrl(options.url.href, options.checkOptions),
-						};
-						options.results.push(skippedFragmentResult);
-						this.emit('link', skippedFragmentResult);
-					} else {
-						const urlKey = result.url.href;
-						if (!this.fragmentsToCheck.has(urlKey)) {
-							this.fragmentsToCheck.set(urlKey, new Set());
-						}
-						this.fragmentsToCheck.get(urlKey)?.add(result.fragment);
-					}
+					await options.fragments.record({
+						// The fragment target has to be keyed the way the crawl will
+						// record it, which is after the rewrite.
+						url: this.rewriteUrl(result.url.href, options.checkOptions),
+						fragment: result.fragment,
+						urlWithFragment: result.urlWithFragment,
+						parent: options.url.href,
+					});
 				}
 
 				let crawl =
@@ -745,6 +652,7 @@ export class LinkChecker extends EventEmitter {
 						cache: options.cache,
 						relationshipCache: options.relationshipCache,
 						pendingChecks: options.pendingChecks,
+						fragments: options.fragments,
 						delayCache: options.delayCache,
 						retryErrorsCache: options.retryErrorsCache,
 						results: options.results,
@@ -794,50 +702,16 @@ export class LinkChecker extends EventEmitter {
 					});
 				}
 			}
+		}
 
-			// Validate same-page fragments that were found during link extraction
-			// These fragments reference the current page and need immediate validation
-			// since the page won't be checked again (it's already in the cache)
-			if (
-				options.checkOptions.checkFragments &&
-				htmlContentForFragments &&
-				response &&
-				isHtml(response) &&
-				state === LinkState.OK
-			) {
-				const samePageFragments = this.fragmentsToCheck.get(options.url.href);
-				if (samePageFragments && samePageFragments.size > 0) {
-					const validationResults = await validateFragments(
-						htmlContentForFragments,
-						samePageFragments,
-					);
-
-					// Emit results for invalid same-page fragments
-					for (const result of validationResults) {
-						if (!result.isValid) {
-							const fragmentResult: LinkResult = {
-								url: mapUrl(
-									`${options.url.href}#${result.fragment}`,
-									options.checkOptions,
-								),
-								status: response.status,
-								state: LinkState.BROKEN,
-								parent: mapUrl(options.parent, options.checkOptions),
-								failureDetails: [
-									new Error(
-										`Fragment identifier '#${result.fragment}' not found on page`,
-									),
-								],
-							};
-							options.results.push(fragmentResult);
-							this.emit('link', fragmentResult);
-						}
-					}
-
-					// Clear the validated fragments to avoid duplicate validation
-					this.fragmentsToCheck.delete(options.url.href);
-				}
-			}
+		// Validate fragments that point at this page, including the ones this page
+		// links to itself, which are only known after link extraction.
+		if (htmlForFragments && response) {
+			await options.fragments.validate(
+				options.url.href,
+				htmlForFragments,
+				response.status,
+			);
 		}
 
 		// Drain any unconsumed response body to release the connection back to the pool.
@@ -896,20 +770,10 @@ export class LinkChecker extends EventEmitter {
 		);
 	}
 
-	private async shouldSkipFragment(
-		fragment: string,
-		url: string,
-		checkOptions: InternalCheckOptions,
-	): Promise<boolean> {
-		if (typeof checkOptions.fragmentsToSkip === 'function') {
-			return checkOptions.fragmentsToSkip(fragment, url);
-		}
-
-		return Boolean(
-			checkOptions.fragmentsToSkip?.some((fragmentToSkip) =>
-				new RegExp(fragmentToSkip).test(fragment),
-			),
-		);
+	/** Store a result and hand it to any listener. */
+	private recordResult(results: LinkResult[], result: LinkResult): void {
+		results.push(result);
+		this.emit('link', result);
 	}
 
 	private recordSkippedResult(options: CrawlOptions): void {
@@ -1062,24 +926,6 @@ export async function check(options: CheckOptions) {
 }
 
 /**
- * Checks to see if a given source is HTML.
- * @param {object} response Page response.
- * @returns {boolean}
- */
-function isHtml(response: HttpResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
-	return (
-		Boolean(/text\/html/g.test(contentType)) ||
-		Boolean(/application\/xhtml\+xml/g.test(contentType))
-	);
-}
-
-function isCss(response: HttpResponse): boolean {
-	const contentType = (response.headers['content-type'] as string) || '';
-	return Boolean(/text\/css/g.test(contentType));
-}
-
-/**
  * When running a local static web server for the user, translate paths from
  * the Url generated back to something closer to a local filesystem path.
  * @example
@@ -1171,6 +1017,150 @@ function getStatusCodeAction(
 	}
 
 	return undefined;
+}
+
+type ResponseWarning =
+	| { event: 'statusCodeWarning'; payload: StatusCodeWarning }
+	| { event: 'redirect'; payload: RedirectInfo }
+	| { event: 'httpInsecure'; payload: HttpInsecureInfo };
+
+/** How a response was graded, and what the caller still has to report. */
+type ResponseClassification = {
+	state: LinkState;
+	/** Failures to add to the ones the request itself already produced. */
+	failures: Array<Error | HttpResponse>;
+	/** Events for the caller to emit, so this stays a pure function. */
+	warnings: ResponseWarning[];
+};
+
+/**
+ * Grade a response: custom status code actions first, then bot protection, then
+ * the configured redirect mode, then HTTPS enforcement. Every path that has to
+ * decide whether a page counts as reachable goes through here, so the crawl and
+ * the deferred fragment re-request cannot disagree about which pages are
+ * acceptable.
+ * @param status Status the request ended with, or 0 when it never answered
+ * @param response The response, when there was one
+ * @param originalUrl URL as requested, before any redirect was followed
+ * @param checkOptions Options for this run
+ * @returns The state to report, plus failures to record and warnings to emit
+ */
+function classifyResponse(
+	status: number,
+	response: HttpResponse | undefined,
+	originalUrl: string,
+	checkOptions: InternalCheckOptions,
+): ResponseClassification {
+	const failures: Array<Error | HttpResponse> = [];
+	const warnings: ResponseWarning[] = [];
+	let state = LinkState.BROKEN;
+
+	const redirect = detectRedirect(status, originalUrl, response);
+	const customAction = getStatusCodeAction(status, checkOptions.statusCodes);
+
+	if (customAction === 'ok') {
+		state = LinkState.OK;
+	} else if (customAction === 'warn') {
+		// Treated as success, but the caller is told about it.
+		state = LinkState.OK;
+		warnings.push({
+			event: 'statusCodeWarning',
+			payload: { url: originalUrl, status },
+		});
+	} else if (customAction === 'skip') {
+		state = LinkState.SKIPPED;
+	} else if (customAction === 'error') {
+		state = LinkState.BROKEN;
+		if (response !== undefined) {
+			failures.push(response);
+		}
+	}
+	// Bot protection responses cannot be told apart from a genuinely broken
+	// link, so they are skipped rather than reported. Status 999 is used by
+	// LinkedIn and others; a 403 carrying `cf-mitigated` is a Cloudflare
+	// challenge.
+	else if (status === 999) {
+		state = LinkState.SKIPPED;
+	} else if (
+		status === 403 &&
+		response !== undefined &&
+		response.headers['cf-mitigated']
+	) {
+		state = LinkState.SKIPPED;
+	}
+	// 'error' mode - any redirect is a failure
+	else if (checkOptions.redirects === 'error' && redirect.isRedirect) {
+		state = LinkState.BROKEN;
+		const targetInfo = redirect.targetUrl ? ` to ${redirect.targetUrl}` : '';
+		failures.push({
+			status,
+			headers: response?.headers || {},
+		});
+		failures.push(
+			new Error(
+				`Redirect detected (${originalUrl}${targetInfo}) but redirects are disabled`,
+			),
+		);
+	}
+	// 'warn' mode - allowed, but reported, and the final status still decides
+	else if (checkOptions.redirects === 'warn') {
+		if (redirect.isRedirect || redirect.wasFollowed) {
+			warnings.push({
+				event: 'redirect',
+				payload: {
+					url: originalUrl,
+					targetUrl: redirect.targetUrl,
+					// Report the actual redirect status when there is one, otherwise 200
+					status: redirect.isRedirect ? status : 200,
+					isNonStandard: redirect.isNonStandard,
+				},
+			});
+		}
+
+		if (status >= 200 && status < 300) {
+			state = LinkState.OK;
+		} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
+			// A non-standard redirect that carried content is still reachable
+			state = LinkState.OK;
+		} else if (response !== undefined) {
+			failures.push(response);
+		}
+	}
+	// 'allow' mode (default) - 2xx, or a non-standard redirect with content
+	else if (status >= 200 && status < 300) {
+		state = LinkState.OK;
+	} else if (redirect.isRedirect && redirect.wasFollowed && response?.body) {
+		state = LinkState.OK;
+	} else if (response !== undefined) {
+		failures.push(response);
+	}
+
+	// HTTPS enforcement. The bundled static server is exempt because it cannot
+	// serve HTTPS.
+	const isHttpUrl = originalUrl.startsWith('http://');
+	const isLocalStaticServer = Boolean(
+		checkOptions.staticHttpServerHost &&
+			originalUrl.startsWith(checkOptions.staticHttpServerHost),
+	);
+
+	if (
+		isHttpUrl &&
+		!isLocalStaticServer &&
+		checkOptions.requireHttps === 'error'
+	) {
+		state = LinkState.BROKEN;
+		failures.push(
+			new Error(`HTTP link detected (${originalUrl}) but HTTPS is required`),
+		);
+	} else if (
+		isHttpUrl &&
+		!isLocalStaticServer &&
+		checkOptions.requireHttps === 'warn'
+	) {
+		warnings.push({ event: 'httpInsecure', payload: { url: originalUrl } });
+	}
+
+	return { state, failures, warnings };
 }
 
 /**

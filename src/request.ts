@@ -187,3 +187,26 @@ function stripSensitiveHeaders(
 		),
 	);
 }
+
+/**
+ * Checks to see if a given source is HTML.
+ * @param response Page response.
+ * @returns True when the response carries HTML.
+ */
+export function isHtml(response: HttpResponse): boolean {
+	const contentType = response.headers['content-type'] || '';
+	return (
+		Boolean(/text\/html/g.test(contentType)) ||
+		Boolean(/application\/xhtml\+xml/g.test(contentType))
+	);
+}
+
+/**
+ * Checks to see if a given source is CSS.
+ * @param response Page response.
+ * @returns True when the response carries CSS.
+ */
+export function isCss(response: HttpResponse): boolean {
+	const contentType = response.headers['content-type'] || '';
+	return Boolean(/text\/css/g.test(contentType));
+}
