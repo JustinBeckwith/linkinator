@@ -906,6 +906,37 @@ describe('fragment identifier validation', () => {
 		expect(parents[1]).toContain('pageB.html');
 	});
 
+	it('should not carry fragment state between check() calls', async () => {
+		// Fragment bookkeeping lives per check() call, not on the instance, so a
+		// second run reports the same late fragment as the first.
+		const checker = new LinkChecker();
+		const path = [
+			'test/fixtures/fragments-late-discovery/target.html',
+			'test/fixtures/fragments-late-discovery/page.html',
+		];
+
+		const first = await checker.check({
+			path,
+			checkFragments: true,
+			concurrency: 1,
+		});
+		const second = await checker.check({
+			path,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		for (const results of [first, second]) {
+			expect(results.passed).toBe(false);
+
+			const brokenFragments = results.links.filter(
+				(l) => l.url.includes('#missing') && l.state === LinkState.BROKEN,
+			);
+			expect(brokenFragments).toHaveLength(1);
+			expect(brokenFragments[0].parent).toContain('page.html');
+		}
+	});
+
 	it('should keep fragment reports apart when a part contains a separator', async () => {
 		const broken: string[] = [];
 		const fragments = new FragmentChecker({
