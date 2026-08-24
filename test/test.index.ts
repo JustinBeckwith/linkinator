@@ -992,13 +992,16 @@ describe('linkinator', () => {
 		mockPool.intercept({ path: '/redirected', method: 'HEAD' }).reply(200, '');
 		mockPool.intercept({ path: '/delayed', method: 'HEAD' }).reply(200, '');
 		mockPool.intercept({ path: '/uppercase', method: 'HEAD' }).reply(200, '');
+		mockPool
+			.intercept({ path: '/quoted-target', method: 'HEAD' })
+			.reply(200, '');
 		const results = await check({ path: 'test/fixtures/metarefresh' });
 		assert.ok(results.passed);
-		// Should find 3 meta refresh URLs
+		// Should find 4 meta refresh URLs
 		const metaRefreshLinks = results.links.filter((link) =>
 			link.url?.includes('example.invalid'),
 		);
-		assert.strictEqual(metaRefreshLinks.length, 3);
+		assert.strictEqual(metaRefreshLinks.length, 4);
 	});
 
 	it('should extract URLs from inline CSS in style attributes and tags when checkCss is enabled', async () => {

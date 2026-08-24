@@ -52,6 +52,7 @@ export type ParsedUrl = {
 /**
  * Parses meta refresh content to extract the URL.
  * Meta refresh format: "0;url=https://example.com" or "0; url=https://example.com"
+ * Browser processing removes an opening quote and truncates at its next match.
  * @param content The content attribute value from a meta refresh tag
  * @returns The extracted URL or null if parsing fails
  */
@@ -60,7 +61,13 @@ function parseMetaRefresh(content: string): string | null {
 	// The delay can be any number, URL parameter can have optional spaces
 	const match = content.match(/^\s*\d+\s*;\s*url\s*=\s*(.+)/i);
 	if (match?.[1]) {
-		return match[1].trim();
+		const url = match[1].trim();
+		const quote = url[0];
+		if (quote === "'" || quote === '"') {
+			const closingQuote = url.indexOf(quote, 1);
+			return url.slice(1, closingQuote === -1 ? undefined : closingQuote);
+		}
+		return url;
 	}
 	return null;
 }
