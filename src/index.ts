@@ -1192,18 +1192,34 @@ function detectRedirect(
 } {
 	const isRedirectStatus = status >= 300 && status < 400;
 	const urlChanged = response?.url && response.url !== originalUrl;
-	const hasLocation = Boolean(response?.headers.location);
+	const location = response?.headers.location;
+	const hasLocation = location !== undefined;
 	const hasBody = response?.body !== undefined;
+	let targetUrl: string | undefined;
 
-	// Non-standard redirect: 3xx status without Location header or with body
-	const isNonStandard =
-		isRedirectStatus && (!hasLocation || (hasBody && !hasLocation));
+	if (isRedirectStatus && hasLocation) {
+		// Manual mode leaves response.url at the requested URL. The Location header
+		// identifies this redirect's immediate destination without following it.
+		try {
+			targetUrl = new URL(location, response?.url || originalUrl).href;
+		} catch {
+			// Preserve malformed Location values for diagnostics instead of hiding them.
+			targetUrl = location;
+		}
+	} else if (urlChanged) {
+		// A followed redirect has no Location header on its final response, so the
+		// response URL is the best available destination.
+		targetUrl = response.url;
+	}
+
+	// Non-standard redirect: 3xx status without a Location header.
+	const isNonStandard = isRedirectStatus && !hasLocation;
 
 	return {
 		isRedirect: isRedirectStatus,
 		wasFollowed: Boolean(urlChanged || (isRedirectStatus && hasBody)),
 		isNonStandard,
-		targetUrl: response?.url || response?.headers.location,
+		targetUrl,
 	};
 }
 
