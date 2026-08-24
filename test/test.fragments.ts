@@ -640,6 +640,93 @@ describe('fragment identifier validation', () => {
 		expect(validFragments).toHaveLength(0);
 	});
 
+	it('should report a fragment whose target cannot be requested again', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		// The crawl only ever sees a HEAD for the target, so the fragment
+		// ref.html adds can only be answered by requesting it again.
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(500, 'server error', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const checker = new LinkChecker();
+		const unverified: string[] = [];
+		checker.on('fragmentUnverified', (details) => {
+			unverified.push(`${details.url}#${details.fragment}`);
+		});
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-deferred-failure',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		// A fragment nobody could check must not be reported as fine.
+		expect(results.passed).toBe(false);
+
+		const fragmentResult = results.links.find((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect((fragmentResult?.failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' could not be verified",
+		);
+		expect(unverified).toEqual(['http://example.com/target.html#missing']);
+	});
+
+	it('should not request a crawled page again to answer late fragments', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+
+		// Exactly one request per page. A second request for the target would
+		// find no interceptor and surface as an unverified fragment.
+		mockPool.intercept({ path: '/', method: 'GET' }).reply(
+			200,
+			`<html><body>
+				<a href="/target.html">Target</a>
+				<a href="/ref.html">Referring page</a>
+			</body></html>`,
+			{ headers: { 'content-type': 'text/html' } },
+		);
+
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<html><body><div id="exists">Content</div></body></html>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		mockPool
+			.intercept({ path: '/ref.html', method: 'GET' })
+			.reply(
+				200,
+				'<html><body><a href="/target.html#missing">Missing</a></body></html>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+
+		const results = await check({
+			path: 'http://example.com/',
+			recurse: true,
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		expect(results.passed).toBe(false);
+
+		const brokenFragments = results.links.filter((l) =>
+			l.url.includes('#missing'),
+		);
+		expect(brokenFragments).toHaveLength(1);
+		expect((brokenFragments[0].failureDetails?.[0] as Error).message).toContain(
+			"Fragment identifier '#missing' not found on page",
+		);
+	});
+
 	it('should validate fragments on a rewritten target, referrer first', async () => {
 		const results = await check({
 			path: 'test/fixtures/fragments-rewrite/ref.html',

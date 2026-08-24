@@ -57,6 +57,20 @@ export type StatusCodeWarning = {
 	status: number;
 };
 
+/** A fragment link whose target could not be read, so it was never checked. */
+export type FragmentUnverifiedInfo = {
+	/** The target page, without the fragment. */
+	url: string;
+	/** The fragment identifier, without the leading `#`. */
+	fragment: string;
+	/** The page that contains the link. */
+	parent: string;
+	/** Status the target answered with during the crawl. */
+	status: number;
+	/** Why the target could not be read. */
+	reason: string;
+};
+
 export type LinkResult = {
 	url: string;
 	status?: number;
@@ -128,6 +142,10 @@ export class LinkChecker extends EventEmitter {
 	on(
 		event: 'statusCodeWarning',
 		listener: (details: StatusCodeWarning) => void,
+	): this;
+	on(
+		event: 'fragmentUnverified',
+		listener: (details: FragmentUnverifiedInfo) => void,
 	): this;
 	// biome-ignore lint/suspicious/noExplicitAny: this can in fact be generic
 	on(event: string | symbol, listener: (...arguments_: any[]) => void): this {
@@ -214,6 +232,36 @@ export class LinkChecker extends EventEmitter {
 					failureDetails: [
 						new Error(`Fragment identifier '#${fragment}' not found on page`),
 					],
+				});
+			},
+			reportUnverified: ({ url, fragment, parent, status, reason, cause }) => {
+				// An unchecked fragment is reported as broken rather than dropped:
+				// dropping it is indistinguishable from a valid fragment in the
+				// result, which is the false negative this whole path exists to
+				// avoid. The event carries the distinction for consumers that need
+				// it.
+				const failureDetails: Array<Error | HttpResponse> = [
+					new Error(
+						`Fragment identifier '#${fragment}' could not be verified: ${reason}`,
+					),
+				];
+				if (cause) {
+					failureDetails.push(cause);
+				}
+
+				this.recordResult(results, {
+					url: mapUrl(`${url}#${fragment}`, options),
+					status,
+					state: LinkState.BROKEN,
+					parent: mapUrl(parent, options),
+					failureDetails,
+				});
+				this.emit('fragmentUnverified', {
+					url: mapUrl(url, options),
+					fragment,
+					parent: mapUrl(parent, options),
+					status,
+					reason,
 				});
 			},
 		});
@@ -458,6 +506,16 @@ export class LinkChecker extends EventEmitter {
 		};
 		options.results.push(result);
 		this.emit('link', result);
+
+		// A target that is not HTML cannot offer fragments, so record that now
+		// rather than requesting it again once the crawl is done.
+		if (
+			options.checkOptions.checkFragments &&
+			response !== undefined &&
+			!isHtml(response)
+		) {
+			options.fragments.markUnusable(options.url.href);
+		}
 
 		// Check for fragment identifiers if needed (before we start crawling deeper)
 		// Only validate fragments if the base URL returned a successful (2xx) response
