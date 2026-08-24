@@ -450,9 +450,10 @@ describe('linkinator', () => {
 	it('should not attempt to validate preconnect or prefetch urls', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		mockPool.intercept({ path: '/site.css', method: 'HEAD' }).reply(200, '');
+		mockPool.intercept({ path: '/mixed.css', method: 'HEAD' }).reply(200, '');
 		const results = await check({ path: 'test/fixtures/prefetch' });
 		assert.ok(results.passed);
-		assert.strictEqual(results.links.length, 2);
+		assert.strictEqual(results.links.length, 3);
 	});
 
 	it('should attempt a GET request if a HEAD request fails on external links', async () => {
@@ -516,6 +517,75 @@ describe('linkinator', () => {
 		});
 		assert.strictEqual(results.passed, false);
 		assert.strictEqual(results.links.length, 6);
+	});
+
+	it('should accept multiple absolute file paths in the same directory', async () => {
+		const inputPaths = [
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
+		];
+		const results = await check({ path: inputPaths });
+		assert.ok(results.passed);
+		assert.deepStrictEqual(
+			results.links.map((link) => link.url).sort(),
+			inputPaths.sort(),
+		);
+	});
+
+	it('should accept multiple absolute file paths in different directories', async () => {
+		const inputPaths = [
+			path.resolve('test/fixtures/relative/ohai.html'),
+			path.resolve('test/fixtures/server/test.html'),
+		];
+		const results = await check({ path: inputPaths });
+		assert.ok(results.passed);
+		assert.deepStrictEqual(
+			results.links.map((link) => link.url).sort(),
+			inputPaths.sort(),
+		);
+	});
+
+	it('should accept an absolute glob that expands to multiple files', async () => {
+		const results = await check({
+			path: path.resolve('test/fixtures/srcset/_site/*.html'),
+		});
+		assert.ok(results.passed);
+		assert.deepStrictEqual(results.links.map((link) => link.url).sort(), [
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+		]);
+	});
+
+	it('should accept mixed absolute and relative paths after glob expansion', async () => {
+		const expectedPaths = [
+			path.resolve('test/fixtures/srcset/_site/bar.html'),
+			path.resolve('test/fixtures/srcset/_site/foo.html'),
+		];
+		const results = await check({
+			path: [expectedPaths[1], 'test/fixtures/srcset/_site/b*.html'],
+		});
+		assert.ok(results.passed);
+		assert.deepStrictEqual(
+			results.links.map((link) => link.url).sort(),
+			expectedPaths,
+		);
+	});
+
+	it('should select the same root when an absolute directory comes first or last', async () => {
+		const directoryPath = path.resolve('test/fixtures/redirect-recurse');
+		const filePath = path.join(directoryPath, 'child-one/index.html');
+		for (const inputPaths of [
+			[directoryPath, filePath],
+			[filePath, directoryPath],
+		]) {
+			const results = await check({ path: inputPaths });
+			assert.ok(results.passed);
+			assert.ok(
+				results.links.some((link) =>
+					link.url.endsWith(path.join('child-one', path.sep)),
+				),
+			);
+		}
 	});
 
 	it('should not allow mixed local and remote paths', async () => {
@@ -778,6 +848,28 @@ describe('linkinator', () => {
 		const results = await check({
 			path: 'test/fixtures/basic',
 			userAgent: 'CustomBot/1.0',
+		});
+		assert.ok(results.passed);
+	});
+
+	it('should apply custom User-Agent headers case-insensitively', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({
+				path: '/',
+				method: 'HEAD',
+				headers: (headers) =>
+					headers['user-agent'] === 'HeaderCrawler/6.6' &&
+					headers['x-custom'] === 'preserved',
+			})
+			.reply(200, '');
+		const results = await check({
+			path: 'test/fixtures/basic',
+			userAgent: 'OptionCrawler/5.5',
+			headers: {
+				'uSeR-aGeNt': 'HeaderCrawler/6.6',
+				'X-Custom': 'preserved',
+			},
 		});
 		assert.ok(results.passed);
 	});

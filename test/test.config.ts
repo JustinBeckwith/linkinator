@@ -94,6 +94,8 @@ describe('config', () => {
 				concurrency: 17,
 				skip: '🌛',
 				directoryListing: false,
+				userAgent: 'ConfigCrawler/8.8',
+				header: ['X-Config-Header:preserved'],
 			};
 			delete actualConfig.config;
 
@@ -112,6 +114,8 @@ describe('config', () => {
 				concurrency: 17,
 				skip: '🌛',
 				directoryListing: false,
+				userAgent: 'ConfigCrawler/8.8',
+				header: ['X-Config-Header:preserved'],
 			};
 			delete actualConfig.config;
 
@@ -130,6 +134,8 @@ describe('config', () => {
 				concurrency: 17,
 				skip: '🪐',
 				directoryListing: false,
+				userAgent: 'ConfigCrawler/8.8',
+				header: ['X-Config-Header:preserved'],
 			};
 			delete actualConfig.config;
 
@@ -148,6 +154,8 @@ describe('config', () => {
 				concurrency: 17,
 				skip: '🪐',
 				directoryListing: false,
+				userAgent: 'ConfigCrawler/8.8',
+				header: ['X-Config-Header:preserved'],
 			};
 			delete actualConfig.config;
 
@@ -166,6 +174,8 @@ describe('config', () => {
 				concurrency: 17,
 				skip: '🌊',
 				directoryListing: false,
+				userAgent: 'ConfigCrawler/8.8',
+				header: ['X-Config-Header:preserved'],
 			};
 			delete actualConfig.config;
 
@@ -185,6 +195,8 @@ describe('config', () => {
 				concurrency: 17,
 				skip: '🌊',
 				directoryListing: false,
+				userAgent: 'ConfigCrawler/8.8',
+				header: ['X-Config-Header:preserved'],
 			};
 			delete actualConfig.config;
 

@@ -27,6 +27,7 @@ export type Flags = {
 	retryErrorsJitter?: number;
 	urlRewriteSearch?: string;
 	urlRewriteReplace?: string;
+	userAgent?: string;
 	urlRewriteExpressions?: Array<{
 		pattern: string | RegExp;
 		replacement: string;
