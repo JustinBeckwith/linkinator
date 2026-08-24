@@ -236,11 +236,11 @@ export class LinkChecker extends EventEmitter {
 				});
 			},
 			reportUnverified: ({ url, fragment, parent, status, reason, cause }) => {
-				// An unchecked fragment is reported as broken rather than dropped:
-				// dropping it is indistinguishable from a valid fragment in the
-				// result, which is the false negative this whole path exists to
-				// avoid. The event carries the distinction for consumers that need
-				// it.
+				// An unchecked fragment is reported as broken rather than dropped: a
+				// dropped fragment is indistinguishable from a valid one in the
+				// result, so a genuinely broken link would pass silently. The
+				// `fragmentUnverified` event carries the distinction for consumers
+				// that need it.
 				const failureDetails: Array<Error | HttpResponse> = [
 					new Error(
 						`Fragment identifier '#${fragment}' could not be verified: ${reason}`,

@@ -93,9 +93,9 @@ export type FragmentQueue = {
 export type FragmentCheckerOptions = {
 	checkOptions: InternalCheckOptions;
 	/**
-	 * How the crawl grades a response. Asked instead of testing for 2xx here, so
-	 * a page the crawl accepts through `statusCodes` answers its fragments no
-	 * matter which crawl order discovered them.
+	 * How the crawl grades a response. Grading is delegated rather than reduced
+	 * to a 2xx test here, so a page the crawl accepts through `statusCodes`
+	 * answers its fragments no matter which crawl order discovered them.
 	 */
 	classify: (
 		url: string,
@@ -136,8 +136,8 @@ export type FragmentCheckerOptions = {
  *    been fetched. Targets whose ids are known are settled without a request; a
  *    target that was only HEAD-checked is requested once more, and a fragment
  *    whose target cannot be read is reported as unverified rather than passed.
- *    Skipping this step silently loses findings, which is why the class drives
- *    it rather than handing the caller a list of thunks.
+ *    The class drives this step itself, because findings are lost silently
+ *    when it does not run.
  *
  * Results leave through the `reportSkipped`, `reportBroken` and
  * `reportUnverified` callbacks rather than being returned, because they are
@@ -459,8 +459,9 @@ export class FragmentChecker {
 	 * @returns Whether the caller is the first to report this pair
 	 */
 	private claim(url: string, fragment: string, parent: string): boolean {
-		// Serialized rather than concatenated: all three parts may contain any
-		// separator a url allows, so `a|b` and `a` plus `b` have to stay apart.
+		// A JSON array keeps the three parts distinct. Any separator a URL allows
+		// can also occur inside them, so concatenation would let different triples
+		// produce the same key.
 		const key = JSON.stringify([url, fragment, parent]);
 		if (this.reported.has(key)) {
 			return false;
