@@ -117,6 +117,14 @@ describe('server', () => {
 			redirectResponse.headers.get('location'),
 			'/checkout/?services=setup-cctv',
 		);
+		assert.strictEqual(
+			redirectResponse.headers.get('content-type'),
+			'text/html; charset=UTF-8',
+		);
+		assert.strictEqual(
+			await redirectResponse.text(),
+			"<html><body>Redirectin'</body></html>",
+		);
 
 		const response = await undiciFetch(url);
 		const data = await response.text();
@@ -126,6 +134,41 @@ describe('server', () => {
 			`${rootUrl}/checkout/?services=setup-cctv`,
 		);
 		assert.strictEqual(data, '<html><body>Checkout page</body></html>');
+	});
+
+	it('should return a relative redirect for a directory without a query', async () => {
+		const response = await undiciFetch(`${rootUrl}/checkout`, {
+			redirect: 'manual',
+		});
+
+		assert.strictEqual(response.status, 301);
+		assert.strictEqual(response.headers.get('location'), '/checkout/');
+	});
+
+	it('should preserve encoded query values in directory redirects', async () => {
+		const response = await undiciFetch(
+			`${rootUrl}/5.0?return=%2Fdocs%2Fapi&tag=one&tag=two`,
+			{ redirect: 'manual' },
+		);
+
+		assert.strictEqual(response.status, 301);
+		assert.strictEqual(
+			response.headers.get('location'),
+			'/5.0/?return=%2Fdocs%2Fapi&tag=one&tag=two',
+		);
+	});
+
+	it('should not redirect a directory path that already has a slash', async () => {
+		const response = await undiciFetch(`${rootUrl}/checkout/`, {
+			redirect: 'manual',
+		});
+
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(response.headers.get('location'), null);
+		assert.strictEqual(
+			await response.text(),
+			'<html><body>Checkout page</body></html>',
+		);
 	});
 });
 

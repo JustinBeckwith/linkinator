@@ -377,6 +377,16 @@ describe('linkinator', () => {
 
 		assert.deepStrictEqual(brokenLinks, ['also-broken', 'broken']);
 		assert.strictEqual(results.links.length, 7);
+		assert.ok(
+			results.links.every((link) => !link.url.startsWith('http://localhost:')),
+		);
+		assert.ok(
+			results.links.some(
+				(link) =>
+					path.basename(link.url) === 'also-broken' &&
+					link.parent?.endsWith(path.join('child-two', 'grandchild')),
+			),
+		);
 	});
 
 	it('should not recurse non-html files', async () => {
