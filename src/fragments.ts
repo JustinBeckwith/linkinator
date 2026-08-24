@@ -84,6 +84,12 @@ export type TargetVerdict =
 	/** The crawl calls this a failure, so its fragments stay unverified. */
 	| 'failed';
 
+/** The part of the crawl's queue the deferred pass needs. */
+export type FragmentQueue = {
+	add(task: () => Promise<void>): void;
+	onIdle(): Promise<void>;
+};
+
 export type FragmentCheckerOptions = {
 	checkOptions: InternalCheckOptions;
 	/**
@@ -125,13 +131,13 @@ export type FragmentCheckerOptions = {
  *    it cannot answer for fragments at all. {@link wants} works in the opposite
  *    direction: it reports whether a body that is not otherwise needed is worth
  *    fetching, so a HEAD request can be upgraded to a GET.
- * 3. **Deferred.** Once crawling is finished, run every thunk returned by
- *    {@link deferredTasks}. These settle the fragments that were discovered
- *    after their target page had already been fetched. Targets whose ids are
- *    known are settled without a request; a target that was only HEAD-checked
- *    is requested once more, and a fragment whose target cannot be read is
- *    reported as unverified rather than passed. Skipping this step silently
- *    loses findings.
+ * 3. **Deferred.** Once crawling is finished, call {@link finish}. It settles
+ *    the fragments that were discovered after their target page had already
+ *    been fetched. Targets whose ids are known are settled without a request; a
+ *    target that was only HEAD-checked is requested once more, and a fragment
+ *    whose target cannot be read is reported as unverified rather than passed.
+ *    Skipping this step silently loses findings, which is why the class drives
+ *    it rather than handing the caller a list of thunks.
  *
  * Results leave through the `reportSkipped`, `reportBroken` and
  * `reportUnverified` callbacks rather than being returned, because they are
@@ -168,10 +174,7 @@ export type FragmentCheckerOptions = {
  * await fragments.validate(pageUrl, pageBody, pageStatus);
  *
  * // once the crawl is done
- * for (const task of fragments.deferredTasks()) {
- * 	queue.add(task);
- * }
- * await queue.onIdle();
+ * await fragments.finish(queue);
  * ```
  */
 export class FragmentChecker {
@@ -288,12 +291,25 @@ export class FragmentChecker {
 	}
 
 	/**
+	 * Settle the fragments left over once crawling is done, running whatever
+	 * requests are still needed on the caller's queue and waiting for them.
+	 * @param queue Queue to run the remaining requests on
+	 */
+	async finish(queue: FragmentQueue): Promise<void> {
+		for (const task of this.deferredTasks()) {
+			queue.add(task);
+		}
+
+		await queue.onIdle();
+	}
+
+	/**
 	 * Work left over once crawling is done: the fragments whose target page was
 	 * already fetched before they were discovered. Targets whose ids are known
 	 * are settled without a request; the rest are fetched once more.
 	 * @returns One thunk per page, to be run by the caller's queue
 	 */
-	deferredTasks(): Array<() => Promise<void>> {
+	private deferredTasks(): Array<() => Promise<void>> {
 		const tasks: Array<() => Promise<void>> = [];
 		for (const url of this.requested.keys()) {
 			const status = this.statuses.get(url);

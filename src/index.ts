@@ -296,12 +296,7 @@ export class LinkChecker extends EventEmitter {
 		// Fragments discovered after their target page was already fetched cannot
 		// be validated during the crawl, since each page is only fetched once.
 		// Resolve those now that every link is known.
-		if (options.checkFragments) {
-			for (const task of fragments.deferredTasks()) {
-				queue.add(task);
-			}
-			await queue.onIdle();
-		}
+		await fragments.finish(queue);
 
 		const result = {
 			links: results,
