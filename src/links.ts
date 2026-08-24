@@ -43,10 +43,16 @@ for (const attribute of Object.keys(linksAttribute)) {
 
 export type ParsedUrl = {
 	link: string;
+	displayText?: string;
 	error?: Error;
 	url?: URL;
 	urlWithFragment?: string;
 	fragment?: string;
+};
+
+type ActiveAnchor = {
+	link?: ParsedUrl;
+	text: string;
 };
 
 /**
@@ -84,9 +90,13 @@ export async function getLinks(
 	let styleTagContent = '';
 	let isJsonLd = false;
 	let jsonLdContent = '';
+	const activeAnchors: ActiveAnchor[] = [];
 
 	const parser = new WritableStream({
 		onopentag(tag: string, attributes: Record<string, string>) {
+			const activeAnchor: ActiveAnchor | undefined =
+				tag === 'a' ? { text: '' } : undefined;
+
 			// Allow alternate base URL to be specified in tag:
 			if (tag === 'base' && !baseSet) {
 				realBaseUrl = getBaseUrl(attributes.href, baseUrl);
@@ -149,13 +159,25 @@ export async function getLinks(
 					const linkString = attributes[attribute];
 					if (linkString) {
 						for (const link of parseAttribute(attribute, linkString)) {
-							links.push(parseLink(link, realBaseUrl));
+							const parsedLink = parseLink(link, realBaseUrl);
+							links.push(parsedLink);
+							if (activeAnchor && attribute === 'href') {
+								activeAnchor.link = parsedLink;
+							}
 						}
 					}
 				}
 			}
+
+			if (activeAnchor) {
+				activeAnchors.push(activeAnchor);
+			}
 		},
 		ontext(text: string) {
+			for (const activeAnchor of activeAnchors) {
+				activeAnchor.text += text;
+			}
+
 			// Collect text content when inside a <style> tag
 			if (isInStyleTag) {
 				styleTagContent += text;
@@ -166,6 +188,15 @@ export async function getLinks(
 			}
 		},
 		onclosetag(tag: string) {
+			if (tag === 'a') {
+				const activeAnchor = activeAnchors.pop();
+				if (activeAnchor?.link) {
+					activeAnchor.link.displayText = activeAnchor.text
+						.replace(/\s+/g, ' ')
+						.trim();
+				}
+			}
+
 			// When we close a <style> tag, extract URLs from the collected CSS
 			if (tag === 'style' && isInStyleTag) {
 				isInStyleTag = false;

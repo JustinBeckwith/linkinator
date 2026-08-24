@@ -235,6 +235,44 @@ describe('cli', () => {
 		assert.ok(output.links);
 	});
 
+	it('should serialize display text through the built CLI', async () => {
+		const response = await execa(node, [
+			linkinator,
+			'--format',
+			'json',
+			'test/fixtures/display-text-e2e',
+		]);
+		const output = JSON.parse(response.stdout) as { links: LinkResult[] };
+		const findResult = (suffix: string) =>
+			output.links.find((link) => link.url.endsWith(suffix));
+
+		assert.strictEqual(findResult('target.html')?.displayText, 'Target page');
+		assert.strictEqual(
+			findResult('nested.html')?.displayText,
+			'Read nested documentation',
+		);
+		assert.ok(
+			!Object.hasOwn(findResult('non-anchor.html') ?? {}, 'displayText'),
+		);
+		assert.ok(
+			!Object.hasOwn(
+				output.links.find((link) => !link.parent) ?? {},
+				'displayText',
+			),
+		);
+
+		const csvResponse = await execa(node, [
+			linkinator,
+			'--format',
+			'csv',
+			'test/fixtures/display-text-e2e',
+		]);
+		assert.strictEqual(
+			csvResponse.stdout.split('\n')[0],
+			'url,status,state,parent,failureDetails',
+		);
+	});
+
 	it('should look for linkinator.config.json in the cwd', async () => {
 		const response = await execa(node, ['../../../build/src/cli.js', '.'], {
 			cwd: 'test/fixtures/defaultconfig',

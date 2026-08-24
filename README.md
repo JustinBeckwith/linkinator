@@ -480,6 +480,7 @@ Constructor method that can be used to create a new `LinkChecker` instance.  Thi
 - `pagestart` (string) - Provides the url that the crawler has just started to scan.
 - `link` (object) - Provides an object with
   - `url` (string) - The url that was scanned
+  - `displayText` (string, optional) - The normalized text content of the source `<a>` element. This is omitted for the initial URL and links discovered outside anchor elements.
   - `state` (string) - The result of the scan.  Potential values include `BROKEN`, `OK`, or `SKIPPED`.
   - `status` (number) - The HTTP status code of the request.
 
@@ -513,6 +514,7 @@ async function simple() {
   //     },
   //     {
   //       url: 'http://www.iana.org/domains/example',
+  //       displayText: 'More information...',
   //       status: 200,
   //       state: 'OK'
   //     }

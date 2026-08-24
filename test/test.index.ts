@@ -15,6 +15,7 @@ import {
 	type CheckOptions,
 	check,
 	LinkChecker,
+	type LinkResult,
 	LinkState,
 } from '../src/index.js';
 import { DEFAULT_USER_AGENT } from '../src/options.js';
@@ -50,6 +51,191 @@ describe('linkinator', () => {
 		mockPool.intercept({ path: '/', method: 'HEAD' }).reply(200, '');
 		const results = await check({ path: 'test/fixtures/basic' });
 		assert.ok(results.passed);
+	});
+
+	it('should include normalized anchor display text in API results', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		for (const target of [
+			'non-anchor',
+			'plain',
+			'nested',
+			'empty',
+			'preferred',
+		]) {
+			mockPool.intercept({ path: `/${target}`, method: 'HEAD' }).reply(200, '');
+		}
+
+		const results = await check({ path: 'test/fixtures/display-text' });
+		assert.ok(results.passed);
+
+		const findResult = (path: string) =>
+			results.links.find((link) => link.url.endsWith(`/${path}`));
+		expect(findResult('plain')?.displayText).toBe('More information...');
+		expect(findResult('nested')?.displayText).toBe(
+			'Read the documentation & examples',
+		);
+		expect(findResult('empty')?.displayText).toBe('');
+		expect(findResult('preferred')?.displayText).toBe('Preferred label');
+		expect(findResult('non-anchor')?.displayText).toBeUndefined();
+		expect(Object.hasOwn(findResult('non-anchor') ?? {}, 'displayText')).toBe(
+			false,
+		);
+		const rootResult = results.links.find((link) => !link.parent);
+		expect(rootResult?.displayText).toBeUndefined();
+		expect(Object.hasOwn(rootResult ?? {}, 'displayText')).toBe(false);
+	});
+
+	it('should not take display text from a skipped occurrence', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/target', method: 'HEAD' }).reply(200, '');
+
+		const results = await check({
+			path: 'test/fixtures/display-text-skip',
+			linksToSkip: ['#skip$'],
+		});
+		const checked = results.links.find(
+			(result) =>
+				result.url === 'http://example.invalid/target' &&
+				result.state === LinkState.OK,
+		);
+		expect(checked?.displayText).toBe('Checked label');
+	});
+
+	it('should not take display text from a fragment-skipped occurrence', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool.intercept({ path: '/target', method: 'HEAD' }).reply(200, '');
+
+		const results = await check({
+			path: 'test/fixtures/display-text-skip',
+			checkFragments: true,
+			fragmentsToSkip: ['^skip$'],
+		});
+		const checked = results.links.find(
+			(result) =>
+				result.url === 'http://example.invalid/target' &&
+				result.state === LinkState.OK,
+		);
+		expect(checked?.displayText).toBe('Checked label');
+	});
+
+	it('should use a fragment-skipped label when it is the only occurrence', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(200, '<a href="/target#skip">Only label</a>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		const results = await check({
+			path: 'http://example.invalid/source.html',
+			checkFragments: true,
+			fragmentsToSkip: ['^skip$'],
+		});
+		const target = results.links.find(
+			(result) =>
+				result.url === 'http://example.invalid/target' &&
+				result.state === LinkState.OK,
+		);
+		const skippedFragment = results.links.find((result) =>
+			result.url.endsWith('/target#skip'),
+		);
+		expect(target?.displayText).toBe('Only label');
+		expect(skippedFragment?.displayText).toBe('Only label');
+	});
+
+	it('should not GET a non-fragment target for fragment checking', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(200, '<link rel="canonical" href="/target">', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		const results = await check({
+			path: 'http://example.invalid/source.html',
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(
+			results.links.find(
+				(result) => result.url === 'http://example.invalid/target',
+			)?.state,
+		).toBe(LinkState.OK);
+	});
+
+	it('should preserve first-source metadata for a cached result', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({ path: '/first.html', method: 'GET' })
+			.reply(200, '<link rel="canonical" href="/target">', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/second.html', method: 'GET' })
+			.reply(200, '<a href="/target">Later label</a>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.delay(100);
+		mockPool.intercept({ path: '/target', method: 'HEAD' }).reply(200, '');
+
+		const checker = new LinkChecker();
+		let emittedTarget: LinkResult | undefined;
+		checker.on('link', (result) => {
+			if (result.url === 'http://example.invalid/target') {
+				emittedTarget = result;
+			}
+		});
+		const results = await checker.check({
+			path: [
+				'http://example.invalid/first.html',
+				'http://example.invalid/second.html',
+			],
+		});
+		const targetResults = results.links.filter(
+			(result) => result.url === 'http://example.invalid/target',
+		);
+		expect(targetResults).toHaveLength(1);
+		expect(targetResults[0].displayText).toBeUndefined();
+		expect(targetResults[0].parent).toBe('http://example.invalid/first.html');
+		expect(emittedTarget).toBe(targetResults[0]);
+	});
+
+	it('should preserve first-source metadata for a cached skipped result', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({ path: '/first.html', method: 'GET' })
+			.reply(200, '<link rel="canonical" href="/target">', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/second.html', method: 'GET' })
+			.reply(200, '<a href="/target">Later label</a>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.delay(100);
+		mockPool.intercept({ path: '/target', method: 'HEAD' }).reply(999, '');
+		mockPool.intercept({ path: '/target', method: 'GET' }).reply(999, '');
+
+		const results = await check({
+			path: [
+				'http://example.invalid/first.html',
+				'http://example.invalid/second.html',
+			],
+		});
+		const targetResults = results.links.filter(
+			(result) => result.url === 'http://example.invalid/target',
+		);
+		expect(targetResults).toHaveLength(1);
+		expect(targetResults[0].state).toBe(LinkState.SKIPPED);
+		expect(targetResults[0].displayText).toBeUndefined();
+		expect(targetResults[0].parent).toBe('http://example.invalid/first.html');
 	});
 
 	it('should only try a link once', async () => {
@@ -115,6 +301,9 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.SKIPPED).length,
 			1,
 		);
+		expect(
+			results.links.find((x) => x.state === LinkState.SKIPPED)?.displayText,
+		).toBe('we should skip dis one');
 	});
 
 	it('should match linksToSkip against URL fragments', async () => {
@@ -259,6 +448,9 @@ describe('linkinator', () => {
 			results.links.filter((x) => x.state === LinkState.BROKEN).length,
 			1,
 		);
+		expect(
+			results.links.find((x) => x.state === LinkState.BROKEN)?.displayText,
+		).toBe('oh noes');
 	});
 
 	it('should detect relative urls with relative base', async () => {
@@ -1166,6 +1358,12 @@ describe('linkinator', () => {
 			parents[1]?.includes('pageB.html'),
 			'broken123 should be reported for pageB.html',
 		);
+
+		const displayTexts = broken123Links.map((x) => x.displayText).sort();
+		expect(displayTexts).toEqual([
+			'Broken Link 123 from A',
+			'Broken Link 123 from B',
+		]);
 	});
 
 	it('should resolve relative links correctly when URL has trailing slash', async () => {
