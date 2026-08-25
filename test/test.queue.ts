@@ -56,6 +56,29 @@ describe('Queue', () => {
 		}
 	});
 
+	it('can run delayed work immediately when draining an aborted run', async () => {
+		vi.useFakeTimers();
+		try {
+			const queue = new Queue({ concurrency: 1 });
+			let ran = false;
+			queue.add(
+				async () => {
+					ran = true;
+				},
+				{ delay: 60_000 },
+			);
+
+			queue.runPendingNow();
+			await vi.advanceTimersByTimeAsync(0);
+			await queue.onIdle();
+
+			assert.isTrue(ran);
+			assert.strictEqual(vi.getTimerCount(), 0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not lose delayed work when active work completes', async () => {
 		vi.useFakeTimers();
 		try {

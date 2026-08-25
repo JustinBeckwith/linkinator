@@ -6,6 +6,8 @@ export type Flags = {
 	concurrency?: number;
 	config?: string;
 	recurse?: boolean;
+	sitemap?: boolean | string | string[];
+	sitemapUrl?: string | string[];
 	skip?: string | string[];
 	format?: string;
 	silent?: boolean;

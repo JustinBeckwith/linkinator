@@ -26,6 +26,7 @@ type ProcessRedirectTarget = (url: string) => Promise<RedirectTarget>;
 type RequestOptions = {
 	headers?: Record<string, string>;
 	timeout?: number;
+	signal?: AbortSignal;
 	redirect: 'follow' | 'manual';
 	allowInsecureCerts?: boolean;
 	processRedirectTarget?: ProcessRedirectTarget;
@@ -71,9 +72,13 @@ export async function makeRequest(
 	let currentUrl = url;
 	let currentHeaders = { ...DEFAULT_HEADERS, ...options.headers };
 	const processRedirectTarget = options.processRedirectTarget;
-	const signal = options.timeout
+	const timeoutSignal = options.timeout
 		? AbortSignal.timeout(options.timeout)
 		: undefined;
+	const signal =
+		options.signal && timeoutSignal
+			? AbortSignal.any([options.signal, timeoutSignal])
+			: (options.signal ?? timeoutSignal);
 
 	for (let redirectCount = 0; ; redirectCount++) {
 		const requestOptions: RequestInit = {

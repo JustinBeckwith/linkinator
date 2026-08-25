@@ -67,6 +67,66 @@ describe('cli', () => {
 		assert.match(response.stderr, /Successfully scanned/);
 	});
 
+	it('should crawl sitemap pages from the CLI', async () => {
+		let rootUrl = '';
+		server = http.createServer((request, response) => {
+			if (
+				request.url === '/sitemap.xml' ||
+				request.url === '/custom-sitemap.xml'
+			) {
+				response.setHeader('content-type', 'application/xml');
+				response.end(
+					`<urlset><url><loc>${rootUrl}/from-sitemap</loc></url></urlset>`,
+				);
+				return;
+			}
+			response.setHeader('content-type', 'text/html');
+			response.end('ok');
+		});
+		await new Promise<void>((resolve, reject) => {
+			server.once('error', reject).listen(0, '127.0.0.1', resolve);
+		});
+		const { port } = server.address() as AddressInfo;
+		rootUrl = `http://127.0.0.1:${port}`;
+
+		for (const sitemapArguments of [
+			['--sitemap'],
+			['--sitemap-url', `${rootUrl}/custom-sitemap.xml`],
+		]) {
+			const response = await execa(node, [
+				linkinator,
+				rootUrl,
+				...sitemapArguments,
+				'--format',
+				'json',
+			]);
+			const result = JSON.parse(response.stdout) as {
+				links: LinkResult[];
+			};
+			assert.strictEqual(result.links[0].url, `${rootUrl}/from-sitemap`);
+		}
+	});
+
+	it('should reject conflicting sitemap CLI flags', async () => {
+		const response = await execa(
+			node,
+			[
+				linkinator,
+				'https://example.com',
+				'--sitemap',
+				'--sitemap-url',
+				'https://example.com/custom-sitemap.xml',
+			],
+			{ reject: false },
+		);
+
+		assert.strictEqual(response.exitCode, 1);
+		assert.match(
+			response.stderr,
+			/The sitemap and sitemap-url flags cannot be used together/,
+		);
+	});
+
 	it('should show help if no params are provided', async () => {
 		const response = await execa(node, [linkinator], {
 			reject: false,

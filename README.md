@@ -105,6 +105,12 @@ $ linkinator LOCATIONS [ --arguments ]
     --recurse, -r
         Recursively follow links on the same root domain.
 
+    --sitemap
+        Crawl every page listed in /sitemap.xml. Sitemap indexes are followed recursively.
+
+    --sitemap-url
+        Use an explicit sitemap URL. Can be specified multiple times, but cannot be combined with --sitemap.
+
     --check-css
         Extract and check URLs found in CSS properties (inline styles, <style> tags, and external CSS files).
         This includes url() functions, @import statements, and other CSS URL references.
@@ -238,6 +244,26 @@ Need to check a static site with clean URLs (extensionless links)?
 npx linkinator ./dist --recurse --clean-urls
 ```
 
+To scan every page declared by a site's sitemap without recursively discovering
+pages through links, use `--sitemap`:
+
+```bash
+npx linkinator https://example.com --sitemap
+```
+
+Sitemap indexes are followed recursively, including index entries that use
+query strings for pagination. For a custom location, use `--sitemap-url`; repeat
+the option to load multiple sitemaps. `--sitemap-url` cannot be combined with
+`--sitemap`:
+
+```bash
+npx linkinator https://example.com --sitemap-url https://example.com/custom-sitemap.xml
+```
+
+Sitemap mode scans the pages listed in the map and validates their links. If
+`--recurse` is also supplied, same-site pages linked from those seeds are crawled
+recursively as well.
+
 ### 🌰 Strict Link Checking
 
 Like a diligent squirrel inspecting every acorn before storing it for winter, you can configure linkinator to be *extremely* picky about your links. Here's how to go full squirrel:
@@ -262,6 +288,7 @@ All options are optional. It should look like this:
   "concurrency": 100,
   "config": "string",
   "recurse": true,
+  "sitemap": ["https://example.com/sitemap.xml"],
   "skip": "www.googleapis.com",
   "format": "json",
   "silent": true,
@@ -406,6 +433,7 @@ Asynchronous method that runs a site wide scan. Options come in the form of an o
 - `concurrency` (number) -  The number of connections to make simultaneously. Defaults to 100.
 - `port` (number) - When the `path` is provided as a local path on disk, the `port` on which to start the temporary web server.  Defaults to a random high range order port.
 - `recurse` (boolean) - By default, all scans are shallow.  Only the top level links on the requested page will be scanned.  By setting `recurse` to `true`, the crawler will follow all links on the page, and continue scanning links **on the same domain** for as long as it can go. Results are cached, so no worries about loops.
+- `sitemap` (boolean|string|string[]) - Use sitemap page URLs as initial crawl targets. Set to `true` to load `/sitemap.xml` from each HTTP `path`, or provide one or more explicit sitemap URLs. Sitemap indexes are followed recursively; combine with `recurse` to discover additional same-domain pages from those targets.
 - `checkCss` (boolean) - Extract and check URLs found in CSS properties (inline styles, `<style>` tags, and external CSS files when using `recurse`). This includes `url()` functions, `@import` statements, and other CSS URL references. Defaults to `false`.
 - `checkFragments` (boolean) - Validate fragment identifiers against server-rendered HTML. Defaults to `false`.
 - `fragmentsToSkip` (array | function) - Regular expression strings matched against decoded fragment identifiers, or an async function receiving the fragment and full URL. Matching fragments are reported as skipped while the underlying URL is still checked.

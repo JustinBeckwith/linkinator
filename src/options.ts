@@ -15,6 +15,7 @@ export type CheckOptions = {
 	port?: number;
 	path: string | string[];
 	recurse?: boolean;
+	sitemap?: boolean | string | string[];
 	timeout?: number;
 	markdown?: boolean;
 	linksToSkip?: string[] | ((link: string) => Promise<boolean>);
@@ -131,6 +132,10 @@ export async function processOptions(
 		throw new Error(
 			"'serverRoot' cannot be defined when the 'path' points to an HTTP endpoint.",
 		);
+	}
+
+	if (options.sitemap && !isUrlType) {
+		throw new Error("'sitemap' can only be used with HTTP paths.");
 	}
 
 	const headers = options.headers ?? {};

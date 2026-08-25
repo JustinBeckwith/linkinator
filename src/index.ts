@@ -18,6 +18,11 @@ import {
 	type RequestResponse,
 } from './request.js';
 import { startWebServer, stopWebServer } from './server.js';
+import {
+	type ParsedSitemap,
+	parseSitemap,
+	SitemapXmlError,
+} from './sitemap.js';
 import { bufferStream, drainStream, toNodeReadable } from './stream-utils.js';
 
 const STATIC_SERVER_HOST = '127.0.0.1';
@@ -83,7 +88,144 @@ type CrawlOptions = {
 	retryErrors: boolean;
 	retryErrorsCount: number;
 	retryErrorsJitter: number;
+	requestLimiter: RequestLimiter;
+	signal: AbortSignal;
 };
+
+type CrawlTarget = {
+	url: string;
+	rootPath: string;
+};
+
+type LoadedSitemap = {
+	baseUrl: string;
+	sitemap: ParsedSitemap;
+	sourceUrl: string;
+};
+
+async function mapConcurrently<T, R>(
+	values: T[],
+	concurrency: number,
+	mapper: (value: T, signal: AbortSignal) => Promise<R>,
+): Promise<R[]> {
+	const results = new Array<R>(values.length);
+	const controller = new AbortController();
+	let nextIndex = 0;
+	let firstError: unknown;
+	async function worker() {
+		while (firstError === undefined) {
+			const index = nextIndex++;
+			if (index >= values.length) {
+				return;
+			}
+			try {
+				results[index] = await mapper(values[index], controller.signal);
+			} catch (error) {
+				if (firstError === undefined) {
+					firstError = error;
+					controller.abort();
+				}
+			}
+		}
+	}
+
+	await Promise.all(
+		Array.from({ length: Math.min(concurrency, values.length) }, () =>
+			worker(),
+		),
+	);
+	if (firstError !== undefined) {
+		throw firstError;
+	}
+	return results;
+}
+
+class RequestLimiter {
+	private active = 0;
+	private readonly waiters: Array<() => void> = [];
+
+	constructor(private readonly concurrency: number) {}
+
+	private async acquire(signal: AbortSignal) {
+		signal.throwIfAborted();
+		if (this.active >= this.concurrency) {
+			await new Promise<void>((resolve, reject) => {
+				const onAvailable = () => {
+					signal.removeEventListener('abort', onAbort);
+					resolve();
+				};
+				const onAbort = () => {
+					const index = this.waiters.indexOf(onAvailable);
+					if (index >= 0) {
+						this.waiters.splice(index, 1);
+						reject(signal.reason);
+					}
+				};
+				this.waiters.push(onAvailable);
+				signal.addEventListener('abort', onAbort, { once: true });
+			});
+		} else {
+			this.active++;
+		}
+	}
+
+	private release() {
+		const next = this.waiters.shift();
+		if (next) {
+			next();
+		} else {
+			this.active--;
+		}
+	}
+
+	async run<T>(
+		signal: AbortSignal,
+		operation: (pause: <R>(wait: () => Promise<R>) => Promise<R>) => Promise<T>,
+	): Promise<T> {
+		await this.acquire(signal);
+		let acquired = true;
+		const pause = async <R>(wait: () => Promise<R>) => {
+			this.release();
+			acquired = false;
+			try {
+				return await wait();
+			} finally {
+				if (!signal.aborted) {
+					await this.acquire(signal);
+					acquired = true;
+				}
+				signal.throwIfAborted();
+			}
+		};
+
+		try {
+			signal.throwIfAborted();
+			return await operation(pause);
+		} finally {
+			if (acquired) {
+				this.release();
+			}
+		}
+	}
+}
+
+async function waitForRetry(milliseconds: number, signal: AbortSignal) {
+	signal.throwIfAborted();
+	await new Promise<void>((resolve, reject) => {
+		const onAbort = () => {
+			clearTimeout(timer);
+			reject(signal.reason);
+		};
+		const timer = setTimeout(
+			() => {
+				signal.removeEventListener('abort', onAbort);
+				resolve();
+			},
+			Math.max(0, milliseconds),
+		);
+		signal.addEventListener('abort', onAbort, { once: true });
+	});
+}
 
 /**
  * Instance class used to perform a crawl job.
@@ -106,13 +248,19 @@ export class LinkChecker extends EventEmitter {
 		options.pendingChecks.set(options.url.href, completion);
 		options.queue.add(async () => {
 			try {
-				await this.crawl(options);
+				await this.runCrawl(options);
 			} finally {
 				resolveCompletion();
 			}
 		});
 
 		return completion;
+	}
+
+	private runCrawl(options: CrawlOptions) {
+		return options.requestLimiter.run(options.signal, () =>
+			this.crawl(options),
+		);
 	}
 
 	on(event: 'link', listener: (result: LinkResult) => void): this;
@@ -181,6 +329,8 @@ export class LinkChecker extends EventEmitter {
 		const queue = new Queue({
 			concurrency: options.concurrency || 100,
 		});
+		const requestLimiter = new RequestLimiter(options.concurrency || 100);
+		const runController = new AbortController();
 
 		const results: LinkResult[] = [];
 		const initCache = new Set<string>();
@@ -189,8 +339,11 @@ export class LinkChecker extends EventEmitter {
 		const delayCache = new Map<string, number>();
 		const retryErrorsCache = new Map<string, number>();
 
-		for (const path of options.path) {
-			const url = new URL(path);
+		const enqueueTarget = (target: CrawlTarget) => {
+			const url = new URL(target.url);
+			if (initCache.has(url.href)) {
+				return;
+			}
 			initCache.add(url.href);
 
 			this.enqueueCrawl({
@@ -204,12 +357,36 @@ export class LinkChecker extends EventEmitter {
 				delayCache,
 				retryErrorsCache,
 				queue,
-				rootPath: path,
+				rootPath: target.rootPath,
 				retry: Boolean(options_.retry),
 				retryErrors: Boolean(options_.retryErrors),
 				retryErrorsCount: options_.retryErrorsCount ?? 5,
 				retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+				requestLimiter,
+				signal: runController.signal,
 			});
+		};
+		if (options.sitemap) {
+			try {
+				await this.discoverSitemapTargets(
+					options,
+					options.sitemap,
+					enqueueTarget,
+					requestLimiter,
+					runController.signal,
+				);
+			} catch (error) {
+				// Sitemap discovery starts page checks as soon as URL sets arrive. Do
+				// not let those checks outlive a failed check() call.
+				runController.abort(error);
+				queue.runPendingNow();
+				await queue.onIdle();
+				throw error;
+			}
+		} else {
+			for (const url of options.path) {
+				enqueueTarget({ url, rootPath: url });
+			}
 		}
 
 		await queue.onIdle();
@@ -225,6 +402,248 @@ export class LinkChecker extends EventEmitter {
 		return result;
 	}
 
+	private async discoverSitemapTargets(
+		options: InternalCheckOptions,
+		configuredSitemap: true | string | string[],
+		onTarget: (target: CrawlTarget) => void,
+		requestLimiter: RequestLimiter,
+		runSignal: AbortSignal,
+	): Promise<void> {
+		// processOptions normalizes paths before this method is called.
+		const paths = options.path as string[];
+		const sitemapUrls =
+			configuredSitemap === true
+				? paths.map((url) => new URL('/sitemap.xml', url).href)
+				: typeof configuredSitemap === 'string'
+					? [configuredSitemap]
+					: configuredSitemap;
+		let pending = [...new Set(sitemapUrls)];
+		const visited = new Set<string>();
+		const pageUrls = new Set<string>();
+
+		while (pending.length > 0) {
+			const batch: string[] = [];
+			for (const sitemapUrl of pending) {
+				let normalizedUrl: string;
+				try {
+					normalizedUrl = new URL(this.rewriteUrl(sitemapUrl, options)).href;
+				} catch {
+					throw new Error(`Invalid sitemap URL: ${sitemapUrl}`);
+				}
+				if (!isHttpUrl(normalizedUrl)) {
+					throw new Error(`Invalid sitemap URL protocol: ${normalizedUrl}`);
+				}
+				if (!visited.has(normalizedUrl)) {
+					visited.add(normalizedUrl);
+					batch.push(normalizedUrl);
+				}
+			}
+			pending = [];
+
+			await mapConcurrently(
+				batch,
+				options.concurrency || 100,
+				async (url, signal) => {
+					const combinedSignal = AbortSignal.any([signal, runSignal]);
+					const { baseUrl, sitemap, sourceUrl } = await requestLimiter.run(
+						combinedSignal,
+						(pause) => this.loadSitemap(url, options, combinedSignal, pause),
+					);
+					for (const location of sitemap.locations) {
+						let resolvedLocation: string;
+						try {
+							resolvedLocation = new URL(location, baseUrl).href;
+						} catch {
+							throw new Error(
+								`Invalid URL in sitemap ${sourceUrl}: ${location}`,
+							);
+						}
+						if (!isHttpUrl(resolvedLocation)) {
+							throw new Error(
+								`Invalid URL protocol in sitemap ${sourceUrl}: ${location}`,
+							);
+						}
+						if (sitemap.type === 'index') {
+							pending.push(resolvedLocation);
+							continue;
+						}
+
+						let rewrittenLocation: string;
+						try {
+							rewrittenLocation = new URL(
+								this.rewriteUrl(resolvedLocation, options),
+							).href;
+						} catch {
+							throw new Error(
+								`Invalid rewritten URL from sitemap ${sourceUrl}: ${location}`,
+							);
+						}
+						if (!isHttpUrl(rewrittenLocation)) {
+							throw new Error(
+								`Invalid rewritten URL protocol in sitemap ${sourceUrl}: ${location}`,
+							);
+						}
+						if (!pageUrls.has(rewrittenLocation)) {
+							pageUrls.add(rewrittenLocation);
+							onTarget({
+								url: rewrittenLocation,
+								rootPath: new URL('/', rewrittenLocation).href,
+							});
+						}
+					}
+				},
+			);
+		}
+
+		if (pageUrls.size === 0) {
+			throw new Error('The configured sitemap did not contain any page URLs.');
+		}
+	}
+
+	private async loadSitemap(
+		normalizedUrl: string,
+		options: InternalCheckOptions,
+		signal: AbortSignal,
+		pauseLimiter: <R>(wait: () => Promise<R>) => Promise<R>,
+	): Promise<LoadedSitemap> {
+		const redirectMode = options.redirects === 'error' ? 'manual' : 'follow';
+		const processRedirectTarget =
+			redirectMode === 'follow' &&
+			(this.hasSkipRules(options) ||
+				Boolean(options.urlRewriteExpressions?.length))
+				? (url: string) => this.processRedirectTarget(url, options)
+				: undefined;
+		let response: RequestResponse;
+		let errorRetries = 0;
+		for (;;) {
+			try {
+				response = await makeRequest('GET', normalizedUrl, {
+					headers: options.headers,
+					timeout: options.timeout,
+					redirect: redirectMode,
+					allowInsecureCerts: options.allowInsecureCerts,
+					processRedirectTarget,
+					signal,
+				});
+			} catch (error) {
+				if (
+					signal.aborted ||
+					!options.retryErrors ||
+					errorRetries >= (options.retryErrorsCount ?? 5)
+				) {
+					throw error;
+				}
+				errorRetries++;
+				const retryDelay =
+					2 ** errorRetries * 1000 +
+					Math.random() * (options.retryErrorsJitter ?? 3000);
+				this.emit('retry', {
+					url: normalizedUrl,
+					status: 0,
+					secondsUntilRetry: Math.round(retryDelay / 1000),
+				} satisfies RetryInfo);
+				await pauseLimiter(() => waitForRetry(retryDelay, signal));
+				continue;
+			}
+
+			const retryAfterRaw = response.headers['retry-after'];
+			if (options.retry && response.status === 429 && retryAfterRaw) {
+				const retryAt = this.parseRetryAfter(retryAfterRaw);
+				if (!Number.isNaN(retryAt)) {
+					const retryDelay = Math.max(0, retryAt - Date.now());
+					await drainStream(response.body);
+					this.emit('retry', {
+						url: normalizedUrl,
+						status: response.status,
+						secondsUntilRetry: Math.round(retryDelay / 1000),
+					} satisfies RetryInfo);
+					await pauseLimiter(() => waitForRetry(retryDelay, signal));
+					continue;
+				}
+			}
+
+			if (
+				options.retryErrors &&
+				(response.status >= 500 || response.status === 429) &&
+				errorRetries < (options.retryErrorsCount ?? 5)
+			) {
+				errorRetries++;
+				const retryDelay =
+					2 ** errorRetries * 1000 +
+					Math.random() * (options.retryErrorsJitter ?? 3000);
+				await drainStream(response.body);
+				this.emit('retry', {
+					url: normalizedUrl,
+					status: response.status,
+					secondsUntilRetry: Math.round(retryDelay / 1000),
+				} satisfies RetryInfo);
+				await pauseLimiter(() => waitForRetry(retryDelay, signal));
+				continue;
+			}
+
+			if (response.redirectSkipped) {
+				throw new Error(
+					`Sitemap redirected to a URL excluded by a skip rule: ${response.redirectSkipped}`,
+				);
+			}
+			if (response.status < 200 || response.status >= 300) {
+				await drainStream(response.body);
+				throw new Error(
+					`Unable to load sitemap ${normalizedUrl}: HTTP ${response.status}`,
+				);
+			}
+			if (!response.body) {
+				throw new Error(`Sitemap ${normalizedUrl} returned an empty response.`);
+			}
+
+			let sitemap: ParsedSitemap;
+			try {
+				sitemap = await parseSitemap(toNodeReadable(response.body));
+			} catch (error) {
+				if (
+					!(error instanceof SitemapXmlError) &&
+					!signal.aborted &&
+					options.retryErrors &&
+					errorRetries < (options.retryErrorsCount ?? 5)
+				) {
+					errorRetries++;
+					const retryDelay =
+						2 ** errorRetries * 1000 +
+						Math.random() * (options.retryErrorsJitter ?? 3000);
+					this.emit('retry', {
+						url: normalizedUrl,
+						status: 0,
+						secondsUntilRetry: Math.round(retryDelay / 1000),
+					} satisfies RetryInfo);
+					await pauseLimiter(() => waitForRetry(retryDelay, signal));
+					continue;
+				}
+				const details = error instanceof Error ? `: ${error.message}` : '';
+				throw new Error(`Unable to parse sitemap ${normalizedUrl}${details}`, {
+					cause: error,
+				});
+			}
+
+			if (
+				options.redirects === 'warn' &&
+				response.url &&
+				response.url !== normalizedUrl
+			) {
+				this.emit('redirect', {
+					url: normalizedUrl,
+					targetUrl: response.url,
+					status: response.status,
+					isNonStandard: false,
+				});
+			}
+			return {
+				baseUrl: response.url || normalizedUrl,
+				sitemap,
+				sourceUrl: normalizedUrl,
+			};
+		}
+	}
+
 	/**
 	 * Crawl a given url with the provided options.
 	 * @pram opts List of options used to do the crawl
@@ -232,6 +651,9 @@ export class LinkChecker extends EventEmitter {
 	 * @returns A list of crawl results consisting of urls and status codes
 	 */
 	async crawl(options: CrawlOptions): Promise<void> {
+		if (options.signal.aborted) {
+			return;
+		}
 		options.url.href = this.rewriteUrl(options.url.href, options.checkOptions);
 
 		if (await this.shouldSkipUrl(options.url.href, options.checkOptions)) {
@@ -248,7 +670,7 @@ export class LinkChecker extends EventEmitter {
 			if (timeout > Date.now()) {
 				options.queue.add(
 					async () => {
-						await this.crawl(options);
+						await this.runCrawl(options);
 					},
 					{
 						delay: timeout - Date.now(),
@@ -279,6 +701,7 @@ export class LinkChecker extends EventEmitter {
 			redirect: redirectMode,
 			allowInsecureCerts: options.checkOptions.allowInsecureCerts,
 			processRedirectTarget,
+			signal: options.signal,
 		} as const;
 
 		try {
@@ -394,6 +817,9 @@ export class LinkChecker extends EventEmitter {
 
 		// If retryErrors is enabled, retry 5xx and 0 status (which indicates
 		// a network error likely occurred) or 429 without retry-after data:
+		if (options.signal.aborted) {
+			return;
+		}
 		if (this.shouldRetryOnError(status, options)) {
 			return;
 		}
@@ -756,6 +1182,8 @@ export class LinkChecker extends EventEmitter {
 						retryErrors: options.retryErrors,
 						retryErrorsCount: options.retryErrorsCount,
 						retryErrorsJitter: options.retryErrorsJitter,
+						requestLimiter: options.requestLimiter,
+						signal: options.signal,
 					});
 				} else {
 					// URL is being checked or has been checked
@@ -986,7 +1414,7 @@ export class LinkChecker extends EventEmitter {
 
 		options.queue.add(
 			async () => {
-				await this.crawl(options);
+				await this.runCrawl(options);
 			},
 			{
 				delay: retryAfter - Date.now(),
@@ -1035,7 +1463,7 @@ export class LinkChecker extends EventEmitter {
 
 		options.queue.add(
 			async () => {
-				await this.crawl(options);
+				await this.runCrawl(options);
 			},
 			{
 				delay: retryAfter,
@@ -1077,6 +1505,11 @@ function isHtml(response: HttpResponse): boolean {
 function isCss(response: HttpResponse): boolean {
 	const contentType = (response.headers['content-type'] as string) || '';
 	return Boolean(/text\/css/g.test(contentType));
+}
+
+function isHttpUrl(url: string): boolean {
+	const protocol = new URL(url).protocol;
+	return protocol === 'http:' || protocol === 'https:';
 }
 
 /**
