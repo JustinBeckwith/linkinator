@@ -450,6 +450,13 @@ export type FragmentValidationResult = {
 	isValid: boolean;
 };
 
+export function isValidFragment(
+	fragment: string,
+	validFragments: Set<string>,
+): boolean {
+	return /^[tT][oO][pP]$/.test(fragment) || validFragments.has(fragment);
+}
+
 /**
  * Validates fragment identifiers against HTML content.
  * @param htmlContent The HTML content as a Buffer
@@ -469,7 +476,7 @@ export async function validateFragments(
 	for (const fragment of fragmentsToValidate) {
 		results.push({
 			fragment,
-			isValid: /^[tT][oO][pP]$/.test(fragment) || validFragments.has(fragment),
+			isValid: isValidFragment(fragment, validFragments),
 		});
 	}
 

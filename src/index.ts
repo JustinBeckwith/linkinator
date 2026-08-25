@@ -4,7 +4,12 @@ import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import process from 'node:process';
 import { Readable } from 'node:stream';
-import { extractFragmentIds, getCssLinks, getLinks } from './links.js';
+import {
+	extractFragmentIds,
+	getCssLinks,
+	getLinks,
+	isValidFragment,
+} from './links.js';
 import {
 	type CheckOptions,
 	type InternalCheckOptions,
@@ -1398,7 +1403,7 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		for (const [fragment, references] of fragmentsToValidate) {
-			if (!validFragments.has(fragment)) {
+			if (!isValidFragment(fragment, validFragments)) {
 				for (const reference of references.values()) {
 					this.recordBrokenFragment(context, url, fragment, status, reference);
 				}
@@ -1447,7 +1452,7 @@ export class LinkChecker extends EventEmitter {
 		if (fragmentPage) {
 			if (
 				fragmentPage.validFragments &&
-				!fragmentPage.validFragments.has(fragment)
+				!isValidFragment(fragment, fragmentPage.validFragments)
 			) {
 				this.recordBrokenFragment(
 					options,
