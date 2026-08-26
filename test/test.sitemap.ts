@@ -410,32 +410,53 @@ describe('sitemap crawling', () => {
 		let activeSitemapRequests = 0;
 		let maxActiveSitemapRequests = 0;
 		let rootUrl = '';
+		const childSitemapPaths = Array.from(
+			{ length: 8 },
+			(_, index) => `/map-${index}.xml`,
+		);
+		const sendChildSitemap = async (
+			response: http.ServerResponse,
+			pageIndex: number,
+		) => {
+			activeSitemapRequests++;
+			maxActiveSitemapRequests = Math.max(
+				maxActiveSitemapRequests,
+				activeSitemapRequests,
+			);
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			activeSitemapRequests--;
+			response.setHeader('content-type', 'application/xml');
+			response.end(
+				`<urlset><url><loc>${rootUrl}/page-${pageIndex}</loc></url></urlset>`,
+			);
+		};
 		server = http.createServer(async (request, response) => {
 			if (request.url === '/sitemap.xml') {
 				response.setHeader('content-type', 'application/xml');
 				response.end(
-					`<sitemapindex>${Array.from(
-						{ length: 8 },
-						(_, index) =>
-							`<sitemap><loc>${rootUrl}/map-${index}.xml</loc></sitemap>`,
-					).join('')}</sitemapindex>`,
+					`<sitemapindex>${childSitemapPaths
+						.map((path) => `<sitemap><loc>${rootUrl}${path}</loc></sitemap>`)
+						.join('')}</sitemapindex>`,
 				);
 				return;
 			}
-			const mapMatch = request.url?.match(/^\/map-(\d+)\.xml$/);
-			if (mapMatch) {
-				activeSitemapRequests++;
-				maxActiveSitemapRequests = Math.max(
-					maxActiveSitemapRequests,
-					activeSitemapRequests,
-				);
-				await new Promise((resolve) => setTimeout(resolve, 20));
-				activeSitemapRequests--;
-				response.setHeader('content-type', 'application/xml');
-				response.end(
-					`<urlset><url><loc>${rootUrl}/page-${mapMatch[1]}</loc></url></urlset>`,
-				);
-				return;
+			switch (request.url) {
+				case '/map-0.xml':
+					return sendChildSitemap(response, 0);
+				case '/map-1.xml':
+					return sendChildSitemap(response, 1);
+				case '/map-2.xml':
+					return sendChildSitemap(response, 2);
+				case '/map-3.xml':
+					return sendChildSitemap(response, 3);
+				case '/map-4.xml':
+					return sendChildSitemap(response, 4);
+				case '/map-5.xml':
+					return sendChildSitemap(response, 5);
+				case '/map-6.xml':
+					return sendChildSitemap(response, 6);
+				case '/map-7.xml':
+					return sendChildSitemap(response, 7);
 			}
 			response.setHeader('content-type', 'text/html');
 			response.end('ok');
