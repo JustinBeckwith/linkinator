@@ -1,5 +1,24 @@
 # Changelog
 
+## [8.1.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.4...linkinator-v8.1.0) (2026-08-27)
+
+
+### Features
+
+* crawl sites from sitemaps ([#895](https://github.com/JustinBeckwith/linkinator/issues/895)) ([c710480](https://github.com/JustinBeckwith/linkinator/commit/c7104807de40c3f415ba60c75c362a7520147124))
+* include anchor display text in results ([#893](https://github.com/JustinBeckwith/linkinator/issues/893)) ([ba48300](https://github.com/JustinBeckwith/linkinator/commit/ba483001846e2b54237eff5502f7034ff7605059))
+
+
+### Bug Fixes
+
+* handle multiple absolute local paths ([#890](https://github.com/JustinBeckwith/linkinator/issues/890)) ([0493cf3](https://github.com/JustinBeckwith/linkinator/commit/0493cf37b8e91cc195c4085e97142b754e2bb3f3))
+* honor configured CLI user agent ([#892](https://github.com/JustinBeckwith/linkinator/issues/892)) ([8ffe22e](https://github.com/JustinBeckwith/linkinator/commit/8ffe22e64fe5fd5e449543276839f2dc42b229f6))
+* parse link rel as token set ([#891](https://github.com/JustinBeckwith/linkinator/issues/891)) ([16ba254](https://github.com/JustinBeckwith/linkinator/commit/16ba2545e9a24202e0595c478e8b08de77ab6701))
+* parse quoted meta refresh targets ([#889](https://github.com/JustinBeckwith/linkinator/issues/889)) ([d5718e9](https://github.com/JustinBeckwith/linkinator/commit/d5718e9f447cabff06529d21fb37d423d3de415b))
+* preserve local crawl origin through redirects ([#885](https://github.com/JustinBeckwith/linkinator/issues/885)) ([c742c2e](https://github.com/JustinBeckwith/linkinator/commit/c742c2e9d33222e80e0f2c5eee373b036cfd611d))
+* recognize top document fragments ([#888](https://github.com/JustinBeckwith/linkinator/issues/888)) ([95218f5](https://github.com/JustinBeckwith/linkinator/commit/95218f531c25a9766d2af025ec186e506ebbb291))
+* report redirect destinations in error mode ([#887](https://github.com/JustinBeckwith/linkinator/issues/887)) ([075a92b](https://github.com/JustinBeckwith/linkinator/commit/075a92bc1155c0711714e09ad796cc993b54ed34))
+
 ## [8.0.4](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.3...linkinator-v8.0.4) (2026-08-17)
 
 
