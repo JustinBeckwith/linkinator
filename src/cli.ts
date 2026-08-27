@@ -61,6 +61,12 @@ const cli = meow(
 		--recurse, -r
 			Recursively follow links on the same root domain.
 
+		--sitemap
+			Crawl every page listed in /sitemap.xml. Sitemap indexes are followed recursively.
+
+		--sitemap-url
+			Use an explicit sitemap URL. Can be specified multiple times, but cannot be combined with --sitemap.
+
 		--check-css
 			Extract and check URLs found in CSS properties (inline styles, <style> tags, and external CSS files).
 			This includes url() functions, @import statements, and other CSS URL references.
@@ -147,6 +153,8 @@ const cli = meow(
 			config: { type: 'string' },
 			concurrency: { type: 'number' },
 			recurse: { type: 'boolean', shortFlag: 'r' },
+			sitemap: { type: 'boolean' },
+			sitemapUrl: { type: 'string', isMultiple: true },
 			skip: { type: 'string', shortFlag: 's', isMultiple: true },
 			statusCode: { type: 'string', isMultiple: true },
 			format: { type: 'string', shortFlag: 'f' },
@@ -205,6 +213,11 @@ async function main() {
 	// Type assertion needed because meow's type for cli.flags uses generic string
 	// but meow validates the 'choices' at runtime to ensure it's one of the valid values
 	flags = await getConfig(cli.flags as Flags);
+	if (flags.sitemap && flags.sitemapUrl) {
+		throw new Error(
+			'The sitemap and sitemap-url flags cannot be used together.',
+		);
+	}
 	if (
 		(flags.urlRewriteReplace && !flags.urlRewriteSearch) ||
 		(flags.urlRewriteSearch && !flags.urlRewriteReplace)
@@ -355,6 +368,7 @@ async function main() {
 	const options: CheckOptions = {
 		path: cli.input,
 		recurse: flags.recurse,
+		sitemap: flags.sitemapUrl ?? flags.sitemap,
 		timeout: Number(flags.timeout),
 		markdown: flags.markdown,
 		checkCss: flags.checkCss,

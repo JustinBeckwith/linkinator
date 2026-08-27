@@ -7,8 +7,10 @@
 		"outDir": "build",
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
+		"allowJs": true,
+		"skipLibCheck": true,
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true
 	},
-	"include": ["src/*.ts", "test/*.ts"]
+	"include": ["src/*.ts", "src/*.cjs", "test/*.ts"]
 }

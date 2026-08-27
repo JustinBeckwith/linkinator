@@ -55,6 +55,16 @@ export class Queue extends EventEmitter {
 		});
 	}
 
+	/** Remove retry delays so an aborted run can drain queued work promptly. */
+	runPendingNow() {
+		const now = Date.now();
+		for (const item of this.q) {
+			item.timeToRun = now;
+		}
+		this.cancelWakeup();
+		this.tick();
+	}
+
 	private tick() {
 		// Check if we're complete
 		if (this.activeFunctions === 0 && this.q.length === 0) {

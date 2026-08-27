@@ -31,6 +31,7 @@
 		"marked-gfm-heading-id": "^4.1.4",
 		"meow": "^14.0.0",
 		"mime": "^4.0.0",
+		"saxes": "6.0.0",
 		"srcset": "^5.0.0",
 		"undici": "^8.0.0"
 	},
