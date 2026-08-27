@@ -146,6 +146,40 @@ describe('linkinator', () => {
 		expect(skippedFragment?.displayText).toBe('Only label');
 	});
 
+	it('should not apply a fragment-skipped label to a non-anchor occurrence', async () => {
+		const mockPool = mockAgent.get('http://example.invalid');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(
+				200,
+				[
+					'<link rel="canonical" href="/target">',
+					'<a href="/target#skip">Skipped label</a>',
+				].join(''),
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		mockPool
+			.intercept({ path: '/target', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+
+		const results = await check({
+			path: 'http://example.invalid/source.html',
+			checkFragments: true,
+			fragmentsToSkip: ['^skip$'],
+		});
+		const target = results.links.find(
+			(result) =>
+				result.url === 'http://example.invalid/target' &&
+				result.state === LinkState.OK,
+		);
+		const skippedFragment = results.links.find((result) =>
+			result.url.endsWith('/target#skip'),
+		);
+		expect(target?.displayText).toBeUndefined();
+		expect(Object.hasOwn(target ?? {}, 'displayText')).toBe(false);
+		expect(skippedFragment?.displayText).toBe('Skipped label');
+	});
+
 	it('should not GET a non-fragment target for fragment checking', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		mockPool

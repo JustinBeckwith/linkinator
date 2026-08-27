@@ -146,6 +146,224 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
+	it('should retry transient fragment metadata server errors', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(500, 'retry', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(200, '<div id="different-section">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retryErrors: true,
+			retryErrorsCount: 1,
+			retryErrorsJitter: 0,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 500,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.find((result) => result.url.endsWith('#invalid-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+	});
+
+	it('should keep exhausted fragment metadata network retries supplementary', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.replyWithError(new Error('temporary metadata failure'));
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.replyWithError(new Error('metadata still unavailable'));
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retryErrors: true,
+			retryErrorsCount: 1,
+			retryErrorsJitter: 0,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 0,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.some((result) => result.url.endsWith('#invalid-section')),
+		).toBe(false);
+	});
+
+	it('should honor Retry-After for fragment metadata requests', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(429, 'retry', {
+				headers: {
+					'content-type': 'text/html',
+					'retry-after': '0',
+				},
+			});
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(200, '<div id="different-section">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retry: true,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 429,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.find((result) => result.url.endsWith('#invalid-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+	});
+
+	it('should check other fragment targets during Retry-After backoff', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(
+				200,
+				[
+					'<a href="/slow.html#missing">Slow</a>',
+					'<a href="/fast.html#missing">Fast</a>',
+				].join(''),
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		for (const path of ['/slow.html', '/fast.html']) {
+			mockPool
+				.intercept({ path, method: 'HEAD' })
+				.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		}
+		const requestOrder: string[] = [];
+		mockPool.intercept({ path: '/slow.html', method: 'GET' }).reply(() => {
+			requestOrder.push('slow-429');
+			return {
+				statusCode: 429,
+				data: 'retry',
+				responseOptions: {
+					headers: {
+						'content-type': 'text/html',
+						'retry-after': '0.1',
+					},
+				},
+			};
+		});
+		mockPool.intercept({ path: '/slow.html', method: 'GET' }).reply(() => {
+			requestOrder.push('slow-retry');
+			return {
+				statusCode: 200,
+				data: '<div id="different">Slow target</div>',
+				responseOptions: { headers: { 'content-type': 'text/html' } },
+			};
+		});
+		mockPool.intercept({ path: '/fast.html', method: 'GET' }).reply(() => {
+			requestOrder.push('fast');
+			return {
+				statusCode: 200,
+				data: '<div id="different">Fast target</div>',
+				responseOptions: { headers: { 'content-type': 'text/html' } },
+			};
+		});
+		const checker = new LinkChecker();
+
+		const results = await checker.check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+			concurrency: 1,
+			retry: true,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(requestOrder).toEqual(['slow-429', 'fast', 'slow-retry']);
+	});
+
+	it('should apply error retries when fragment Retry-After is invalid', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(429, 'retry', {
+				headers: {
+					'content-type': 'text/html',
+					'retry-after': 'not-a-date',
+				},
+			});
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(200, '<div id="different-section">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retry: true,
+			retryErrors: true,
+			retryErrorsCount: 1,
+			retryErrorsJitter: 0,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 429,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.find((result) => result.url.endsWith('#invalid-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+	});
+
 	it('should report an invalid fragment for every parent page', async () => {
 		const mockPool = mockAgent.get('http://example.com');
 		mockPool

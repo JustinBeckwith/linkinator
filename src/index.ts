@@ -256,7 +256,16 @@ type FragmentCandidate = {
 
 type FragmentContext = Pick<
 	CrawlOptions,
-	'checkOptions' | 'fragmentPages' | 'fragmentReferences' | 'results'
+	| 'checkOptions'
+	| 'fragmentPages'
+	| 'fragmentReferences'
+	| 'requestLimiter'
+	| 'retry'
+	| 'retryErrors'
+	| 'retryErrorsCount'
+	| 'retryErrorsJitter'
+	| 'results'
+	| 'signal'
 >;
 
 function withDisplayText(result: LinkResult, displayText?: string): LinkResult {
@@ -367,6 +376,10 @@ export class LinkChecker extends EventEmitter {
 		});
 		const requestLimiter = new RequestLimiter(options.concurrency || 100);
 		const runController = new AbortController();
+		const retry = Boolean(options_.retry);
+		const retryErrors = Boolean(options_.retryErrors);
+		const retryErrorsCount = options_.retryErrorsCount ?? 5;
+		const retryErrorsJitter = options_.retryErrorsJitter ?? 3000;
 
 		const results: LinkResult[] = [];
 		const initCache = new Set<string>();
@@ -405,10 +418,10 @@ export class LinkChecker extends EventEmitter {
 				retryErrorsCache,
 				queue,
 				rootPath: target.rootPath,
-				retry: Boolean(options_.retry),
-				retryErrors: Boolean(options_.retryErrors),
-				retryErrorsCount: options_.retryErrorsCount ?? 5,
-				retryErrorsJitter: options_.retryErrorsJitter ?? 3000,
+				retry,
+				retryErrors,
+				retryErrorsCount,
+				retryErrorsJitter,
 				requestLimiter,
 				signal: runController.signal,
 			});
@@ -437,17 +450,21 @@ export class LinkChecker extends EventEmitter {
 		}
 
 		await queue.onIdle();
-		this.enqueueRemainingFragmentChecks(
+		await this.checkRemainingFragments(
 			{
 				checkOptions: options,
 				fragmentPages,
 				fragmentReferences,
+				requestLimiter,
+				retry,
+				retryErrors,
+				retryErrorsCount,
+				retryErrorsJitter,
 				results,
+				signal: runController.signal,
 			},
 			fragmentCandidates,
-			queue,
 		);
-		await queue.onIdle();
 
 		const result = {
 			links: results,
@@ -1074,6 +1091,7 @@ export class LinkChecker extends EventEmitter {
 			const preferredDisplayTextByUrl = new Map<string, string>();
 			const fallbackDisplayTextByUrl = new Map<string, string>();
 			const preferredDisplayTextByFragment = new Map<string, string>();
+			const urlsWithUnskippedOccurrences = new Set<string>();
 			for (const result of urlResults) {
 				if (!result.url) {
 					continue;
@@ -1113,6 +1131,7 @@ export class LinkChecker extends EventEmitter {
 					skippedFragmentResults.add(result);
 					continue;
 				}
+				urlsWithUnskippedOccurrences.add(result.url.href);
 				if (result.displayText === undefined) {
 					continue;
 				}
@@ -1157,7 +1176,9 @@ export class LinkChecker extends EventEmitter {
 				}
 				const preferredDisplayText =
 					preferredDisplayTextByUrl.get(result.url.href) ??
-					fallbackDisplayTextByUrl.get(result.url.href);
+					(urlsWithUnskippedOccurrences.has(result.url.href)
+						? undefined
+						: fallbackDisplayTextByUrl.get(result.url.href));
 
 				// Requests are deduplicated by the fragmentless URL, but skip rules
 				// should see the complete URL as it appeared in the document.
@@ -1322,11 +1343,10 @@ export class LinkChecker extends EventEmitter {
 		await drainStream(response?.body);
 	}
 
-	private enqueueRemainingFragmentChecks(
+	private async checkRemainingFragments(
 		context: FragmentContext,
 		fragmentCandidates: Map<string, FragmentCandidate>,
-		queue: Queue,
-	): void {
+	): Promise<void> {
 		const redirectMode =
 			context.checkOptions.redirects === 'error' ? 'manual' : 'follow';
 		const processRedirectTarget =
@@ -1343,45 +1363,112 @@ export class LinkChecker extends EventEmitter {
 			processRedirectTarget,
 		} as const;
 
+		const checks: Array<Promise<void>> = [];
 		for (const url of context.fragmentReferences.keys()) {
 			const candidate = fragmentCandidates.get(url);
 			if (!candidate || candidate.state !== LinkState.OK || !candidate.isHtml) {
 				continue;
 			}
 
-			queue.add(async () => {
-				let response: RequestResponse | undefined;
-				try {
-					response = await makeRequest('GET', url, requestOptions);
-					if (
-						response.redirectSkipped ||
-						response.status < 200 ||
-						response.status >= 300 ||
-						!response.body ||
-						!isHtml(response)
-					) {
-						context.fragmentReferences.delete(url);
-						return;
-					}
+			checks.push(
+				context.requestLimiter.run(context.signal, (pause) =>
+					this.cacheRemainingFragmentPage(context, url, requestOptions, pause),
+				),
+			);
+		}
+		await Promise.all(checks);
+	}
 
-					const htmlContent = await bufferStream(toNodeReadable(response.body));
-					const htmlString = htmlContent.toString('utf-8');
-					const isSoft404 =
-						htmlString.includes('content="noindex') &&
-						htmlString.includes('nofollow');
-					await this.cacheFragmentPage(
-						context,
-						url,
-						htmlContent,
-						response.status,
-						!isSoft404,
-					);
-				} catch {
-					context.fragmentReferences.delete(url);
-				} finally {
-					await drainStream(response?.body);
+	private async cacheRemainingFragmentPage(
+		context: FragmentContext,
+		url: string,
+		requestOptions: Parameters<typeof makeRequest>[2],
+		pauseLimiter: <R>(wait: () => Promise<R>) => Promise<R>,
+	): Promise<void> {
+		let errorRetries = 0;
+		for (;;) {
+			let response: RequestResponse | undefined;
+			try {
+				response = await makeRequest('GET', url, {
+					...requestOptions,
+					signal: context.signal,
+				});
+
+				const retryAfterRaw = response.headers['retry-after'];
+				if (context.retry && response.status === 429 && retryAfterRaw) {
+					const retryAt = this.parseRetryAfter(retryAfterRaw);
+					if (!Number.isNaN(retryAt)) {
+						const retryDelay = Math.max(0, retryAt - Date.now());
+						await drainStream(response.body);
+						this.emit('retry', {
+							url,
+							status: response.status,
+							secondsUntilRetry: Math.round(retryDelay / 1000),
+						} satisfies RetryInfo);
+						await pauseLimiter(() => waitForRetry(retryDelay, context.signal));
+						continue;
+					}
 				}
-			});
+
+				if (
+					context.retryErrors &&
+					(response.status >= 500 || response.status === 429) &&
+					errorRetries < context.retryErrorsCount
+				) {
+					errorRetries++;
+					const retryDelay =
+						2 ** errorRetries * 1000 +
+						Math.random() * context.retryErrorsJitter;
+					await drainStream(response.body);
+					this.emit('retry', {
+						url,
+						status: response.status,
+						secondsUntilRetry: Math.round(retryDelay / 1000),
+					} satisfies RetryInfo);
+					await pauseLimiter(() => waitForRetry(retryDelay, context.signal));
+					continue;
+				}
+
+				if (
+					response.redirectSkipped ||
+					response.status < 200 ||
+					response.status >= 300 ||
+					!response.body ||
+					!isHtml(response)
+				) {
+					await drainStream(response.body);
+					context.fragmentReferences.delete(url);
+					return;
+				}
+
+				const htmlContent = await bufferStream(toNodeReadable(response.body));
+				const htmlString = htmlContent.toString('utf-8');
+				const isSoft404 =
+					htmlString.includes('content="noindex') &&
+					htmlString.includes('nofollow');
+				await this.cacheFragmentPage(
+					context,
+					url,
+					htmlContent,
+					response.status,
+					!isSoft404,
+				);
+				return;
+			} catch {
+				if (!context.retryErrors || errorRetries >= context.retryErrorsCount) {
+					context.fragmentReferences.delete(url);
+					return;
+				}
+				errorRetries++;
+				const retryDelay =
+					2 ** errorRetries * 1000 + Math.random() * context.retryErrorsJitter;
+				this.emit('retry', {
+					url,
+					status: 0,
+					secondsUntilRetry: Math.round(retryDelay / 1000),
+				} satisfies RetryInfo);
+				await pauseLimiter(() => waitForRetry(retryDelay, context.signal));
+			}
 		}
 	}
 
