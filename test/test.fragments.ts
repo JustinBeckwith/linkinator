@@ -146,6 +146,758 @@ describe('fragment identifier validation', () => {
 		);
 	});
 
+	it('should retry transient fragment metadata server errors', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(500, 'retry', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(200, '<div id="different-section">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retryErrors: true,
+			retryErrorsCount: 1,
+			retryErrorsJitter: 0,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 500,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.find((result) => result.url.endsWith('#invalid-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+	});
+
+	it('should keep exhausted fragment metadata network retries supplementary', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.replyWithError(new Error('temporary metadata failure'));
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.replyWithError(new Error('metadata still unavailable'));
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retryErrors: true,
+			retryErrorsCount: 1,
+			retryErrorsJitter: 0,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 0,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.some((result) => result.url.endsWith('#invalid-section')),
+		).toBe(false);
+	});
+
+	it('should honor Retry-After for fragment metadata requests', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(429, 'retry', {
+				headers: {
+					'content-type': 'text/html',
+					'retry-after': '0',
+				},
+			});
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(200, '<div id="different-section">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retry: true,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 429,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.find((result) => result.url.endsWith('#invalid-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+	});
+
+	it('should check other fragment targets during Retry-After backoff', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(
+				200,
+				[
+					'<a href="/slow.html#missing">Slow</a>',
+					'<a href="/fast.html#missing">Fast</a>',
+				].join(''),
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		for (const path of ['/slow.html', '/fast.html']) {
+			mockPool
+				.intercept({ path, method: 'HEAD' })
+				.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		}
+		const requestOrder: string[] = [];
+		mockPool.intercept({ path: '/slow.html', method: 'GET' }).reply(() => {
+			requestOrder.push('slow-429');
+			return {
+				statusCode: 429,
+				data: 'retry',
+				responseOptions: {
+					headers: {
+						'content-type': 'text/html',
+						'retry-after': '0.1',
+					},
+				},
+			};
+		});
+		mockPool.intercept({ path: '/slow.html', method: 'GET' }).reply(() => {
+			requestOrder.push('slow-retry');
+			return {
+				statusCode: 200,
+				data: '<div id="different">Slow target</div>',
+				responseOptions: { headers: { 'content-type': 'text/html' } },
+			};
+		});
+		mockPool.intercept({ path: '/fast.html', method: 'GET' }).reply(() => {
+			requestOrder.push('fast');
+			return {
+				statusCode: 200,
+				data: '<div id="different">Fast target</div>',
+				responseOptions: { headers: { 'content-type': 'text/html' } },
+			};
+		});
+		const checker = new LinkChecker();
+
+		const results = await checker.check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+			concurrency: 1,
+			retry: true,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(requestOrder).toEqual(['slow-429', 'fast', 'slow-retry']);
+	});
+
+	it('should apply error retries when fragment Retry-After is invalid', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/page.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(429, 'retry', {
+				headers: {
+					'content-type': 'text/html',
+					'retry-after': 'not-a-date',
+				},
+			});
+		mockPool
+			.intercept({ path: '/page.html', method: 'GET' })
+			.reply(200, '<div id="different-section">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		const checker = new LinkChecker();
+		const retries: Array<{ status: number; url: string }> = [];
+		checker.on('retry', (event) => retries.push(event));
+
+		const results = await checker.check({
+			path: 'test/fixtures/fragments-invalid',
+			checkFragments: true,
+			retry: true,
+			retryErrors: true,
+			retryErrorsCount: 1,
+			retryErrorsJitter: 0,
+		});
+
+		expect(results.passed).toBe(false);
+		expect(retries).toEqual([
+			expect.objectContaining({
+				status: 429,
+				url: 'http://example.com/page.html',
+			}),
+		]);
+		expect(
+			results.links.find((result) => result.url.endsWith('#invalid-section'))
+				?.state,
+		).toBe(LinkState.BROKEN);
+	});
+
+	it('should report an invalid fragment for every parent page', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/first.html', method: 'GET' })
+			.reply(
+				200,
+				'<a href="/target.html#missing"><span></span></a><a href="/target.html#missing">First label</a>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		mockPool
+			.intercept({ path: '/second.html', method: 'GET' })
+			.reply(200, '<a href="/target.html#late-missing">Second label</a>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.delay(100);
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(
+				200,
+				'<div id="different">Content</div><a href="#different">Valid self link</a>',
+				{
+					headers: { 'content-type': 'text/html' },
+				},
+			);
+
+		const results = await check({
+			path: ['http://example.com/first.html', 'http://example.com/second.html'],
+			checkFragments: true,
+		});
+
+		const fragmentResults = results.links.filter((result) =>
+			result.url.includes('/target.html#'),
+		);
+		expect(fragmentResults).toHaveLength(2);
+		expect(
+			fragmentResults.map(({ displayText, parent, url }) => ({
+				displayText,
+				parent,
+				url,
+			})),
+		).toEqual([
+			{
+				displayText: 'First label',
+				parent: 'http://example.com/first.html',
+				url: 'http://example.com/target.html#missing',
+			},
+			{
+				displayText: 'Second label',
+				parent: 'http://example.com/second.html',
+				url: 'http://example.com/target.html#late-missing',
+			},
+		]);
+	});
+
+	it('should validate a fragment discovered after a non-fragment link', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/first.html', method: 'GET' })
+			.reply(200, '<link rel="canonical" href="/target.html">', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/second.html', method: 'GET' })
+			.reply(200, '<a href="/target.html#late-missing">Late label</a>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.delay(100);
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool.intercept({ path: '/target.html', method: 'GET' }).reply(302, '', {
+			headers: {
+				'content-type': 'text/html',
+				location: '/final.html',
+			},
+		});
+		mockPool
+			.intercept({ path: '/final.html', method: 'GET' })
+			.reply(200, '<div id="different">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: ['http://example.com/first.html', 'http://example.com/second.html'],
+			checkFragments: true,
+			linksToSkip: ['/never-skip$'],
+		});
+
+		const fragmentResult = results.links.find((result) =>
+			result.url.endsWith('/target.html#late-missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect(fragmentResult?.displayText).toBe('Late label');
+		expect(fragmentResult?.parent).toBe('http://example.com/second.html');
+	});
+
+	it('should tolerate unusable late fragment metadata responses', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/first.html', method: 'GET' })
+			.reply(
+				200,
+				[
+					'<link rel="canonical" href="/not-found.html">',
+					'<link rel="canonical" href="/error.html">',
+					'<link rel="canonical" href="/soft.html">',
+				].join(''),
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		mockPool
+			.intercept({ path: '/second.html', method: 'GET' })
+			.reply(
+				200,
+				[
+					'<a href="/not-found.html#missing">Not found</a>',
+					'<a href="/error.html#missing">Error</a>',
+					'<a href="/soft.html#missing">Soft 404</a>',
+				].join(''),
+				{ headers: { 'content-type': 'text/html' } },
+			)
+			.delay(100);
+		for (const path of ['/not-found.html', '/error.html', '/soft.html']) {
+			mockPool
+				.intercept({ path, method: 'HEAD' })
+				.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		}
+		mockPool
+			.intercept({ path: '/not-found.html', method: 'GET' })
+			.reply(404, 'Not found', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/error.html', method: 'GET' })
+			.replyWithError(new Error('metadata fetch failed'));
+		mockPool
+			.intercept({ path: '/soft.html', method: 'GET' })
+			.reply(
+				200,
+				'<meta name="robots" content="noindex,nofollow"><p>Not found</p>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+
+		const results = await check({
+			path: ['http://example.com/first.html', 'http://example.com/second.html'],
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(results.links.some((result) => result.url.includes('#'))).toBe(
+			false,
+		);
+	});
+
+	it('should ignore fragment metadata that redirects to a skipped URL', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(200, '<a href="/target.html#missing">Target label</a>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool.intercept({ path: '/target.html', method: 'GET' }).reply(302, '', {
+			headers: {
+				'content-type': 'text/html',
+				location: '/skip-me',
+			},
+		});
+
+		const results = await check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+			linksToSkip: ['/skip-me$'],
+		});
+
+		const target = results.links.find(
+			(result) => result.url === 'http://example.com/target.html',
+		);
+		expect(target?.state).toBe(LinkState.OK);
+		expect(target?.displayText).toBe('Target label');
+		expect(
+			results.links.some((result) => result.url.endsWith('#missing')),
+		).toBe(false);
+	});
+
+	it('should keep an early fragment metadata failure supplementary', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(200, '<a href="/target.html#missing">Target label</a>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(404, 'Not found', { headers: { 'content-type': 'text/html' } });
+
+		const results = await check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+		});
+
+		const target = results.links.find(
+			(result) => result.url === 'http://example.com/target.html',
+		);
+		expect(results.passed).toBe(true);
+		expect(target?.status).toBe(200);
+		expect(target?.state).toBe(LinkState.OK);
+		expect(
+			results.links.some((result) => result.url.endsWith('#missing')),
+		).toBe(false);
+	});
+
+	it('should validate a fragment whose target URL is rewritten', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(200, '<a href="/old.html#missing">Rewritten target</a>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<div id="different">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+			urlRewriteExpressions: [
+				{ pattern: /\/old\.html$/, replacement: '/target.html' },
+			],
+		});
+
+		const fragmentResult = results.links.find((result) =>
+			result.url.endsWith('/target.html#missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect(fragmentResult?.displayText).toBe('Rewritten target');
+	});
+
+	it('should validate a late fragment whose target URL is rewritten', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/first.html', method: 'GET' })
+			.reply(200, '<link rel="canonical" href="/old.html">', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/second.html', method: 'GET' })
+			.reply(200, '<a href="/old.html#late-missing">Late rewritten</a>', {
+				headers: { 'content-type': 'text/html' },
+			})
+			.delay(100);
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<div id="different">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: ['http://example.com/first.html', 'http://example.com/second.html'],
+			checkFragments: true,
+			urlRewriteExpressions: [
+				{ pattern: /\/old\.html$/, replacement: '/target.html' },
+			],
+		});
+
+		const fragmentResult = results.links.find((result) =>
+			result.url.endsWith('/target.html#late-missing'),
+		);
+		expect(fragmentResult?.state).toBe(LinkState.BROKEN);
+		expect(fragmentResult?.displayText).toBe('Late rewritten');
+	});
+
+	it('should not validate fragments on a soft-404 page', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(200, '<a href="/target.html#missing">Target label</a>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(
+				200,
+				'<meta name="robots" content="noindex,nofollow"><p>Not found</p>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+
+		const results = await check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(
+			results.links.some((result) => result.url.endsWith('#missing')),
+		).toBe(false);
+	});
+
+	it('should not validate same-page fragments on a crawled soft-404 page', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/soft-root.html', method: 'GET' })
+			.reply(
+				200,
+				'<meta name="robots" content="noindex,nofollow"><a href="#missing">Missing</a>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+
+		const results = await check({
+			path: 'http://example.com/soft-root.html',
+			checkFragments: true,
+		});
+
+		expect(results.passed).toBe(true);
+		expect(results.links.some((result) => result.url.includes('#'))).toBe(
+			false,
+		);
+	});
+
+	it('should not report a recursively crawled fragment twice', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/', method: 'GET' })
+			.reply(200, '<a href="/target.html#missing">Missing section</a>', {
+				headers: { 'content-type': 'text/html' },
+			});
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<div id="different">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const checker = new LinkChecker();
+		const fragmentEvents: string[] = [];
+		checker.on('link', (result) => {
+			if (result.url.endsWith('/target.html#missing')) {
+				fragmentEvents.push(result.url);
+			}
+		});
+		const results = await checker.check({
+			path: 'http://example.com/',
+			checkFragments: true,
+			recurse: true,
+		});
+
+		expect(
+			results.links.filter((result) =>
+				result.url.endsWith('/target.html#missing'),
+			),
+		).toHaveLength(1);
+		expect(fragmentEvents).toHaveLength(1);
+	});
+
+	it('should reuse cached fragment validations for recursive self-links', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/', method: 'GET' })
+			.reply(
+				200,
+				'<a href="/target.html#missing">Root missing</a><a href="/target.html#valid">Root valid</a>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(
+				200,
+				[
+					'<div id="valid">Valid</div>',
+					'<a href="#missing"><span></span></a>',
+					'<a href="#missing">Self missing</a>',
+					'<a href="#valid">Valid once</a>',
+					'<a href="#valid">Valid twice</a>',
+					'<div id="new-valid">Also valid</div>',
+					'<a href="#new-valid">New valid</a>',
+				].join(''),
+				{ headers: { 'content-type': 'text/html' } },
+			);
+
+		const results = await check({
+			path: 'http://example.com/',
+			checkFragments: true,
+			recurse: true,
+		});
+
+		const brokenFragments = results.links.filter(
+			(result) =>
+				result.url === 'http://example.com/target.html#missing' &&
+				result.state === LinkState.BROKEN,
+		);
+		expect(brokenFragments).toHaveLength(2);
+		expect(
+			brokenFragments.map(({ displayText, parent }) => ({
+				displayText,
+				parent,
+			})),
+		).toEqual([
+			{ displayText: 'Root missing', parent: 'http://example.com/' },
+			{
+				displayText: 'Self missing',
+				parent: 'http://example.com/target.html',
+			},
+		]);
+		expect(
+			results.links.some(
+				(result) =>
+					result.url.endsWith('#valid') || result.url.endsWith('#new-valid'),
+			),
+		).toBe(false);
+	});
+
+	it('should retain fragment references registered before validation', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		for (const [path, label] of [
+			['/first.html', 'First label'],
+			['/second.html', 'Second label'],
+		] as const) {
+			mockPool
+				.intercept({ path, method: 'GET' })
+				.reply(200, `<a href="/target.html#missing">${label}</a>`, {
+					headers: { 'content-type': 'text/html' },
+				});
+		}
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<div id="different">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: ['http://example.com/first.html', 'http://example.com/second.html'],
+			checkFragments: true,
+			concurrency: 1,
+		});
+
+		const fragmentResults = results.links.filter((result) =>
+			result.url.endsWith('/target.html#missing'),
+		);
+		expect(fragmentResults).toHaveLength(2);
+		expect(
+			fragmentResults.map(({ displayText }) => displayText).sort(),
+		).toEqual(['First label', 'Second label']);
+	});
+
+	it('should share preferred text across encoded-equivalent fragments', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		mockPool
+			.intercept({ path: '/source.html', method: 'GET' })
+			.reply(
+				200,
+				'<a href="/target.html#foo"><span></span></a><a href="/target.html#%66oo">Good label</a>',
+				{ headers: { 'content-type': 'text/html' } },
+			);
+		mockPool
+			.intercept({ path: '/target.html', method: 'HEAD' })
+			.reply(200, '', { headers: { 'content-type': 'text/html' } });
+		mockPool
+			.intercept({ path: '/target.html', method: 'GET' })
+			.reply(200, '<div id="different">Content</div>', {
+				headers: { 'content-type': 'text/html' },
+			});
+
+		const results = await check({
+			path: 'http://example.com/source.html',
+			checkFragments: true,
+		});
+
+		const fragmentResults = results.links.filter((result) =>
+			result.url.endsWith('/target.html#foo'),
+		);
+		expect(fragmentResults).toHaveLength(1);
+		expect(fragmentResults[0].displayText).toBe('Good label');
+	});
+
+	it('should isolate fragment metadata between LinkChecker checks', async () => {
+		const mockPool = mockAgent.get('http://example.com');
+		for (const [path, label] of [
+			['/first.html', 'First label'],
+			['/second.html', 'Second label'],
+		] as const) {
+			mockPool
+				.intercept({ path, method: 'GET' })
+				.reply(200, `<a href="/target.html#missing">${label}</a>`, {
+					headers: { 'content-type': 'text/html' },
+				});
+			mockPool
+				.intercept({ path: '/target.html', method: 'HEAD' })
+				.reply(200, '', { headers: { 'content-type': 'text/html' } });
+			mockPool
+				.intercept({ path: '/target.html', method: 'GET' })
+				.reply(200, '<div id="different">Content</div>', {
+					headers: { 'content-type': 'text/html' },
+				});
+		}
+
+		const checker = new LinkChecker();
+		const first = await checker.check({
+			path: 'http://example.com/first.html',
+			checkFragments: true,
+		});
+		const second = await checker.check({
+			path: 'http://example.com/second.html',
+			checkFragments: true,
+		});
+
+		expect(
+			first.links.find((result) => result.url.includes('#missing'))
+				?.displayText,
+		).toBe('First label');
+		const secondFragment = second.links.find((result) =>
+			result.url.includes('#missing'),
+		);
+		expect(secondFragment?.displayText).toBe('Second label');
+		expect(secondFragment?.parent).toBe('http://example.com/second.html');
+	});
+
 	it('should not check fragments when checkFragments is disabled', async () => {
 		const mockPool = mockAgent.get('http://example.com');
 
@@ -385,6 +1137,9 @@ describe('fragment identifier validation', () => {
 			l.url.includes('#nonexistent-section'),
 		);
 		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.displayText).toBe(
+			'Link to nonexistent section (should fail)',
+		);
 		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
 		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
 			"Fragment identifier '#nonexistent-section' not found on page",
@@ -489,6 +1244,7 @@ describe('fragment identifier validation', () => {
 			l.url.includes('#nonexistent-section'),
 		);
 		expect(brokenFragment?.state).toBe(LinkState.BROKEN);
+		expect(brokenFragment?.displayText).toBe('Link to nonexistent section');
 		expect(brokenFragment?.failureDetails?.[0]).toBeInstanceOf(Error);
 		expect((brokenFragment?.failureDetails?.[0] as Error).message).toContain(
 			"Fragment identifier '#nonexistent-section' not found on page",
