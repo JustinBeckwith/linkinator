@@ -1026,7 +1026,13 @@ export class LinkChecker extends EventEmitter {
 		) {
 			// Convert and buffer the response body
 			const nodeStream = toNodeReadable(response.body);
-			const htmlContent = await bufferStream(nodeStream);
+			let htmlContent: Buffer;
+			try {
+				htmlContent = await bufferStream(nodeStream);
+			} catch (error) {
+				this.markBodyReadFailure(result, options, error);
+				return;
+			}
 
 			// Check if this is likely a soft 404 by looking for noindex/nofollow meta tags
 			// Many soft 404 pages (pages that return 200 but show "Page Not Found") include these tags
@@ -1063,27 +1069,32 @@ export class LinkChecker extends EventEmitter {
 				// a document URL; inventing a slash changes the meaning of relative links.
 				const baseUrl = response.url || options.url.href;
 
-				// Parse HTML or CSS depending on content type
-				if (isHtml(response)) {
-					// Fragment checking buffered the response earlier, so recreate a stream
-					// before extracting links.
-					if (options.checkOptions.checkFragments) {
-						const htmlContent = await bufferStream(nodeStream);
-						const linkStream = Readable.from([htmlContent]);
-						urlResults = await getLinks(
-							linkStream,
-							baseUrl,
-							options.checkOptions.checkCss,
-						);
-					} else {
-						urlResults = await getLinks(
-							nodeStream,
-							baseUrl,
-							options.checkOptions.checkCss,
-						);
+				try {
+					// Parse HTML or CSS depending on content type
+					if (isHtml(response)) {
+						// Fragment checking buffered the response earlier, so recreate a stream
+						// before extracting links.
+						if (options.checkOptions.checkFragments) {
+							const htmlContent = await bufferStream(nodeStream);
+							const linkStream = Readable.from([htmlContent]);
+							urlResults = await getLinks(
+								linkStream,
+								baseUrl,
+								options.checkOptions.checkCss,
+							);
+						} else {
+							urlResults = await getLinks(
+								nodeStream,
+								baseUrl,
+								options.checkOptions.checkCss,
+							);
+						}
+					} else if (isCss(response) && options.checkOptions.checkCss) {
+						urlResults = await getCssLinks(nodeStream, baseUrl);
 					}
-				} else if (isCss(response) && options.checkOptions.checkCss) {
-					urlResults = await getCssLinks(nodeStream, baseUrl);
+				} catch (error) {
+					this.markBodyReadFailure(result, options, error);
+					return;
 				}
 			}
 			const skippedUrlResults = new Set<(typeof urlResults)[number]>();
@@ -1469,6 +1480,27 @@ export class LinkChecker extends EventEmitter {
 				} satisfies RetryInfo);
 				await pauseLimiter(() => waitForRetry(retryDelay, context.signal));
 			}
+		}
+	}
+
+	/**
+	 * A page whose status was recorded but whose body could not be read (for
+	 * example, the body stalled past the timeout) had none of its links
+	 * checked, so report it as broken rather than letting it pass.
+	 */
+	private markBodyReadFailure(
+		result: LinkResult,
+		options: CrawlOptions,
+		error: unknown,
+	) {
+		result.state = LinkState.BROKEN;
+		result.failureDetails = [
+			...(result.failureDetails ?? []),
+			error instanceof Error ? error : new Error(String(error)),
+		];
+		const candidate = options.fragmentCandidates.get(options.url.href);
+		if (candidate) {
+			candidate.state = LinkState.BROKEN;
 		}
 	}
 
