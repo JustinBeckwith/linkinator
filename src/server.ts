@@ -85,7 +85,7 @@ async function handleRequest(
 	}
 
 	const localPath = path.join(root, ...pathParts);
-	if (!localPath.startsWith(root)) {
+	if (!isInsideRoot(root, localPath)) {
 		response.writeHead(500);
 		response.end();
 		return;
@@ -126,7 +126,7 @@ async function handleRequest(
 			try {
 				const htmlPath = `${localPath}.html`;
 				// Verify it's still within the root directory (security check)
-				if (htmlPath.startsWith(root)) {
+				if (isInsideRoot(root, htmlPath)) {
 					const htmlStats = await fs.stat(htmlPath);
 					if (!htmlStats.isDirectory()) {
 						// File exists! Serve it with the original URL
@@ -192,6 +192,23 @@ async function handleRequest(
 			return404(response);
 		}
 	}
+}
+
+/**
+ * Check that a resolved path is the root itself or lies below it.
+ * A plain string prefix test is not enough: '/srv/site-private' starts with '/srv/site'.
+ * @param root Absolute, resolved root directory
+ * @param candidate Absolute path to check
+ * @returns true if candidate is inside root
+ */
+function isInsideRoot(root: string, candidate: string) {
+	const relative = path.relative(root, candidate);
+	return (
+		relative === '' ||
+		(relative !== '..' &&
+			!relative.startsWith(`..${path.sep}`) &&
+			!path.isAbsolute(relative))
+	);
 }
 
 function return404(response: http.ServerResponse) {

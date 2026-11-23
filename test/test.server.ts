@@ -60,6 +60,22 @@ describe('server', () => {
 		assert.strictEqual(await response.text(), 'Not Found');
 	});
 
+	it('should not serve a sibling directory that shares the root name prefix', async () => {
+		// %2f survives URL parsing, so this segment decodes to '../server-sibling/secret.txt'
+		// and resolves to test/fixtures/server-sibling, which starts with the root's path.
+		const fileResponse = await undiciFetch(
+			`${rootUrl}/%2e%2e%2fserver-sibling%2fsecret.txt`,
+		);
+		assert.strictEqual(fileResponse.status, 500);
+		assert.ok(!(await fileResponse.text()).includes('sibling secret'));
+
+		const listingResponse = await undiciFetch(
+			`${rootUrl}/%2e%2e%2fserver-sibling/`,
+		);
+		assert.strictEqual(listingResponse.status, 500);
+		assert.ok(!(await listingResponse.text()).includes('secret.txt'));
+	});
+
 	it('should return a 404 for missing paths', async () => {
 		const url = `${rootUrl}/does/not/exist`;
 		const response = await undiciFetch(url);
