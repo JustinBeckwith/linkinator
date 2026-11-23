@@ -179,8 +179,12 @@ async function handleRequest(
 			try {
 				const files = await fs.readdir(originalPath);
 				const fileList = files
-					.filter((f) => escapeHtml(f))
-					.map((f) => `<li><a href="${f}">${f}</a></li>`)
+					// Encode the name for the URL (the server decodes each path segment) and
+					// escape it for the link text, so any legal file name lists and links correctly.
+					.map(
+						(f) =>
+							`<li><a href="${encodeURIComponent(f)}">${escapeHtml(f)}</a></li>`,
+					)
 					.join('\r\n');
 				const data = `<html><body><ul>${fileList}</ul></body></html>`;
 				response.writeHead(200);
