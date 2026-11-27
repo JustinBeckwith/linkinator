@@ -1306,13 +1306,7 @@ export class LinkChecker extends EventEmitter {
 					const parentHref = options.url.href;
 					const pendingCheck = options.pendingChecks.get(urlHref);
 
-					// Queue the reuse operation to check if the link is broken
-					options.queue.add(async () => {
-						// If there's a pending check, wait for it
-						if (pendingCheck) {
-							await pendingCheck;
-						}
-
+					const reportCachedResult = async () => {
 						// Now the result should be in the results array
 						const cachedResult = options.results.find(
 							(r) => r.url === mapUrl(urlHref, options.checkOptions),
@@ -1332,6 +1326,14 @@ export class LinkChecker extends EventEmitter {
 							options.results.push(reusedResult);
 							this.emit('link', reusedResult);
 						}
+					};
+
+					// Wait outside the queue so duplicates cannot occupy the slots
+					// needed to check other URLs. Completion resolves before the
+					// original crawl releases its slot, so this callback queues the
+					// report before onIdle() can finish.
+					void Promise.resolve(pendingCheck).then(() => {
+						options.queue.add(reportCachedResult);
 					});
 				}
 			}
