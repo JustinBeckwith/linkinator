@@ -53,6 +53,27 @@ describe('linkinator', () => {
 		assert.ok(results.passed);
 	});
 
+	it.each([
+		false,
+		true,
+	])('crawls issue #922 without false broken links (checkFragments: %s)', async (checkFragments) => {
+		const results = await check({
+			path: 'test/fixtures/extraction-922',
+			recurse: true,
+			checkCss: true,
+			checkFragments,
+		});
+		expect(results.passed).toBe(true);
+		expect(results.links.every((link) => link.state === LinkState.OK)).toBe(
+			true,
+		);
+		for (const suffix of ['s.css', 'img(1).svg', 'p.html?x=1', '?x=1']) {
+			expect(results.links.some((link) => link.url.endsWith(suffix))).toBe(
+				true,
+			);
+		}
+	});
+
 	it('should include normalized anchor display text in API results', async () => {
 		const mockPool = mockAgent.get('http://example.invalid');
 		for (const target of [
