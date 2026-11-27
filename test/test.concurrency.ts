@@ -109,8 +109,9 @@ describe('concurrency', () => {
 					} else if (url === '/shared') {
 						response.writeHead(status).end();
 					} else {
+						const displayText = url === '/a' ? '/a' : '/b';
 						response.end(
-							`<a href="/shared">${url}</a><a href="/shared">same parent</a><a href="/">cycle</a>`,
+							`<a href="/shared">${displayText}</a><a href="/shared">same parent</a><a href="/">cycle</a>`,
 						);
 					}
 				});
