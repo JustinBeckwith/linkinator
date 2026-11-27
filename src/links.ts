@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { WritableStream } from 'htmlparser2/WritableStream';
 import { parseSrcset } from 'srcset';
 import schemaOrgUrlFields from './schema-org-url-fields.json' with {
@@ -221,9 +222,9 @@ export async function getLinks(
 			}
 		},
 	});
-	await new Promise((resolve, reject) => {
-		source.pipe(parser).on('finish', resolve).on('error', reject);
-	});
+	// pipeline (unlike pipe) forwards errors from the source, such as a body
+	// timeout, instead of leaving them unhandled.
+	await pipeline(source, parser);
 	return links;
 }
 
@@ -438,9 +439,9 @@ export async function extractFragmentIds(
 		},
 	});
 
-	await new Promise((resolve, reject) => {
-		source.pipe(parser).on('finish', resolve).on('error', reject);
-	});
+	// pipeline (unlike pipe) forwards errors from the source, such as a body
+	// timeout, instead of leaving them unhandled.
+	await pipeline(source, parser);
 
 	return fragments;
 }
