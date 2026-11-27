@@ -62,6 +62,22 @@ describe('server', () => {
 		assert.strictEqual(await response.text(), 'Not Found');
 	});
 
+	it('should not serve a sibling directory that shares the root name prefix', async () => {
+		// %2f survives URL parsing, so this segment decodes to '../server-sibling/secret.txt'
+		// and resolves to test/fixtures/server-sibling, which starts with the root's path.
+		const fileResponse = await undiciFetch(
+			`${rootUrl}/%2e%2e%2fserver-sibling%2fsecret.txt`,
+		);
+		assert.strictEqual(fileResponse.status, 500);
+		assert.ok(!(await fileResponse.text()).includes('sibling secret'));
+
+		const listingResponse = await undiciFetch(
+			`${rootUrl}/%2e%2e%2fserver-sibling/`,
+		);
+		assert.strictEqual(listingResponse.status, 500);
+		assert.ok(!(await listingResponse.text()).includes('secret.txt'));
+	});
+
 	it('should return a 404 for missing paths', async () => {
 		const url = `${rootUrl}/does/not/exist`;
 		const response = await undiciFetch(url);
@@ -327,5 +343,88 @@ describe('server without cleanUrls', () => {
 			data,
 			'<html><body><h1>About Page</h1><a href="contact">Contact</a></body></html>\n',
 		);
+	});
+});
+
+describe('server root containment', () => {
+	let server: Server;
+	let rootUrl: string;
+	let temporaryDirectory: string;
+
+	beforeAll(async () => {
+		temporaryDirectory = fs.mkdtempSync(
+			path.join(os.tmpdir(), 'linkinator-containment-'),
+		);
+		const root = path.join(temporaryDirectory, 'site');
+		for (const name of ['site', 'site-private', 'other']) {
+			fs.mkdirSync(path.join(temporaryDirectory, name));
+			fs.writeFileSync(path.join(temporaryDirectory, name, 'notes.txt'), name);
+			fs.writeFileSync(path.join(temporaryDirectory, name, 'page.html'), name);
+		}
+		fs.mkdirSync(path.join(root, '..allowed'));
+		fs.writeFileSync(path.join(root, '..allowed', 'notes.txt'), 'allowed');
+		server = await startWebServer({
+			root,
+			cleanUrls: true,
+			directoryListing: true,
+		});
+		const addr = server.address() as AddressInfo;
+		rootUrl = `http://127.0.0.1:${addr.port}`;
+	});
+
+	afterAll(async () => {
+		if (server) await stopWebServer(server);
+		fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+	});
+
+	it.each([
+		'/%2e%2e%2fsite-private%2fnotes.txt',
+		'/%2e%2e%2fsite-private%2fpage',
+		'/%2e%2e%2fsite-private/',
+		'/%2e%2e%2fother%2fnotes.txt',
+		'/%2e%2e%2f',
+	])('should reject an encoded path outside the root: %s', async (pathname) => {
+		const response = await undiciFetch(`${rootUrl}${pathname}`, {
+			redirect: 'manual',
+		});
+		assert.strictEqual(response.status, 500);
+		assert.strictEqual(await response.text(), '');
+	});
+
+	it('should not serve a sibling HTML file when the root is missing', async () => {
+		const root = path.join(temporaryDirectory, 'missing');
+		fs.writeFileSync(`${root}.html`, 'outside root');
+		const missingRootServer = await startWebServer({ root, cleanUrls: true });
+		try {
+			const addr = missingRootServer.address() as AddressInfo;
+			const response = await undiciFetch(
+				`http://127.0.0.1:${addr.port}/%2e%2e%2fmissing`,
+			);
+			assert.strictEqual(response.status, 404);
+			assert.strictEqual(await response.text(), 'Not Found');
+		} finally {
+			await stopWebServer(missingRootServer);
+		}
+	});
+
+	it.skipIf(process.platform !== 'win32')(
+		'should reject encoded Windows separators',
+		async () => {
+			const response = await undiciFetch(
+				`${rootUrl}/%2e%2e%5csite-private%5cnotes.txt`,
+			);
+			assert.strictEqual(response.status, 500);
+			assert.strictEqual(await response.text(), '');
+		},
+	);
+
+	it.each([
+		['/notes.txt', 'site'],
+		['/page', 'site'],
+		['/..allowed/notes.txt', 'allowed'],
+	])('should still serve paths inside the root: %s', async (pathname, expected) => {
+		const response = await undiciFetch(`${rootUrl}${pathname}`);
+		assert.strictEqual(response.status, 200);
+		assert.strictEqual(await response.text(), expected);
 	});
 });
