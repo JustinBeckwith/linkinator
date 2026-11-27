@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import { fetch as undiciFetch } from 'undici';
 import { afterAll, assert, beforeAll, describe, it } from 'vitest';
 import { startWebServer, stopWebServer } from '../src/server.js';
@@ -169,6 +171,53 @@ describe('server', () => {
 			await response.text(),
 			'<html><body>Checkout page</body></html>',
 		);
+	});
+});
+
+describe('server directory listing with special file names', () => {
+	let server: Server;
+	let rootUrl: string;
+	let root: string;
+
+	beforeAll(async () => {
+		// Created at runtime: names with " or < cannot be checked in (Windows).
+		root = fs.mkdtempSync(path.join(os.tmpdir(), 'linkinator-listing-'));
+		fs.writeFileSync(path.join(root, 'a&b.html'), 'ampersand');
+		fs.writeFileSync(path.join(root, 'notes#1.html'), 'hash');
+		if (process.platform !== 'win32') {
+			fs.writeFileSync(path.join(root, 'a" data-x="<b>.html'), 'quote');
+		}
+		server = await startWebServer({ directoryListing: true, root });
+		const addr = server.address() as AddressInfo;
+		rootUrl = `http://127.0.0.1:${addr.port}`;
+	});
+
+	afterAll(async () => {
+		await stopWebServer(server);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it('should escape file names in the listing HTML', async () => {
+		const data = await (await undiciFetch(`${rootUrl}/`)).text();
+		assert.include(data, '<li><a href="a%26b.html">a&amp;b.html</a></li>');
+		assert.include(data, '<li><a href="notes%231.html">notes#1.html</a></li>');
+		if (process.platform !== 'win32') {
+			assert.include(
+				data,
+				'<li><a href="a%22%20data-x%3D%22%3Cb%3E.html">a&quot; data-x=&quot;&lt;b&gt;.html</a></li>',
+			);
+			assert.notInclude(data, 'data-x="');
+		}
+	});
+
+	it('should link to files that can be fetched', async () => {
+		const data = await (await undiciFetch(`${rootUrl}/`)).text();
+		const hrefs = [...data.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+		assert.isNotEmpty(hrefs);
+		for (const href of hrefs) {
+			const response = await undiciFetch(`${rootUrl}/${href}`);
+			assert.strictEqual(response.status, 200, href);
+		}
 	});
 });
 
