@@ -391,6 +391,22 @@ describe('server root containment', () => {
 		assert.strictEqual(await response.text(), '');
 	});
 
+	it('should not serve a sibling HTML file when the root is missing', async () => {
+		const root = path.join(temporaryDirectory, 'missing');
+		fs.writeFileSync(`${root}.html`, 'outside root');
+		const missingRootServer = await startWebServer({ root, cleanUrls: true });
+		try {
+			const addr = missingRootServer.address() as AddressInfo;
+			const response = await undiciFetch(
+				`http://127.0.0.1:${addr.port}/%2e%2e%2fmissing`,
+			);
+			assert.strictEqual(response.status, 404);
+			assert.strictEqual(await response.text(), 'Not Found');
+		} finally {
+			await stopWebServer(missingRootServer);
+		}
+	});
+
 	it.skipIf(process.platform !== 'win32')(
 		'should reject encoded Windows separators',
 		async () => {
