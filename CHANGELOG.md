@@ -1,5 +1,16 @@
 # Changelog
 
+## [8.1.1](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.1.0...linkinator-v8.1.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* avoid false broken links during URL extraction ([#933](https://github.com/JustinBeckwith/linkinator/issues/933)) ([14f3c10](https://github.com/JustinBeckwith/linkinator/commit/14f3c1026bbbe5bee00b733e1baeae215d844026))
+* **deps:** update dependency glob to v14 [security] ([#928](https://github.com/JustinBeckwith/linkinator/issues/928)) ([8955458](https://github.com/JustinBeckwith/linkinator/commit/895545864c368fa0d2027878481f6dbe596362cc))
+* enforce local static server root containment ([#932](https://github.com/JustinBeckwith/linkinator/issues/932)) ([8937f4a](https://github.com/JustinBeckwith/linkinator/commit/8937f4a4b56db258618452a21f75e4649c2b6291))
+* escape file names in the directory listing ([#924](https://github.com/JustinBeckwith/linkinator/issues/924)) ([e5b24ca](https://github.com/JustinBeckwith/linkinator/commit/e5b24caa95fa137e539d7a928202f95618db59e2))
+* keep duplicate link waits out of crawl slots ([#931](https://github.com/JustinBeckwith/linkinator/issues/931)) ([141393f](https://github.com/JustinBeckwith/linkinator/commit/141393f42c890d2444af479e6012dd0999537b9f))
+
 ## [8.1.0](https://github.com/JustinBeckwith/linkinator/compare/linkinator-v8.0.4...linkinator-v8.1.0) (2026-08-27)
 
 
