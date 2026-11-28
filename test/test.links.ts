@@ -1,6 +1,117 @@
 import { Readable } from 'node:stream';
 import { assert, describe, expect, it } from 'vitest';
-import { getLinks } from '../src/links.js';
+import { getCssLinks, getLinks } from '../src/links.js';
+
+describe('link extraction regressions (#922)', () => {
+	const baseUrl = 'https://example.com/site/index.html';
+
+	it.each([
+		['<base target="_blank">', baseUrl],
+		[
+			'<base target="_blank"><base href="/other/">',
+			'https://example.com/other/',
+		],
+		['<base href=""><base href="/other/">', baseUrl],
+		['<base><base target="_self">', baseUrl],
+		['<base href><base href="/other/">', baseUrl],
+		[
+			'<base href="../assets/"><base href="/ignored/">',
+			'https://example.com/assets/',
+		],
+	])('uses the first base with an href: %s', async (base, expected) => {
+		const links = await getLinks(
+			Readable.from(`${base}<a href="#top">top</a><a href="?x=1">query</a>`),
+			baseUrl,
+		);
+		expect(links.map((link) => link.urlWithFragment)).toEqual([
+			`${expected}#top`,
+			`${expected}?x=1`,
+		]);
+	});
+
+	it.each([
+		['100%', '100%'],
+		['bad%ZZ', 'bad%ZZ'],
+		['%E0%A4', '%E0%A4'],
+		['hello%20world', 'hello world'],
+		['100%25', '100%'],
+		['%E2%9C%93', '✓'],
+		['%25ZZ', '%ZZ'],
+		['hello%20world%', 'hello%20world%'],
+		['%FF', '%FF'],
+	])('accepts fragment #%s', async (hash, fragment) => {
+		const [link] = await getLinks(
+			Readable.from(`<a href="#${hash}">link</a>`),
+			baseUrl,
+		);
+		expect(link.error).toBeUndefined();
+		expect(link.url?.href).toBe(baseUrl);
+		expect(link.urlWithFragment).toBe(`${baseUrl}#${hash}`);
+		expect(link.fragment).toBe(fragment);
+	});
+
+	it.each([
+		'url("img(1).png")',
+		"url('img(1).png')",
+		'url( "img(1).png" )',
+		'@import url("img(1).png");',
+		"@import url('img(1).png');",
+		'@import "img(1).png";',
+		"@import 'img(1).png';",
+		'@IMPORT URL(\n"img(1).png"\n) screen;',
+	])('preserves parentheses in quoted CSS: %s', async (css) => {
+		const links = await getCssLinks(Readable.from(css), baseUrl);
+		expect(links.length).toBeGreaterThan(0);
+		for (const link of links) {
+			expect(link.link).toBe('img(1).png');
+			expect(link.url?.href).toBe('https://example.com/site/img(1).png');
+		}
+	});
+
+	it.each([
+		['a { background: url(plain.png) }', ['plain.png']],
+		['a { background: url( plain.png ) }', ['plain.png']],
+		['@import url(plain.css);', ['plain.css', 'plain.css']],
+		['@import "plain.css" screen;', ['plain.css']],
+		["@import 'plain.css' print;", ['plain.css']],
+		['url("it\'s(1).png")', ["it's(1).png"]],
+		["url('say\"hi(1).png')", ['say"hi(1).png']],
+		['@import "it\'s(1).css";', ["it's(1).css"]],
+		["@import 'say\"hi(1).css';", ['say"hi(1).css']],
+		[
+			'url("first(1).png"), url(\'second(2).png\')',
+			['first(1).png', 'second(2).png'],
+		],
+		['/* url("ignored(1).png") */ url("kept(2).png")', ['kept(2).png']],
+		['url("data:image/png;base64,AAAA")', []],
+		["url('data:image/png;base64,AAAA')", []],
+		['url(data:image/png;base64,AAAA)', []],
+		['url("") url(\'\') url()', []],
+		['url("mismatched.png\')', []],
+		['url("unterminated.png)', []],
+		['@import "mismatched.css\';', []],
+	] satisfies [
+		string,
+		string[],
+	][])('extracts only complete CSS references: %s', async (css, expected) => {
+		const links = await getCssLinks(Readable.from(css), baseUrl);
+		expect(links.map((link) => link.link)).toEqual(expected);
+	});
+
+	it('preserves quoted URLs in style tags and inline styles', async () => {
+		const links = await getLinks(
+			Readable.from(
+				`<style>a { background: url("img(1).png") }</style><div style="background: url('img(2).png')"></div>`,
+			),
+			baseUrl,
+			true,
+		);
+		expect(links.map((link) => link.link)).toEqual([
+			'img(1).png',
+			'img(2).png',
+		]);
+	});
+});
 
 const linkRelationshipBaseUrl = 'https://example.com/';
 

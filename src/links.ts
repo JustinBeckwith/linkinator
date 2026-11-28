@@ -98,7 +98,7 @@ export async function getLinks(
 				tag === 'a' ? { text: '' } : undefined;
 
 			// Allow alternate base URL to be specified in tag:
-			if (tag === 'base' && !baseSet) {
+			if (tag === 'base' && !baseSet && attributes.href !== undefined) {
 				realBaseUrl = getBaseUrl(attributes.href, baseUrl);
 				baseSet = true;
 			}
@@ -268,9 +268,15 @@ function parseLink(link: string, baseUrl: string): ParsedUrl {
 	try {
 		const url = new URL(link, baseUrl);
 		const urlWithFragment = url.href;
-		const fragment = url.hash
-			? decodeURIComponent(url.hash.slice(1))
-			: undefined;
+		let fragment = url.hash ? url.hash.slice(1) : undefined;
+		if (fragment) {
+			try {
+				fragment = decodeURIComponent(fragment);
+			} catch {
+				// Fragments may contain literal percent signs or malformed escapes.
+				// Keep the raw fragment without rejecting the otherwise valid URL.
+			}
+		}
 		url.hash = '';
 		return { link, url, urlWithFragment, fragment };
 	} catch (error) {
@@ -326,11 +332,11 @@ function extractUrlsFromCss(css: string): string[] {
 	// Formats: @import url("..."); @import url('...'); @import url(...);
 	//          @import "..."; @import '...';
 	const importRegex =
-		/@import\s+(?:url\(\s*['"]?([^'")]+)['"]?\s*\)|['"]([^'"]+)['"])/gi;
+		/@import\s+(?:url\(\s*(?:"([^"]+)"|'([^']+)'|([^'")]+))\s*\)|"([^"]+)"|'([^']+)')/gi;
 	let match: RegExpExecArray | null;
 	match = importRegex.exec(cleanCss);
 	while (match !== null) {
-		const url = match[1] || match[2];
+		const url = match[1] || match[2] || match[3] || match[4] || match[5];
 		if (url) {
 			urls.push(url.trim());
 		}
@@ -339,10 +345,10 @@ function extractUrlsFromCss(css: string): string[] {
 
 	// Match url() functions in CSS properties
 	// Formats: url("...") url('...') url(...)
-	const urlRegex = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
+	const urlRegex = /url\(\s*(?:"([^"]+)"|'([^']+)'|([^'")]+))\s*\)/gi;
 	match = urlRegex.exec(cleanCss);
 	while (match !== null) {
-		const url = match[1];
+		const url = match[1] || match[2] || match[3];
 		if (url && !url.startsWith('data:')) {
 			// Skip data URLs
 			urls.push(url.trim());

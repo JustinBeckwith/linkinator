@@ -30,6 +30,32 @@ describe('fragment identifier validation', () => {
 		setGlobalDispatcher(originalDispatcher);
 	});
 
+	it.each([
+		true,
+		false,
+	])('validates a literal percent fragment against the target IDs (exists: %s)', async (exists) => {
+		const url = 'http://example.com/percent';
+		const html = `<a href="#100%">Percent</a>${exists ? '<div id="100%">Target</div>' : ''}`;
+		const pool = mockAgent.get('http://example.com');
+		pool.intercept({ path: '/percent', method: 'GET' }).reply(200, html, {
+			headers: { 'content-type': 'text/html' },
+		});
+		const results = await check({ path: url, checkFragments: true });
+		expect(results.passed).toBe(exists);
+		const broken = results.links.filter(
+			(link) => link.state === LinkState.BROKEN,
+		);
+		if (exists) {
+			expect(broken).toEqual([]);
+		} else {
+			expect(broken).toHaveLength(1);
+			expect(broken[0]).toMatchObject({ url: `${url}#100%`, status: 200 });
+			expect((broken[0].failureDetails?.[0] as Error).message).toContain(
+				"Fragment identifier '#100%' not found on page",
+			);
+		}
+	});
+
 	it('should extract fragment IDs from HTML with id attributes', async () => {
 		const html = `
 			<html>
